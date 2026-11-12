@@ -9,7 +9,9 @@ import type { Database } from '@ownshell/core';
 import type { Kysely } from 'kysely';
 import { logger } from '../logger';
 import { registerApiCollectionHandlers } from './api-client/collections';
+import { registerApiCookieHandlers } from './api-client/cookies';
 import { registerApiExecutionHandlers } from './api-client/execute';
+import { registerApiOAuthHandlers } from './api-client/oauth';
 import { registerApiRequestHandlers } from './api-client/requests';
 import { registerApiTransferHandlers } from './api-client/transfer';
 
@@ -18,6 +20,8 @@ export function setupApiClientHandlers(db: Kysely<Database>): void {
   registerApiRequestHandlers(db);
   registerApiExecutionHandlers(db);
   registerApiTransferHandlers(db);
+  registerApiOAuthHandlers(db);
+  registerApiCookieHandlers(db);
 
   logger.info('API Client IPC handlers registered successfully');
 }

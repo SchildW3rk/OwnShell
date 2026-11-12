@@ -9,7 +9,9 @@ import type {
 import type { IpcMainInvokeEvent } from 'electron';
 import type { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
+import { assertSecureOAuthUrls, publicAuthConfig, storedAuthConfig } from '../../http/oauth';
 import { logger } from '../../logger';
+import { encryptSecret } from './oauth';
 import { safeHandle, safeHandleArgs } from '../safe-ipc';
 import {
   collectionIdSchema,
@@ -20,15 +22,21 @@ import {
   requestUpdateArgsSchema,
 } from './schemas';
 
+/** The renderer never gets the encrypted OAuth client secret, only whether one is set. */
+function publicRequest<T extends { auth_type: RequestAuthType; auth_config: string } | undefined>(row: T): T {
+  return row && { ...row, auth_config: publicAuthConfig(row.auth_type, row.auth_config) };
+}
+
 export function registerApiRequestHandlers(db: Kysely<Database>): void {
   safeHandle('api:requests:get-all', noPayloadSchema, async () => {
     try {
-      return await db
+      const rows = await db
         .selectFrom('api_requests')
         .selectAll()
         .orderBy('sort_order', 'asc')
         .orderBy('created_at', 'asc')
         .execute();
+      return rows.map(publicRequest);
     } catch (error) {
       logger.error('Failed to get API requests', error);
       throw error;
@@ -93,7 +101,7 @@ async function handleGetRequestById(
   id: string
 ) {
   try {
-    return await db.selectFrom('api_requests').selectAll().where('id', '=', id).executeTakeFirst();
+    return publicRequest(await db.selectFrom('api_requests').selectAll().where('id', '=', id).executeTakeFirst());
   } catch (error) {
     logger.error('Failed to get API request', { id, error });
     throw error;
@@ -114,7 +122,7 @@ async function handleGetRequestsByCollection(
       query = query.where('collection_id', '=', collectionId);
     }
 
-    return await query.orderBy('sort_order', 'asc').orderBy('created_at', 'asc').execute();
+    return (await query.orderBy('sort_order', 'asc').orderBy('created_at', 'asc').execute()).map(publicRequest);
   } catch (error) {
     logger.error('Failed to get API requests by collection', { collectionId, error });
     throw error;
@@ -136,6 +144,7 @@ async function handleCreateRequest(
 
     const sortOrder = data.sort_order ?? (maxSortResult?.max_sort ?? -1) + 1;
 
+    assertSecureOAuthUrls(data.auth_type ?? 'none', data.auth_config ?? '{}');
     const request = {
       id: uuidv4(),
       collection_id: data.collection_id ?? null,
@@ -148,7 +157,7 @@ async function handleCreateRequest(
       body_type: data.body_type ?? 'none',
       raw_content_type: data.raw_content_type ?? 'text',
       auth_type: data.auth_type ?? 'none',
-      auth_config: data.auth_config ?? '{}',
+      auth_config: storedAuthConfig(data.auth_type ?? 'none', data.auth_config ?? '{}', undefined, encryptSecret),
       network_host_id: data.network_host_id ?? null,
       environment_id: data.environment_id ?? null,
       sort_order: sortOrder,
@@ -156,6 +165,7 @@ async function handleCreateRequest(
       follow_redirects: data.follow_redirects ?? null,
       verify_tls: data.verify_tls ?? null,
       variables: data.variables ?? '[]',
+      cookie_jar: data.cookie_jar ?? null,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -168,7 +178,7 @@ async function handleCreateRequest(
       name: request.name,
       method: request.method,
     });
-    return request;
+    return publicRequest(request);
   } catch (error) {
     logger.error('Failed to create API request', error);
     throw error;
@@ -186,6 +196,19 @@ async function handleUpdateRequest(
       ...data,
       updated_at: Date.now(),
     };
+    if (data.auth_config !== undefined || data.auth_type !== undefined) {
+      const existing = await db
+        .selectFrom('api_requests')
+        .select(['auth_type', 'auth_config'])
+        .where('id', '=', id)
+        .executeTakeFirst();
+      const authType = data.auth_type ?? existing?.auth_type ?? 'none';
+      // Check the config that will be in effect, also when only the type changes.
+      assertSecureOAuthUrls(authType, data.auth_config ?? existing?.auth_config ?? '{}');
+      if (data.auth_config !== undefined) {
+        update.auth_config = storedAuthConfig(authType, data.auth_config, existing?.auth_config, encryptSecret);
+      }
+    }
 
     await db.updateTable('api_requests').set(update).where('id', '=', id).execute();
 
@@ -196,7 +219,7 @@ async function handleUpdateRequest(
       .executeTakeFirst();
 
     logger.info('API request updated', { id, name: data.name, method: data.method });
-    return updated;
+    return publicRequest(updated);
   } catch (error) {
     logger.error('Failed to update API request', { id, error });
     throw error;
@@ -206,6 +229,7 @@ async function handleUpdateRequest(
 async function handleDeleteRequest(db: Kysely<Database>, _event: IpcMainInvokeEvent, id: string) {
   try {
     await db.deleteFrom('api_requests').where('id', '=', id).execute();
+    await db.deleteFrom('api_oauth_tokens').where('owner_key', '=', `request:${id}`).execute();
     logger.info('API request deleted', { id });
   } catch (error) {
     logger.error('Failed to delete API request', { id, error });
@@ -258,6 +282,7 @@ async function handleDuplicateRequest(
       follow_redirects: original.follow_redirects,
       verify_tls: original.verify_tls,
       variables: original.variables,
+      cookie_jar: original.cookie_jar,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -270,7 +295,7 @@ async function handleDuplicateRequest(
       newId: duplicate.id,
       name: duplicate.name,
     });
-    return duplicate;
+    return publicRequest(duplicate);
   } catch (error) {
     logger.error('Failed to duplicate API request', { id, error });
     throw error;
@@ -296,6 +321,7 @@ interface RequestInput {
   follow_redirects?: 0 | 1 | null;
   verify_tls?: 0 | 1 | null;
   variables?: string;
+  cookie_jar?: 0 | 1 | null;
 }
 
 interface RequestUpdateInput extends Partial<RequestInput> {

@@ -26,6 +26,8 @@ export interface HttpRequestConfig {
   followRedirects?: boolean;
   /** Default true. */
   verifyTls?: boolean;
+  /** Send and store cookies of the workspace cookie jar; default true. */
+  useCookieJar?: boolean;
   /** Renderer-chosen id so the send can be cancelled. */
   executionId?: string;
 }
@@ -70,4 +72,15 @@ export interface AuthConfig {
   key?: string;
   value?: string;
   addTo?: 'header' | 'query';
+  // OAuth 2.0 (the client secret is stored encrypted as clientSecretEncrypted)
+  grantType?: 'client_credentials' | 'authorization_code';
+  tokenUrl?: string;
+  authUrl?: string;
+  clientId?: string;
+  clientSecret?: string;
+  scopes?: string;
+  audience?: string;
+  clientAuth?: 'basic' | 'body';
+  /** Authorization scheme before the token; default "Bearer". */
+  headerPrefix?: string;
 }

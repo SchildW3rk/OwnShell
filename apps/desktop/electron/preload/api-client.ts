@@ -11,7 +11,23 @@ type RequestSettingsColumns = {
   verify_tls?: 0 | 1 | null;
   /** Request-level variables, JSON [{ key, value, enabled }]. */
   variables?: string;
+  /** 0 = cookie jar off for this request; null = on. */
+  cookie_jar?: 0 | 1 | null;
 };
+
+/** Owner of an OAuth 2.0 auth config (and its cached token). */
+export type ApiAuthOwner = { type: 'request' | 'collection'; id: string };
+
+/** A jar cookie as the renderer sees it: never the value. */
+export interface ApiCookieInfo {
+  id: string;
+  domain: string;
+  path: string;
+  name: string;
+  host_only: number;
+  secure: number;
+  expires_at: number | null;
+}
 
 export type ApiImportResult =
   | (ImportCounts & { kind: 'collection'; warnings: Partial<Record<ImportWarningCode, number>> })
@@ -30,7 +46,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         parent_id?: string | null;
         description?: string | null;
         sort_order?: number;
-        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
         auth_config?: string;
       }) => ipcRenderer.invoke('api:collections:create', data),
       update: (
@@ -40,7 +56,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           parent_id?: string | null;
           description?: string | null;
           sort_order?: number;
-          auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+          auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
           auth_config?: string;
         }
       ) => ipcRenderer.invoke('api:collections:update', id, data),
@@ -62,7 +78,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         body?: string;
         body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
         raw_content_type?: 'text' | 'json' | 'xml' | 'html';
-        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
         auth_config?: string;
         network_host_id?: string | null;
         environment_id?: string | null;
@@ -80,7 +96,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           body?: string;
           body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
           raw_content_type?: 'text' | 'json' | 'xml' | 'html';
-          auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+          auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
           auth_config?: string;
           network_host_id?: string | null;
           environment_id?: string | null;
@@ -129,6 +145,25 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
       importOwnShell: (): Promise<ApiImportResult> => ipcRenderer.invoke('api:import:ownshell'),
       exportOwnShell: (collectionId: string): Promise<{ filePath: string } | null> =>
         ipcRenderer.invoke('api:export:ownshell', collectionId),
+    },
+    oauth: {
+      /** Whether a token is cached and when it expires; the token itself never leaves the main process. */
+      status: (
+        owner: ApiAuthOwner
+      ): Promise<{ hasToken: boolean; expiresAt: number | null; canRefresh: boolean }> =>
+        ipcRenderer.invoke('api:oauth:status', owner),
+      /** Requests a new token (Authorization Code opens the system browser). */
+      getToken: (
+        config: HttpRequestConfig,
+        owner: ApiAuthOwner
+      ): Promise<{ ok: boolean; errorCode?: string; errorDetail?: string; errorScopes?: string[] }> =>
+        ipcRenderer.invoke('api:oauth:get-token', { config, owner }),
+      clearToken: (owner: ApiAuthOwner): Promise<void> => ipcRenderer.invoke('api:oauth:clear-token', owner),
+    },
+    cookies: {
+      list: (): Promise<ApiCookieInfo[]> => ipcRenderer.invoke('api:cookies:list'),
+      delete: (id: string): Promise<void> => ipcRenderer.invoke('api:cookies:delete', id),
+      clear: (): Promise<void> => ipcRenderer.invoke('api:cookies:clear'),
     },
     files: {
       /** Opens a file dialog; returns null when cancelled. The main process re-validates the file on send. */

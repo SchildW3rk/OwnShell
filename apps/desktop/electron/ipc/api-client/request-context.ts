@@ -5,9 +5,19 @@
 
 import { SettingsQueries, type ApiCollectionsTable, type Database } from '@ownshell/core';
 import type { Kysely } from 'kysely';
+import path from 'node:path';
 import { recordHistory } from '../../http/api-history';
 import { GLOBAL_VARIABLES_SETTING, resolveVariableMap } from '../../http/api-variables';
-import { prepareRequestWithPlaceholders, type VariableScope } from '../../http/prepare-request';
+import { toCurlCommand } from '../../http/curl-export';
+import { revealClientSecret } from '../../http/oauth';
+import {
+  ApiRequestError,
+  prepareRequest,
+  prepareRequestWithPlaceholders,
+  resolveAuth,
+  type VariableScope,
+} from '../../http/prepare-request';
+import { guessContentType } from '../../http/request-files';
 import type { HttpRequestConfig, HttpResponse } from '../../http/types';
 import { logger } from '../../logger';
 import { cryptoManager } from '../../security/crypto';
@@ -44,7 +54,8 @@ async function getDecryptedVariables(
   return { variables, locked: false };
 }
 
-interface ChainEntry {
+export interface ChainEntry {
+  id: string;
   parent_id: string | null;
   auth_type: ApiCollectionsTable['auth_type'];
   auth_config: string;
@@ -63,7 +74,7 @@ export async function loadCollectionChain(
     seen.add(id);
     const row = await db
       .selectFrom('api_collections')
-      .select(['parent_id', 'auth_type', 'auth_config', 'variables'])
+      .select(['id', 'parent_id', 'auth_type', 'auth_config', 'variables'])
       .where('id', '=', id)
       .executeTakeFirst();
     if (!row) break;
@@ -85,6 +96,50 @@ function requestVariables(json: string | undefined): Record<string, string> {
     // Invalid JSON: no request variables.
   }
   return variables;
+}
+
+/** Owner of a request-level auth config: the request, or a folder edited in its auth dialog. */
+export interface AuthOwner {
+  type: 'request' | 'collection';
+  id: string;
+}
+
+export const ownerKey = (owner: AuthOwner) => `${owner.type}:${owner.id}`;
+
+/**
+ * Puts the decrypted OAuth client secret into the auth config that a send will use
+ * (the request's own, or the folder it inherits from). Main process only.
+ */
+export async function revealOAuthSecret(
+  db: Kysely<Database>,
+  config: Pick<HttpRequestConfig, 'authType' | 'authConfig'>,
+  chain: ChainEntry[],
+  owner: AuthOwner | null
+): Promise<{ authConfig: string; chain: ChainEntry[] }> {
+  const auth = resolveAuth(config.authType, config.authConfig, chain);
+  if (auth.type !== 'oauth2') return { authConfig: config.authConfig, chain };
+  const decrypt = (value: string) => {
+    if (!cryptoManager.isUnlocked()) {
+      throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to use the OAuth client secret', 'clientSecret');
+    }
+    return cryptoManager.decryptData(value);
+  };
+  if (auth.sourceId) {
+    return {
+      authConfig: config.authConfig,
+      chain: chain.map((entry) =>
+        entry.id === auth.sourceId
+          ? { ...entry, auth_config: revealClientSecret(entry.auth_config, entry.auth_config, decrypt) }
+          : entry
+      ),
+    };
+  }
+  const stored = !owner
+    ? undefined
+    : owner.type === 'request'
+      ? await db.selectFrom('api_requests').select('auth_config').where('id', '=', owner.id).executeTakeFirst()
+      : await db.selectFrom('api_collections').select('auth_config').where('id', '=', owner.id).executeTakeFirst();
+  return { authConfig: revealClientSecret(config.authConfig, stored?.auth_config, decrypt), chain };
 }
 
 /** Every variable scope in lookup order (see VariableScopeName for the precedence). */
@@ -131,4 +186,37 @@ export async function saveHistory(db: Kysely<Database>, config: HttpRequestConfi
     durationMs: response.time,
     responseSize: response.size,
   });
+}
+
+/**
+ * Same preparation as a send; `resolveVariables` puts decrypted values into the command.
+ * OAuth always stays `{{oauthAccessToken}}`: no cached token ever leaves through an export.
+ */
+export async function exportCurl(
+  db: Kysely<Database>,
+  config: HttpRequestConfig,
+  resolveVariables: boolean
+): Promise<string> {
+  const chain = await loadCollectionChain(db, config.collectionId);
+  const options = {
+    timeoutSeconds: config.timeoutSeconds,
+    followRedirects: config.followRedirects,
+    verifyTls: config.verifyTls,
+  };
+  if (!resolveVariables) {
+    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain: chain }), options);
+  }
+  const { scopes, locked } = await loadVariableScopes(db, config, chain);
+  const prepared = await prepareRequest(config, {
+    scopes,
+    variablesLocked: locked,
+    authChain: chain,
+    // Exported by path; nothing is read.
+    loadFile: async (filePath) => ({
+      data: Buffer.alloc(0),
+      name: path.basename(filePath),
+      contentType: guessContentType(filePath),
+    }),
+  });
+  return toCurlCommand({ ...prepared, url: prepared.url.href }, options);
 }

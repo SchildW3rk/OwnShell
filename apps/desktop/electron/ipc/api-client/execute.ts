@@ -5,12 +5,7 @@ import path from 'node:path';
 import type { Kysely } from 'kysely';
 import { openHostStream } from '../../http/host-stream';
 import { sendPreparedRequest, type HttpRequestConfig, type HttpResponse } from '../../http/http-client';
-import { toCurlCommand } from '../../http/curl-export';
-import {
-  ApiRequestError,
-  prepareRequest,
-  prepareRequestWithPlaceholders,
-} from '../../http/prepare-request';
+import { ApiRequestError, prepareRequest } from '../../http/prepare-request';
 import {
   createPickedFiles,
   guessContentType,
@@ -19,7 +14,16 @@ import {
 } from '../../http/request-files';
 import { logger } from '../../logger';
 import { safeHandle } from '../safe-ipc';
-import { loadCollectionChain, loadVariableScopes, saveHistory } from './request-context';
+import type { TokenStore } from '../../http/oauth';
+import { createCookieJar } from './cookies';
+import { createTokenStore, oauthTokenProvider } from './oauth';
+import {
+  exportCurl,
+  loadCollectionChain,
+  loadVariableScopes,
+  revealOAuthSecret,
+  saveHistory,
+} from './request-context';
 import {
   cancelRequestSchema,
   executeRequestSchema,
@@ -29,6 +33,7 @@ import {
 
 export function registerApiExecutionHandlers(db: Kysely<Database>): void {
   const pickedFiles = createPickedFiles(new SettingsQueries(db));
+  const tokens = createTokenStore(db);
   // Running sends by window + renderer-chosen id, so a window can only cancel its own.
   const running = new Map<string, AbortController>();
   safeHandle('api:requests:execute', executeRequestSchema, async (event, config) => {
@@ -36,7 +41,7 @@ export function registerApiExecutionHandlers(db: Kysely<Database>): void {
     const controller = new AbortController();
     if (key) running.set(key, controller);
     try {
-      const response = await handleExecuteRequest(db, pickedFiles, config, controller.signal);
+      const response = await handleExecuteRequest(db, pickedFiles, tokens, config, controller.signal);
       if (response.errorCode !== 'CANCELLED') {
         // A history write error must never turn a send into a failure.
         await saveHistory(db, config, response).catch((error) =>
@@ -76,54 +81,31 @@ export function registerApiExecutionHandlers(db: Kysely<Database>): void {
   });
 }
 
-/** Same preparation as a send; `resolveVariables` puts decrypted values into the command. */
-async function exportCurl(
-  db: Kysely<Database>,
-  config: HttpRequestConfig,
-  resolveVariables: boolean
-): Promise<string> {
-  const chain = await loadCollectionChain(db, config.collectionId);
-  const options = {
-    timeoutSeconds: config.timeoutSeconds,
-    followRedirects: config.followRedirects,
-    verifyTls: config.verifyTls,
-  };
-  if (!resolveVariables) {
-    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain: chain }), options);
-  }
-  const { scopes, locked } = await loadVariableScopes(db, config, chain);
-  const prepared = await prepareRequest(config, {
-    scopes,
-    variablesLocked: locked,
-    authChain: chain,
-    // Exported by path; nothing is read.
-    loadFile: async (filePath) => ({
-      data: Buffer.alloc(0),
-      name: path.basename(filePath),
-      contentType: guessContentType(filePath),
-    }),
-  });
-  return toCurlCommand({ ...prepared, url: prepared.url.href }, options);
-}
-
 async function handleExecuteRequest(
   db: Kysely<Database>,
   pickedFiles: PickedFiles,
+  tokens: TokenStore,
   config: HttpRequestConfig,
   signal: AbortSignal
 ): Promise<HttpResponse> {
   const started = performance.now();
   let host: string | undefined;
   try {
-    const chain = await loadCollectionChain(db, config.collectionId);
-    const { scopes, locked } = await loadVariableScopes(db, config, chain);
+    const owner = config.requestId ? ({ type: 'request', id: config.requestId } as const) : null;
+    const revealed = await revealOAuthSecret(db, config, await loadCollectionChain(db, config.collectionId), owner);
+    const { scopes, locked } = await loadVariableScopes(db, config, revealed.chain);
 
-    const prepared = await prepareRequest(config, {
-      scopes,
-      variablesLocked: locked,
-      authChain: chain,
-      loadFile: (filePath, maxBytes) => loadRequestFile(filePath, pickedFiles, maxBytes),
-    });
+    const prepared = await prepareRequest(
+      { ...config, authConfig: revealed.authConfig },
+      {
+        scopes,
+        variablesLocked: locked,
+        authChain: revealed.chain,
+        // Token endpoint requests go direct, never through the request's SSH host; Cancel reaches them too.
+        oauthToken: oauthTokenProvider(tokens, owner, { signal }),
+        loadFile: (filePath, maxBytes) => loadRequestFile(filePath, pickedFiles, maxBytes),
+      }
+    );
     host = prepared.url.host;
     const prepareMs = performance.now() - started;
 
@@ -133,6 +115,7 @@ async function handleExecuteRequest(
       followRedirects: config.followRedirects,
       verifyTls: config.verifyTls,
       signal,
+      cookieJar: config.useCookieJar === false ? undefined : createCookieJar(db),
     });
     const totalMs = prepareMs + (sent.timings?.totalMs ?? sent.time);
     const response: HttpResponse = {

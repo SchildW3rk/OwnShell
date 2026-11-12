@@ -1409,9 +1409,42 @@
         "bearer": "Bearer-Token",
         "basic": "Basic Auth",
         "api-key": "API-Key",
-        "inherit": "Erben"
+        "inherit": "Erben",
+        "oauth2": "OAuth 2.0"
       },
-      "inheritCollection": "Dieser Ordner nutzt die Authentifizierung seines übergeordneten Ordners. Ordner auf oberster Ebene senden keine Authentifizierung."
+      "inheritCollection": "Dieser Ordner nutzt die Authentifizierung seines übergeordneten Ordners. Ordner auf oberster Ebene senden keine Authentifizierung.",
+      "oauth2": {
+        "grantType": "Grant-Typ",
+        "clientCredentials": "Client Credentials",
+        "authorizationCode": "Authorization Code (PKCE)",
+        "tokenUrl": "Token-URL",
+        "authUrl": "Autorisierungs-URL",
+        "clientId": "Client-ID",
+        "clientSecret": "Client-Secret",
+        "clientSecretPlaceholder": "Optional bei öffentlichen Clients, oder {{variable}}",
+        "clientSecretStored": "Verschlüsselt gespeichert – zum Ersetzen neu eingeben",
+        "removeClientSecret": "Gespeichertes Secret entfernen",
+        "scopes": "Scopes",
+        "scopesPlaceholder": "Durch Leerzeichen getrennt, z. B. read write",
+        "audience": "Audience",
+        "optional": "Optional",
+        "clientAuth": "Client-Authentifizierung",
+        "clientAuthBasic": "Basic-Auth-Header",
+        "clientAuthBody": "Im Request-Body",
+        "headerPrefix": "Header-Präfix",
+        "redirectHint": "Redirect-URI: http://127.0.0.1:<zufälliger Port>/callback. Registriere einen Loopback-Redirect, der jeden Port erlaubt. Die Anmeldeseite öffnet sich in deinem Browser.",
+        "directHint": "Token-Anfragen gehen immer direkt von diesem Rechner aus, nicht über den SSH-Host des Requests.",
+        "saveFirst": "Speichere den Request, um ein Token abzurufen.",
+        "noToken": "Noch kein Token. Beim Senden wird eins angefordert (Authorization Code: „Neues Token abrufen“ nutzen).",
+        "tokenNoExpiry": "Token vorhanden (ohne Ablaufzeit).",
+        "tokenExpired": "Token ist am {{time}} abgelaufen; es wird beim nächsten Senden erneuert, wenn möglich.",
+        "tokenValidUntil": "Token vorhanden, gültig bis {{time}}.",
+        "getNewToken": "Neues Token abrufen",
+        "waitingForBrowser": "Warte auf den Browser…",
+        "clearToken": "Token löschen",
+        "tokenReceived": "Neues OAuth-Token erhalten.",
+        "insecureUrl": "Verwende https:// – http:// ist nur für localhost und 127.0.0.1 erlaubt."
+      }
     },
     "headers": {
       "key": "Header",
@@ -1486,7 +1519,10 @@
       "BODY_TOO_LARGE": "Der Request-Body überschreitet das Limit von 50 MB.",
       "NETWORK_HOST_UNAVAILABLE": "Die Anfrage wurde nicht gesendet: Der gewählte SSH-Host konnte das Ziel nicht erreichen ({{detail}}).",
       "requestFailed": "Anfrage fehlgeschlagen: {{error}}",
-      "TIMEOUT": "Keine vollständige Antwort innerhalb des Timeouts. Du kannst es in den Request-Einstellungen erhöhen."
+      "TIMEOUT": "Keine vollständige Antwort innerhalb des Timeouts. Du kannst es in den Request-Einstellungen erhöhen.",
+      "OAUTH_FAILED": "Die OAuth-Token-Anfrage ist fehlgeschlagen ({{detail}}). Prüfe URLs, Client-ID und Secret.",
+      "OAUTH_TOKEN_REQUIRED": "Kein gültiges OAuth-Token. Nutze „Neues Token abrufen“ im Auth-Tab.",
+      "OAUTH_INSECURE_URL": "OAuth-Token- und Autorisierungs-URLs müssen https:// verwenden (http:// ist nur für localhost und 127.0.0.1 erlaubt). Sonst würden Client-Secret und Tokens unverschlüsselt übertragen."
     },
     "collectionAuth": {
       "menu": "Authentifizierung",
@@ -1503,7 +1539,9 @@
       "verifyTls": "TLS-Zertifikate prüfen",
       "verifyTlsHint": "Gilt nur für diesen Request.",
       "tlsOffWarning": "Die Prüfung der TLS-Zertifikate ist für diesen Request ausgeschaltet. Jeder im Netzwerkpfad kann den Verkehr mitlesen und verändern.",
-      "tlsOffBadge": "TLS ungeprüft"
+      "tlsOffBadge": "TLS ungeprüft",
+      "cookieJar": "Cookie-Jar verwenden",
+      "cookieJarHint": "Passende Cookies aus dem Cookie-Jar des Workspaces senden und vom Server gesetzte Cookies speichern."
     },
     "sidebar": {
       "searchPlaceholder": "Nach Name, Methode oder URL filtern",
@@ -1602,6 +1640,16 @@
       "createEnvironment": "Umgebung anlegen",
       "environmentCreated": "Vault-Umgebung „{{name}}“ angelegt",
       "exportedRedacted": "Exportiert nach {{path}}. Zugangsdaten in erkannten Feldern werden durch Platzhalter ersetzt; andere wörtliche Werte werden unverändert exportiert."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "hint": "Ein Cookie-Jar für alle Requests. Werte werden verschlüsselt gespeichert und weder angezeigt, exportiert noch gesichert.",
+      "empty": "Keine Cookies gespeichert.",
+      "clearAll": "Alle löschen",
+      "secure": "Secure",
+      "session": "Sitzung",
+      "delete": "Cookie {{name}} löschen",
+      "loadFailed": "Cookies konnten nicht geladen werden: {{error}}"
     }
   },
   "changelog": {

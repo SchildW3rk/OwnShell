@@ -3,7 +3,8 @@ import type { ApiCollectionsTable, RequestAuthType } from '@ownshell/core';
 import { Button, Modal } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 import { useUpdateApiCollection } from '../../../hooks/api/useApiQueries';
-import { AuthEditor } from '../AuthEditor';
+import toast from 'react-hot-toast';
+import { AuthEditor, hasInsecureOAuthUrl } from '../AuthEditor';
 
 interface CollectionAuthDialogProps {
   collection: ApiCollectionsTable;
@@ -21,6 +22,10 @@ export const CollectionAuthDialog: React.FC<CollectionAuthDialogProps> = ({
   const [authConfig, setAuthConfig] = useState(collection.auth_config ?? '{}');
 
   const handleSave = () => {
+    if (hasInsecureOAuthUrl(authType, authConfig)) {
+      toast.error(t('api.errors.OAUTH_INSECURE_URL'));
+      return;
+    }
     updateCollection.mutate(
       { id: collection.id, data: { auth_type: authType, auth_config: authConfig } },
       { onSuccess: onClose }
@@ -44,13 +49,29 @@ export const CollectionAuthDialog: React.FC<CollectionAuthDialogProps> = ({
         </>
       }
     >
-      <div className="h-[360px] -mx-2">
+      <div className="h-[480px] -mx-2">
         <AuthEditor
           authType={authType}
           authConfig={authConfig}
           onAuthTypeChange={setAuthType}
           onAuthConfigChange={setAuthConfig}
           isCollection
+          oauthOwner={{ type: 'collection', id: collection.id }}
+          // Resolves like a request in this folder (no environment: folders have none).
+          buildOAuthConfig={() => ({
+            method: 'GET',
+            url: 'http://localhost',
+            params: '[]',
+            headers: '[]',
+            body: '',
+            bodyType: 'none',
+            authType,
+            authConfig,
+            collectionId: collection.id,
+            requestId: null,
+            networkHostId: null,
+            environmentId: null,
+          })}
         />
       </div>
     </Modal>

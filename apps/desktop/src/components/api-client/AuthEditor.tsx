@@ -9,10 +9,12 @@
  * - Inherit: Inherit from collection
  */
 
-import React, { useMemo, useCallback } from 'react';
-import { Key, User, Lock, Hash, ArrowDownFromLine, Eye, EyeOff } from 'lucide-react';
+import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import { Key, User, Lock, Hash, ArrowDownFromLine, Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import { cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
+import { sendErrorMessage } from './send-flow';
 import { VariableInput } from './variables/VariableInput';
 import { RequestAuthType } from '@ownshell/core';
 
@@ -27,7 +29,14 @@ interface AuthEditorProps {
   onAuthConfigChange: (config: string) => void;
   /** Collection/folder-level auth: "inherit" means the parent folder's auth */
   isCollection?: boolean;
+  /** Owner of an OAuth 2.0 config and its cached token; null until the request is saved. */
+  oauthOwner?: OAuthOwner | null;
+  /** The send config used for "Get new token" (variables, inheritance). */
+  buildOAuthConfig?: () => OAuthRequestConfig;
 }
+
+type OAuthOwner = { type: 'request' | 'collection'; id: string };
+type OAuthRequestConfig = Parameters<typeof window.electronAPI.apiClient.oauth.getToken>[0];
 
 interface AuthConfig {
   // Bearer
@@ -39,6 +48,18 @@ interface AuthConfig {
   key?: string;
   value?: string;
   addTo?: 'header' | 'query';
+  // OAuth 2.0
+  grantType?: 'client_credentials' | 'authorization_code';
+  tokenUrl?: string;
+  authUrl?: string;
+  clientId?: string;
+  /** Only set when typed; the stored secret never reaches the renderer. */
+  clientSecret?: string;
+  hasClientSecret?: boolean;
+  scopes?: string;
+  audience?: string;
+  clientAuth?: 'basic' | 'body';
+  headerPrefix?: string;
 }
 
 // ============================================
@@ -54,6 +75,7 @@ const AUTH_TYPES: Array<{
   { value: 'bearer', label: 'Bearer Token', icon: Key },
   { value: 'basic', label: 'Basic Auth', icon: User },
   { value: 'api-key', label: 'API Key', icon: Hash },
+  { value: 'oauth2', label: 'OAuth 2.0', icon: ShieldCheck },
   { value: 'inherit', label: 'Inherit', icon: ArrowDownFromLine },
 ];
 
@@ -302,6 +324,220 @@ const ApiKeyEditor: React.FC<{
 };
 
 // ============================================
+// OAuth 2.0 Editor
+// ============================================
+
+const inputClass = cn(
+  'w-full px-3 py-2 bg-secondary border border-border rounded-md text-sm',
+  'text-foreground placeholder:text-muted-foreground',
+  'focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent'
+);
+
+function ChoiceButtons<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={cn(
+            'px-3 py-1.5 text-sm rounded-md transition-colors border',
+            value === option.value
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-background text-muted-foreground border-border hover:text-foreground'
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const OAuth2Editor: React.FC<{
+  config: AuthConfig;
+  onChange: (config: AuthConfig) => void;
+  owner?: OAuthOwner | null;
+  buildConfig?: () => OAuthRequestConfig;
+}> = ({ config, onChange, owner, buildConfig }) => {
+  const { t } = useTranslation();
+  const grantType = config.grantType ?? 'client_credentials';
+  const [status, setStatus] = useState<{ hasToken: boolean; expiresAt: number | null } | null>(null);
+  const [pending, setPending] = useState(false);
+  const ownerType = owner?.type;
+  const ownerId = owner?.id;
+
+  const refreshStatus = useCallback(async () => {
+    if (!ownerType || !ownerId) return setStatus(null);
+    setStatus(await window.electronAPI.apiClient.oauth.status({ type: ownerType, id: ownerId }));
+  }, [ownerType, ownerId]);
+  useEffect(() => {
+    void refreshStatus().catch(() => setStatus(null));
+  }, [refreshStatus]);
+
+  const getToken = async () => {
+    if (!owner || !buildConfig) return;
+    setPending(true);
+    try {
+      const result = await window.electronAPI.apiClient.oauth.getToken(buildConfig(), owner);
+      if (result.ok) toast.success(t('api.auth.oauth2.tokenReceived'));
+      else toast.error(sendErrorMessage(result, t));
+    } catch (error) {
+      toast.error(t('api.errors.requestFailed', { error: error instanceof Error ? error.message : String(error) }));
+    } finally {
+      setPending(false);
+      void refreshStatus();
+    }
+  };
+
+  const clearToken = async () => {
+    if (!owner) return;
+    await window.electronAPI.apiClient.oauth.clearToken(owner);
+    void refreshStatus();
+  };
+
+  const field = (
+    id: string,
+    key: 'tokenUrl' | 'authUrl' | 'clientId' | 'scopes' | 'audience' | 'headerPrefix',
+    placeholder?: string
+  ) => (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs text-muted-foreground">
+        {t(`api.auth.oauth2.${key}`)}
+      </label>
+      <VariableInput
+        id={id}
+        type="text"
+        value={config[key] || ''}
+        onValueChange={(value) => onChange({ ...config, [key]: value })}
+        placeholder={placeholder}
+        className={cn(inputClass, config[key]?.includes('{{') && 'text-primary')}
+        aria-invalid={(key === 'tokenUrl' || key === 'authUrl') && isInsecureOAuthUrl(config[key])}
+      />
+      {(key === 'tokenUrl' || key === 'authUrl') && isInsecureOAuthUrl(config[key]) && (
+        <p role="alert" className="text-xs text-destructive">
+          {t('api.auth.oauth2.insecureUrl')}
+        </p>
+      )}
+    </div>
+  );
+
+  const expired = status?.expiresAt != null && status.expiresAt <= Date.now();
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs text-muted-foreground">{t('api.auth.oauth2.grantType')}</span>
+        <ChoiceButtons
+          value={grantType}
+          onChange={(value) => onChange({ ...config, grantType: value })}
+          options={[
+            { value: 'client_credentials', label: t('api.auth.oauth2.clientCredentials') },
+            { value: 'authorization_code', label: t('api.auth.oauth2.authorizationCode') },
+          ]}
+        />
+      </div>
+
+      {grantType === 'authorization_code' && field('auth-oauth2-auth-url', 'authUrl', 'https://')}
+      {field('auth-oauth2-token-url', 'tokenUrl', 'https://')}
+      {field('auth-oauth2-client-id', 'clientId')}
+
+      <div className="space-y-1">
+        <PasswordInput
+          id="auth-oauth2-client-secret"
+          value={config.clientSecret ?? ''}
+          onChange={(value) => {
+            // Empty keeps the stored secret; removing it is an explicit action below.
+            const next: AuthConfig = { ...config, clientSecret: value };
+            if (!value) delete next.clientSecret;
+            onChange(next);
+          }}
+          placeholder={t(
+            config.hasClientSecret && config.clientSecret === undefined
+              ? 'api.auth.oauth2.clientSecretStored'
+              : 'api.auth.oauth2.clientSecretPlaceholder'
+          )}
+          label={t('api.auth.oauth2.clientSecret')}
+        />
+        {config.hasClientSecret && config.clientSecret === undefined && (
+          <button
+            type="button"
+            onClick={() => onChange({ ...config, clientSecret: '', hasClientSecret: false })}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            {t('api.auth.oauth2.removeClientSecret')}
+          </button>
+        )}
+      </div>
+
+      {field('auth-oauth2-scopes', 'scopes', t('api.auth.oauth2.scopesPlaceholder'))}
+      {field('auth-oauth2-audience', 'audience', t('api.auth.oauth2.optional'))}
+
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs text-muted-foreground">{t('api.auth.oauth2.clientAuth')}</span>
+        <ChoiceButtons
+          value={config.clientAuth ?? 'basic'}
+          onChange={(value) => onChange({ ...config, clientAuth: value })}
+          options={[
+            { value: 'basic', label: t('api.auth.oauth2.clientAuthBasic') },
+            { value: 'body', label: t('api.auth.oauth2.clientAuthBody') },
+          ]}
+        />
+      </div>
+
+      {field('auth-oauth2-header-prefix', 'headerPrefix', 'Bearer')}
+
+      {grantType === 'authorization_code' && (
+        <p className="text-xs text-muted-foreground">{t('api.auth.oauth2.redirectHint')}</p>
+      )}
+      <p className="text-xs text-muted-foreground">{t('api.auth.oauth2.directHint')}</p>
+
+      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border">
+        <span className="text-sm text-muted-foreground">
+          {!owner
+            ? t('api.auth.oauth2.saveFirst')
+            : !status?.hasToken
+              ? t('api.auth.oauth2.noToken')
+              : status.expiresAt === null
+                ? t('api.auth.oauth2.tokenNoExpiry')
+                : t(expired ? 'api.auth.oauth2.tokenExpired' : 'api.auth.oauth2.tokenValidUntil', {
+                    time: new Date(status.expiresAt).toLocaleString(),
+                  })}
+        </span>
+        <button
+          type="button"
+          onClick={() => void getToken()}
+          disabled={!owner || !buildConfig || pending}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-primary bg-primary text-primary-foreground disabled:opacity-50"
+        >
+          {pending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {pending && grantType === 'authorization_code'
+            ? t('api.auth.oauth2.waitingForBrowser')
+            : t('api.auth.oauth2.getNewToken')}
+        </button>
+        <button
+          type="button"
+          onClick={() => void clearToken()}
+          disabled={!owner || !status?.hasToken}
+          className="px-3 py-1.5 text-sm rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          {t('api.auth.oauth2.clearToken')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // Main Component
 // ============================================
 
@@ -311,6 +547,8 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({
   onAuthTypeChange,
   onAuthConfigChange,
   isCollection = false,
+  oauthOwner,
+  buildOAuthConfig,
 }) => {
   const { t } = useTranslation();
 
@@ -357,6 +595,15 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({
 
         {authType === 'api-key' && <ApiKeyEditor config={config} onChange={handleConfigChange} />}
 
+        {authType === 'oauth2' && (
+          <OAuth2Editor
+            config={config}
+            onChange={handleConfigChange}
+            owner={oauthOwner}
+            buildConfig={buildOAuthConfig}
+          />
+        )}
+
         {authType === 'inherit' && (
           <div className="flex items-center justify-center h-full p-8">
             <div className="text-center">
@@ -385,6 +632,32 @@ export function parseAuthConfig(json: string): AuthConfig {
   } catch {
     return {};
   }
+}
+
+const LOOPBACK_HOST = /^(localhost|127(\.\d{1,3}){3}|\[::1\])$/i;
+
+/**
+ * Mirrors the main process rule: OAuth URLs need https except on loopback. URLs with
+ * {{variables}} are checked once resolved, on use.
+ */
+export function isInsecureOAuthUrl(text: string | undefined): boolean {
+  if (!text || text.includes('{{')) return false;
+  try {
+    const url = new URL(text.trim());
+    return url.protocol === 'http:' && !LOOPBACK_HOST.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Blocks saving an OAuth 2.0 config that would send secrets over plain http. */
+export function hasInsecureOAuthUrl(authType: RequestAuthType, authConfig: string): boolean {
+  if (authType !== 'oauth2') return false;
+  const config = parseAuthConfig(authConfig);
+  return (
+    isInsecureOAuthUrl(config.tokenUrl) ||
+    (config.grantType === 'authorization_code' && isInsecureOAuthUrl(config.authUrl))
+  );
 }
 
 /**

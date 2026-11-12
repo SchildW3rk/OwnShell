@@ -11,7 +11,7 @@ export type RequestBodyType = 'none' | 'json' | 'form-data' | 'form-urlencoded' 
 /**
  * Authentication type
  */
-export type RequestAuthType = 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+export type RequestAuthType = 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
 
 /**
  * Content type of a raw request body
@@ -83,6 +83,7 @@ export interface ApiRequestsTable {
   follow_redirects: number | null; // 0/1, null = follow
   verify_tls: number | null; // 0/1, null = verify
   variables: string; // JSON: [{ key, value, enabled }] request-level variables (migration 017)
+  cookie_jar: number | null; // 0/1, null = use the cookie jar (migration 018)
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
   last_executed_at: number | null; // Track last execution
@@ -108,6 +109,7 @@ export interface NewApiRequest {
   follow_redirects?: number | null;
   verify_tls?: number | null;
   variables?: string;
+  cookie_jar?: number | null;
   created_at: number;
   updated_at: number;
   last_executed_at?: number | null;
@@ -132,6 +134,7 @@ export interface ApiRequestUpdate {
   follow_redirects?: number | null;
   verify_tls?: number | null;
   variables?: string;
+  cookie_jar?: number | null;
   updated_at: number;
   last_executed_at?: number | null;
 }
@@ -149,4 +152,31 @@ export interface ApiRequestHistoryTable {
   duration_ms: number;
   response_size: number;
   created_at: number; // Unix timestamp in milliseconds
+}
+
+/**
+ * Cached OAuth 2.0 tokens (migration 018), one row per auth owner
+ * ('request:<id>' / 'collection:<id>'). Tokens are encrypted with the master key,
+ * never sent to the renderer and never part of a backup.
+ */
+export interface ApiOAuthTokensTable {
+  owner_key: string;
+  fingerprint: string; // hash of grant, URLs, client id, scopes, audience: a changed config ignores the token
+  access_token_encrypted: string;
+  refresh_token_encrypted: string | null;
+  expires_at: number | null; // Unix ms, null = no expiry given
+  updated_at: number;
+}
+
+/** API client cookie jar (migration 018); values encrypted, never in history, export or backup. */
+export interface ApiCookiesTable {
+  id: string;
+  domain: string;
+  path: string;
+  name: string;
+  value_encrypted: string;
+  host_only: number; // 1 = no Domain attribute: only the exact host
+  secure: number;
+  expires_at: number | null; // Unix ms, null = session cookie
+  created_at: number;
 }

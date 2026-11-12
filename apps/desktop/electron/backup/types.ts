@@ -199,7 +199,7 @@ const vaultApiCollectionSchema = z.object({
   description: nullableString,
   sort_order: z.number(),
   // Added in migration 015; older backups default to inheriting auth.
-  auth_type: z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']).default('inherit'),
+  auth_type: z.enum(['none', 'bearer', 'basic', 'api-key', 'oauth2', 'inherit']).default('inherit'),
   auth_config: z.string().default('{}'),
   variables: z.array(vaultApiVariableSchema).default([]),
   created_at: timestamp,
@@ -216,7 +216,7 @@ const vaultApiRequestSchema = z.object({
   headers: z.string(),
   body: z.string(),
   body_type: z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary']),
-  auth_type: z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']),
+  auth_type: z.enum(['none', 'bearer', 'basic', 'api-key', 'oauth2', 'inherit']),
   auth_config: z.string(),
   raw_content_type: z.enum(['text', 'json', 'xml', 'html']).default('text'),
   network_host_id: nullableId,
@@ -228,6 +228,8 @@ const vaultApiRequestSchema = z.object({
   verify_tls: z.number().int().min(0).max(1).nullable().default(null),
   // Request-level variables (no secrets), added in migration 017.
   variables: z.string().default('[]'),
+  // Added in migration 018; null = cookie jar on.
+  cookie_jar: z.number().int().min(0).max(1).nullable().default(null),
   created_at: timestamp,
   updated_at: timestamp,
   last_executed_at: z.number().nullable(),

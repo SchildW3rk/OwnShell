@@ -6,7 +6,7 @@ export const nullableIdSchema = idSchema.nullable();
 export const sortOrderSchema = z.number().finite().int().nonnegative().max(1000000);
 export const httpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 export const bodyTypeSchema = z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary']);
-export const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']);
+export const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'oauth2', 'inherit']);
 export const jsonConfigStringSchema = z.string().max(1024 * 1024);
 export const rawContentTypeSchema = z.enum(['text', 'json', 'xml', 'html']);
 export const timeoutSecondsSchema = z.number().int().min(1).max(600);
@@ -44,6 +44,7 @@ export const requestSchema = z.object({
   follow_redirects: flagSchema.nullable().optional(),
   verify_tls: flagSchema.nullable().optional(),
   variables: jsonConfigStringSchema.optional(),
+  cookie_jar: flagSchema.nullable().optional(),
 });
 export const requestUpdateSchema = requestSchema.partial().extend({
   last_executed_at: z.number().finite().int().nonnegative().nullable().optional(),
@@ -67,6 +68,7 @@ export const executeRequestSchema = z.object({
   timeoutSeconds: timeoutSecondsSchema.optional(),
   followRedirects: z.boolean().optional(),
   verifyTls: z.boolean().optional(),
+  useCookieJar: z.boolean().optional(),
   executionId: z.string().min(1).max(64).optional(),
 });
 export const cancelRequestSchema = z.string().min(1).max(64);

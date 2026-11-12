@@ -1409,9 +1409,42 @@
         "bearer": "Bearer Token",
         "basic": "Basic Auth",
         "api-key": "API Key",
-        "inherit": "Inherit"
+        "inherit": "Inherit",
+        "oauth2": "OAuth 2.0"
       },
-      "inheritCollection": "This folder uses the authentication of its parent folder. Top-level folders send no authentication."
+      "inheritCollection": "This folder uses the authentication of its parent folder. Top-level folders send no authentication.",
+      "oauth2": {
+        "grantType": "Grant type",
+        "clientCredentials": "Client Credentials",
+        "authorizationCode": "Authorization Code (PKCE)",
+        "tokenUrl": "Token URL",
+        "authUrl": "Authorization URL",
+        "clientId": "Client ID",
+        "clientSecret": "Client secret",
+        "clientSecretPlaceholder": "Optional for public clients, or {{variable}}",
+        "clientSecretStored": "Stored encrypted – type to replace",
+        "removeClientSecret": "Remove stored secret",
+        "scopes": "Scopes",
+        "scopesPlaceholder": "Space-separated, e.g. read write",
+        "audience": "Audience",
+        "optional": "Optional",
+        "clientAuth": "Client authentication",
+        "clientAuthBasic": "Basic auth header",
+        "clientAuthBody": "In request body",
+        "headerPrefix": "Header prefix",
+        "redirectHint": "Redirect URI: http://127.0.0.1:<random port>/callback. Register a loopback redirect that allows any port. The authorization page opens in your browser.",
+        "directHint": "Token requests always go directly from this computer, not through the request's SSH host.",
+        "saveFirst": "Save the request to get a token.",
+        "noToken": "No token yet. One is requested on send (Authorization Code: use \"Get new token\").",
+        "tokenNoExpiry": "Token present (no expiry given).",
+        "tokenExpired": "Token expired at {{time}}; it is renewed on the next send if possible.",
+        "tokenValidUntil": "Token present, valid until {{time}}.",
+        "getNewToken": "Get new token",
+        "waitingForBrowser": "Waiting for the browser…",
+        "clearToken": "Clear token",
+        "tokenReceived": "New OAuth token received.",
+        "insecureUrl": "Use https:// – http:// is only allowed for localhost and 127.0.0.1."
+      }
     },
     "headers": {
       "key": "Header",
@@ -1486,7 +1519,10 @@
       "BODY_TOO_LARGE": "The request body exceeds the 50 MB limit.",
       "NETWORK_HOST_UNAVAILABLE": "The request was not sent: the selected SSH host could not reach the target ({{detail}}).",
       "requestFailed": "Request failed: {{error}}",
-      "TIMEOUT": "No complete response within the timeout. You can raise it in the request settings."
+      "TIMEOUT": "No complete response within the timeout. You can raise it in the request settings.",
+      "OAUTH_FAILED": "The OAuth token request failed ({{detail}}). Check the URLs, client ID and secret.",
+      "OAUTH_TOKEN_REQUIRED": "No valid OAuth token. Use \"Get new token\" in the Auth tab.",
+      "OAUTH_INSECURE_URL": "OAuth token and authorization URLs must use https:// (http:// is only allowed for localhost and 127.0.0.1). Otherwise the client secret and tokens would travel unencrypted."
     },
     "collectionAuth": {
       "menu": "Authentication",
@@ -1503,7 +1539,9 @@
       "verifyTls": "Verify TLS certificates",
       "verifyTlsHint": "Applies to this request only.",
       "tlsOffWarning": "TLS certificate verification is off for this request. Anyone in the network path can read and change the traffic.",
-      "tlsOffBadge": "TLS not verified"
+      "tlsOffBadge": "TLS not verified",
+      "cookieJar": "Use cookie jar",
+      "cookieJarHint": "Send matching cookies from the workspace cookie jar and store cookies the server sets."
     },
     "sidebar": {
       "searchPlaceholder": "Filter by name, method or URL",
@@ -1602,6 +1640,16 @@
       "createEnvironment": "Create environment",
       "environmentCreated": "Vault environment “{{name}}” created",
       "exportedRedacted": "Exported to {{path}}. Credentials in recognised fields are replaced by placeholders; other literal values are exported as is."
+    },
+    "cookies": {
+      "title": "Cookies",
+      "hint": "One cookie jar for all requests. Values are stored encrypted and are not shown, exported or backed up.",
+      "empty": "No cookies stored.",
+      "clearAll": "Clear all",
+      "secure": "Secure",
+      "session": "Session",
+      "delete": "Delete cookie {{name}}",
+      "loadFailed": "Could not load cookies: {{error}}"
     }
   },
   "changelog": {

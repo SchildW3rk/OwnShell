@@ -37,6 +37,7 @@ import {
   encryptVariables,
   GLOBAL_VARIABLES_SETTING,
 } from '../http/api-variables';
+import { revealClientSecret, storedAuthConfig } from '../http/oauth';
 import { cryptoManager } from '../security/crypto';
 import { logger } from '../logger';
 import {
@@ -99,6 +100,10 @@ const SCRYPT_P = 1; // Parallelization
  * BackupManager class
  * Handles export and import of encrypted vault files
  */
+function oauthSecretInPlain(authType: string, authConfig: string, decrypt: (value: string) => string): string {
+  return authType === 'oauth2' ? revealClientSecret(authConfig, authConfig, decrypt) : authConfig;
+}
+
 export class BackupManager {
   constructor(private db: Kysely<Database>) {}
 
@@ -469,12 +474,19 @@ export class BackupManager {
         for (const { variables, ...collection } of apiCollections) {
           await trx
             .insertInto('api_collections')
-            .values({ ...collection, variables: encryptVariables(variables, encrypt, uuidv4) })
+            .values({
+              ...collection,
+              auth_config: storedAuthConfig(collection.auth_type, collection.auth_config, undefined, encrypt),
+              variables: encryptVariables(variables, encrypt, uuidv4),
+            })
             .execute();
         }
       }
       for (const request of apiRequests ?? []) {
-        await trx.insertInto('api_requests').values(request).execute();
+        await trx
+          .insertInto('api_requests')
+          .values({ ...request, auth_config: storedAuthConfig(request.auth_type, request.auth_config, undefined, encrypt) })
+          .execute();
       }
       if (apiGlobalVariables) {
         // The one app_settings row a backup carries; master password settings stay untouched.
@@ -592,10 +604,19 @@ export class BackupManager {
       vaultEnvironments,
       dbConnections,
       projects: await this.db.selectFrom('projects').selectAll().execute(),
+      // OAuth client secrets are decrypted into the (encrypted) backup; cached OAuth tokens
+      // and the cookie jar are deliberately not backed up.
       apiCollections: (await this.db.selectFrom('api_collections').selectAll().execute()).map(
-        (collection) => ({ ...collection, variables: decryptVariables(collection.variables, decrypt) })
+        (collection) => ({
+          ...collection,
+          auth_config: oauthSecretInPlain(collection.auth_type, collection.auth_config, decrypt),
+          variables: decryptVariables(collection.variables, decrypt),
+        })
       ),
-      apiRequests: await this.db.selectFrom('api_requests').selectAll().execute(),
+      apiRequests: (await this.db.selectFrom('api_requests').selectAll().execute()).map((request) => ({
+        ...request,
+        auth_config: oauthSecretInPlain(request.auth_type, request.auth_config, decrypt),
+      })),
       apiGlobalVariables: decryptVariables(
         (
           await this.db

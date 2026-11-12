@@ -19,6 +19,12 @@ export type { HttpRequestConfig, HttpResponse } from './types';
 export const REQUEST_TIMEOUT_MS = 30000;
 export const MAX_REDIRECTS = 10;
 
+/** The workspace cookie jar, consulted again on every hop (also after a redirect). */
+export interface CookieJarAccess {
+  header(url: URL): Promise<string | undefined>;
+  store(url: URL, setCookies: string[]): Promise<void>;
+}
+
 export interface SendDeps {
   /** Opens a byte stream from the SSH host to host:port. */
   openHostStream: (hostId: string, host: string, port: number) => Promise<Duplex>;
@@ -31,6 +37,18 @@ export interface SendDeps {
   verifyTls?: boolean;
   /** User cancel. */
   signal?: AbortSignal;
+  /** Off when the request disabled the jar. */
+  cookieJar?: CookieJarAccess;
+}
+
+/** Jar cookies go on the wire copy only, so a redirect never forwards them to another origin. */
+function withJarCookies(request: PreparedRequest, jarCookies: string | undefined): PreparedRequest {
+  if (!jarCookies) return request;
+  const headers = { ...request.headers };
+  const userKey = Object.keys(headers).find((key) => key.toLowerCase() === 'cookie');
+  if (userKey) headers[userKey] = `${headers[userKey]}; ${jarCookies}`;
+  else headers['Cookie'] = jarCookies;
+  return { ...request, headers };
 }
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
@@ -131,10 +149,13 @@ export async function sendPreparedRequest(
   try {
     let request = prepared;
     for (let redirectCount = 0; ; redirectCount++) {
+      const jarCookies = deps.cookieJar ? await deps.cookieJar.header(request.url) : undefined;
       if (controller.signal.aborted) throw controller.signal.reason;
-      const hop = networkHostId
-        ? await sendViaHost(request, networkHostId, deps.openHostStream, controller.signal, verifyTls, timeoutMs)
-        : await sendDirect(request, deps.fetch ?? fetch, controller.signal, verifyTls, timeoutMs);
+      const wire = withJarCookies(request, jarCookies);
+      const { setCookies, ...hop } = networkHostId
+        ? await sendViaHost(wire, networkHostId, deps.openHostStream, controller.signal, verifyTls, timeoutMs)
+        : await sendDirect(wire, deps.fetch ?? fetch, controller.signal, verifyTls, timeoutMs);
+      if (setCookies?.length) await deps.cookieJar?.store(request.url, setCookies);
       const decision = decideRedirect(
         request,
         { status: hop.status, location: hop.headers['location'] },
@@ -210,6 +231,7 @@ async function sendDirect(
     size: bytes.length,
     headersAt,
     doneAt: performance.now(),
+    setCookies: response.headers.getSetCookie(),
   };
 }
 

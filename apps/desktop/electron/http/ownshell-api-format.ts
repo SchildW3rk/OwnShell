@@ -26,7 +26,7 @@ export const OWNSHELL_API_FORMAT = 'ownshell-api';
 export const OWNSHELL_API_VERSION = 1;
 export const OWNSHELL_API_EXTENSION = '.ownshell-api.json';
 
-const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']);
+const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'oauth2', 'inherit']);
 const kvSchema = z.object({ key: z.string(), value: z.string(), enabled: z.boolean() });
 const authSchema = z.object({
   type: authTypeSchema,
@@ -37,6 +37,15 @@ const authSchema = z.object({
     key: z.string().optional(),
     value: z.string().optional(),
     addTo: z.enum(['header', 'query']).optional(),
+    // OAuth 2.0; the client secret is never exported.
+    grantType: z.enum(['client_credentials', 'authorization_code']).optional(),
+    tokenUrl: z.string().optional(),
+    authUrl: z.string().optional(),
+    clientId: z.string().optional(),
+    scopes: z.string().optional(),
+    audience: z.string().optional(),
+    clientAuth: z.enum(['basic', 'body']).optional(),
+    headerPrefix: z.string().optional(),
   }),
 });
 const variableSchema = z.object({
@@ -132,6 +141,13 @@ function exportAuth(type: RequestAuthType, configJson: string): FolderDoc['auth'
     if (text('key') !== undefined) config.key = text('key');
     if (text('value')) config.value = placeholderFor(text('value')!, 'apiKey');
     config.addTo = raw.addTo === 'query' ? 'query' : 'header';
+  }
+  if (type === 'oauth2') {
+    config.grantType = raw.grantType === 'authorization_code' ? 'authorization_code' : 'client_credentials';
+    for (const key of ['tokenUrl', 'authUrl', 'clientId', 'scopes', 'audience', 'headerPrefix'] as const) {
+      if (text(key) !== undefined) config[key] = text(key);
+    }
+    config.clientAuth = raw.clientAuth === 'body' ? 'body' : 'basic';
   }
   return { type, config };
 }

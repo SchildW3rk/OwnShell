@@ -179,7 +179,7 @@ export function useCreateApiRequest() {
       body?: string;
       body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
       raw_content_type?: RawRequestContentType;
-      auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+      auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
       auth_config?: string;
       network_host_id?: string | null;
       environment_id?: string | null;
@@ -220,7 +220,7 @@ export function useUpdateApiRequest() {
         body?: string;
         body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
         raw_content_type?: RawRequestContentType;
-        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
         auth_config?: string;
         network_host_id?: string | null;
         environment_id?: string | null;

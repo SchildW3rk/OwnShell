@@ -7,12 +7,14 @@ export interface RequestSettings {
   timeoutSeconds: number;
   followRedirects: boolean;
   verifyTls: boolean;
+  useCookieJar: boolean;
 }
 
 export const DEFAULT_REQUEST_SETTINGS: RequestSettings = {
   timeoutSeconds: 30,
   followRedirects: true,
   verifyTls: true,
+  useCookieJar: true,
 };
 
 const clampTimeout = (value: number) => Math.min(600, Math.max(1, Math.round(value)));
@@ -84,6 +86,14 @@ export const RequestSettingsEditor: React.FC<RequestSettingsEditorProps> = ({ se
           </div>
         )}
       </div>
+
+      <AppCheckbox
+        id="api-request-cookie-jar"
+        checked={settings.useCookieJar}
+        onCheckedChange={(useCookieJar) => onChange({ ...settings, useCookieJar })}
+        label={t('api.settings.cookieJar')}
+        description={t('api.settings.cookieJarHint')}
+      />
     </div>
   );
 };

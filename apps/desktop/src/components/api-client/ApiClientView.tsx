@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Columns, Rows, Globe, ChevronDown, FileJson, Terminal, ShieldAlert, Save } from 'lucide-react';
+import { Columns, Rows, Globe, ChevronDown, FileJson, Terminal, ShieldAlert, Save, Cookie } from 'lucide-react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import { ConfirmDialog, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +44,8 @@ import {
 import { BodyEditor } from './BodyEditor';
 import type { BodyEditorMemory, BodyValue } from './body-editor/types';
 import { hasBodyContent } from './body-editor/utils';
-import { AuthEditor } from './AuthEditor';
+import { AuthEditor, hasInsecureOAuthUrl } from './AuthEditor';
+import { CookieManagerDialog } from './CookieManagerDialog';
 import { ResponseViewer, HttpResponse } from './ResponseViewer';
 import {
   DEFAULT_REQUEST_SETTINGS,
@@ -53,7 +54,7 @@ import {
 } from './RequestSettingsEditor';
 import { parseCurlWithToast, showCurlImportNotices } from './sidebar/ImportCurlDialog';
 import { OVERLAY_SELECTOR, SHORTCUT_LABELS, getShortcutAction } from './shortcuts';
-import { createSendFlow } from './send-flow';
+import { createSendFlow, sendErrorMessage } from './send-flow';
 import { VariableSuggestionsContext } from './variables/VariableInput';
 import { BUILT_IN_NAMES, collectVariableSuggestions } from './variables/variable-suggestions';
 
@@ -62,15 +63,6 @@ import { BUILT_IN_NAMES, collectVariableSuggestions } from './variables/variable
 // ============================================
 
 /** Failed sends carry `{ "error": message }` as body (see the execute IPC handler). */
-/** Toast text for a failed send; missing variables also name the scopes that were searched. */
-function sendErrorMessage(
-  result: { errorCode?: string; errorDetail?: string; errorScopes?: string[] },
-  t: (key: string, options?: Record<string, unknown>) => string
-): string {
-  const scopes = (result.errorScopes ?? []).map((scope) => t(`api.variables.scope.${scope}`)).join(' → ');
-  return t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '', scopes });
-}
-
 function getErrorMessage(response: HttpResponse): string {
   try {
     const parsed = JSON.parse(response.body) as { error?: unknown };
@@ -115,6 +107,7 @@ function settingsColumns(settings: RequestSettings) {
       settings.timeoutSeconds === DEFAULT_REQUEST_SETTINGS.timeoutSeconds ? null : settings.timeoutSeconds,
     follow_redirects: settings.followRedirects ? null : (0 as const),
     verify_tls: settings.verifyTls ? null : (0 as const),
+    cookie_jar: settings.useCookieJar ? null : (0 as const),
   };
 }
 
@@ -186,6 +179,7 @@ export const ApiClientView: React.FC = () => {
 
   // Environment dropdown
   const [showEnvDropdown, setShowEnvDropdown] = useState(false);
+  const [showCookies, setShowCookies] = useState(false);
 
   // Responses and pending execution belong to the request that issued them.
   const [executions, setExecutions] = useState<Record<string, RequestExecution>>({});
@@ -227,6 +221,7 @@ export const ApiClientView: React.FC = () => {
           timeoutSeconds: selectedRequest.timeout_seconds ?? DEFAULT_REQUEST_SETTINGS.timeoutSeconds,
           followRedirects: selectedRequest.follow_redirects !== 0,
           verifyTls: selectedRequest.verify_tls !== 0,
+          useCookieJar: selectedRequest.cookie_jar !== 0,
         },
         activeTab: 'params' as RequestTab,
         editorMemory: {},
@@ -303,6 +298,10 @@ export const ApiClientView: React.FC = () => {
   const handleSave = useCallback(async () => {
     const body = draftBody.toString();
     if (!selectedRequestId) return { body, saved: false };
+    if (hasInsecureOAuthUrl(draftAuthType, draftAuthConfig)) {
+      toast.error(t('api.errors.OAUTH_INSECURE_URL'));
+      return { body, saved: false };
+    }
 
     try {
       await updateRequestMutation.mutateAsync({
@@ -344,6 +343,7 @@ export const ApiClientView: React.FC = () => {
     draftAuthConfig,
     draftSettings,
     updateRequestMutation,
+    t,
   ]);
 
   /** What a send would use; also the input for "Copy as curl". */
@@ -366,6 +366,7 @@ export const ApiClientView: React.FC = () => {
       timeoutSeconds: draftSettings.timeoutSeconds,
       followRedirects: draftSettings.followRedirects,
       verifyTls: draftSettings.verifyTls,
+      useCookieJar: draftSettings.useCookieJar,
     }),
     [
       draftMethod,
@@ -428,6 +429,7 @@ export const ApiClientView: React.FC = () => {
       setDraftAuthType(result.authType);
       setDraftAuthConfig(result.authConfig);
       setDraftSettings((current) => ({
+        ...current,
         timeoutSeconds: result.timeoutSeconds ?? current.timeoutSeconds,
         followRedirects: result.followRedirects ?? current.followRedirects,
         verifyTls: result.verifyTls ?? current.verifyTls,
@@ -595,6 +597,16 @@ export const ApiClientView: React.FC = () => {
             >
               <Save className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => setShowCookies(true)}
+              className="p-1.5 rounded-md border border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title={t('api.cookies.title')}
+              aria-label={t('api.cookies.title')}
+            >
+              <Cookie className="w-4 h-4" />
+            </button>
+            {showCookies && <CookieManagerDialog onClose={() => setShowCookies(false)} />}
             <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowCurlMenu(false)}>
               <button
                 type="button"
@@ -817,6 +829,12 @@ export const ApiClientView: React.FC = () => {
                   authConfig={draftAuthConfig}
                   onAuthTypeChange={setDraftAuthType}
                   onAuthConfigChange={setDraftAuthConfig}
+                  oauthOwner={selectedRequestId ? { type: 'request', id: selectedRequestId } : null}
+                  // The URL does not matter for a token request, but the IPC schema requires one.
+                  buildOAuthConfig={() => ({
+                    ...buildConfig(draftBody.toString()),
+                    url: draftUrl.trim() || 'http://localhost',
+                  })}
                 />
               )}
               {activeTab === 'headers' && (

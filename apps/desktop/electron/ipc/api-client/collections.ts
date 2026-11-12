@@ -14,9 +14,11 @@ import {
   toPublicVariables,
   type VariableInput,
 } from '../../http/api-variables';
+import { assertSecureOAuthUrls, publicAuthConfig, storedAuthConfig } from '../../http/oauth';
 import { logger } from '../../logger';
 import { cryptoManager } from '../../security/crypto';
 import { safeHandle, safeHandleArgs } from '../safe-ipc';
+import { encryptSecret } from './oauth';
 import {
   collectionSchema,
   collectionUpdateArgsSchema,
@@ -26,8 +28,16 @@ import {
 } from './schemas';
 
 /** The renderer never gets encrypted secret values, only whether a secret is set. */
-function publicCollection<T extends Pick<ApiCollectionsTable, 'variables'> | undefined>(row: T): T {
-  return row && { ...row, variables: JSON.stringify(toPublicVariables(row.variables)) };
+function publicCollection<
+  T extends Pick<ApiCollectionsTable, 'variables' | 'auth_type' | 'auth_config'> | undefined,
+>(row: T): T {
+  return (
+    row && {
+      ...row,
+      variables: JSON.stringify(toPublicVariables(row.variables)),
+      auth_config: publicAuthConfig(row.auth_type, row.auth_config),
+    }
+  );
 }
 
 /** Replaces the variables of a folder (collectionId) or the global variables (null). */
@@ -137,6 +147,7 @@ async function handleCreateCollection(
 
     const sortOrder = data.sort_order ?? (maxSortResult?.max_sort ?? -1) + 1;
 
+    assertSecureOAuthUrls(data.auth_type ?? 'inherit', data.auth_config ?? '{}');
     const collection = {
       id: uuidv4(),
       parent_id: data.parent_id ?? null,
@@ -144,7 +155,7 @@ async function handleCreateCollection(
       description: data.description ?? null,
       sort_order: sortOrder,
       auth_type: data.auth_type ?? 'inherit',
-      auth_config: data.auth_config ?? '{}',
+      auth_config: storedAuthConfig(data.auth_type ?? 'inherit', data.auth_config ?? '{}', undefined, encryptSecret),
       variables: '[]',
       created_at: now,
       updated_at: now,
@@ -153,7 +164,7 @@ async function handleCreateCollection(
     await db.insertInto('api_collections').values(collection).execute();
 
     logger.info('API collection created', { id: collection.id, name: collection.name });
-    return collection;
+    return publicCollection(collection);
   } catch (error) {
     logger.error('Failed to create API collection', error);
     throw error;
@@ -178,6 +189,19 @@ async function handleUpdateCollection(
       ...data,
       updated_at: Date.now(),
     };
+    if (data.auth_config !== undefined || data.auth_type !== undefined) {
+      const existing = await db
+        .selectFrom('api_collections')
+        .select(['auth_type', 'auth_config'])
+        .where('id', '=', id)
+        .executeTakeFirst();
+      const authType = data.auth_type ?? existing?.auth_type ?? 'inherit';
+      // Check the config that will be in effect, also when only the type changes.
+      assertSecureOAuthUrls(authType, data.auth_config ?? existing?.auth_config ?? '{}');
+      if (data.auth_config !== undefined) {
+        update.auth_config = storedAuthConfig(authType, data.auth_config, existing?.auth_config, encryptSecret);
+      }
+    }
 
     await db.updateTable('api_collections').set(update).where('id', '=', id).execute();
 
@@ -202,6 +226,7 @@ async function handleDeleteCollection(
 ) {
   try {
     await db.deleteFrom('api_collections').where('id', '=', id).execute();
+    await db.deleteFrom('api_oauth_tokens').where('owner_key', '=', `collection:${id}`).execute();
     logger.info('API collection deleted', { id });
   } catch (error) {
     logger.error('Failed to delete API collection', { id, error });

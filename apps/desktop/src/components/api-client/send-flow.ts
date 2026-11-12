@@ -25,3 +25,12 @@ export function createSendFlow() {
     },
   };
 }
+
+/** Toast text for a failed send or token request; missing variables also name the scopes that were searched. */
+export function sendErrorMessage(
+  result: { errorCode?: string; errorDetail?: string; errorScopes?: string[] },
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  const scopes = (result.errorScopes ?? []).map((scope) => t(`api.variables.scope.${scope}`)).join(' → ');
+  return t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '', scopes });
+}

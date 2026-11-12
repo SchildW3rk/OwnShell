@@ -1,4 +1,10 @@
-import type { ApiCollectionsTable, ApiRequestHistoryTable, ApiRequestsTable } from './api-client';
+import type {
+  ApiCollectionsTable,
+  ApiCookiesTable,
+  ApiOAuthTokensTable,
+  ApiRequestHistoryTable,
+  ApiRequestsTable,
+} from './api-client';
 import type { DBConnectionsTable, DBQueryHistoryTable } from './db-connections';
 import type {
   HostsTable,
@@ -29,6 +35,8 @@ export interface Database {
   api_collections: ApiCollectionsTable;
   api_requests: ApiRequestsTable;
   api_request_history: ApiRequestHistoryTable;
+  api_oauth_tokens: ApiOAuthTokensTable;
+  api_cookies: ApiCookiesTable;
   sidebar_folders: SidebarFoldersTable;
   projects: ProjectsTable;
 }

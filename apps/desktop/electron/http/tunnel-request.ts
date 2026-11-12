@@ -36,6 +36,8 @@ function decompress(bytes: Buffer, encoding: string | undefined): Buffer {
 export type TransportResponse = Omit<HttpResponse, 'time' | 'timings'> & {
   headersAt: number;
   doneAt: number;
+  /** Each Set-Cookie header on its own (joined headers cannot be split safely). */
+  setCookies?: string[];
 };
 
 /**
@@ -106,6 +108,7 @@ export function requestOverConnection(options: {
             size: bytes.length,
             headersAt,
             doneAt: performance.now(),
+            setCookies: res.headers['set-cookie'],
           });
         } catch (error) {
           reject(error);

@@ -11,6 +11,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { HttpMethod, RequestAuthType, RequestBodyType } from '@ownshell/core';
 import { MAX_RESPONSE_BODY_BYTES } from './fetch-timeout';
+import type { ResolvedOAuth } from './oauth';
 import type { AuthConfig, KeyValueItem, RawContentType } from './types';
 
 export const MAX_REQUEST_BODY_BYTES = MAX_RESPONSE_BODY_BYTES;
@@ -23,7 +24,10 @@ export type ApiRequestErrorCode =
   | 'BODY_TOO_LARGE'
   | 'NETWORK_HOST_UNAVAILABLE'
   | 'TIMEOUT'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'OAUTH_FAILED'
+  | 'OAUTH_TOKEN_REQUIRED'
+  | 'OAUTH_INSECURE_URL';
 
 /** Error with a stable code the renderer can translate; `detail` is safe to show (names only, no values). */
 export class ApiRequestError extends Error {
@@ -52,6 +56,8 @@ export interface RequestInput {
 }
 
 export interface AuthSource {
+  /** Folder id; identifies the owner of a cached OAuth token. */
+  id?: string;
   auth_type: RequestAuthType;
   auth_config: string;
 }
@@ -88,6 +94,12 @@ export interface PrepareContext {
   uuid?: () => string;
   /** Auth of the parent collections, nearest first. */
   authChain?: AuthSource[];
+  /**
+   * OAuth 2.0: a valid access token for the resolved config. `sourceId` is the folder
+   * the auth came from (undefined: the request's own). Undefined result: the
+   * `{{oauthAccessToken}}` placeholder is kept (export without a cached token).
+   */
+  oauthToken?: (config: ResolvedOAuth, sourceId: string | undefined) => Promise<string | undefined>;
   /** Must not return more than `maxBytes` bytes (throw BODY_TOO_LARGE instead). */
   loadFile: (filePath: string, maxBytes: number) => Promise<LoadedFile>;
   boundary?: string;
@@ -148,14 +160,18 @@ export function resolveAuth(
   authType: RequestAuthType,
   authConfig: string,
   chain: AuthSource[] = []
-): { type: RequestAuthType; config: AuthConfig } {
+): { type: RequestAuthType; config: AuthConfig; sourceId?: string } {
   let source: AuthSource = { auth_type: authType, auth_config: authConfig };
   for (const parent of chain) {
     if (source.auth_type !== 'inherit') break;
     source = parent;
   }
   if (source.auth_type === 'inherit') return { type: 'none', config: {} };
-  return { type: source.auth_type, config: parseJson<AuthConfig>(source.auth_config, {}) };
+  return {
+    type: source.auth_type,
+    config: parseJson<AuthConfig>(source.auth_config, {}),
+    ...(source.id && { sourceId: source.id }),
+  };
 }
 
 function hasHeader(headers: Record<string, string>, name: string): boolean {
@@ -315,6 +331,16 @@ async function assembleRequest(
       return match;
     });
 
+  const throwIfMissing = () => {
+    if (missing.size === 0) return;
+    const names = [...missing].join(', ');
+    if (context.variablesLocked) {
+      throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to resolve environment variables', names);
+    }
+    const searched = [...new Set(scopes.map((entry) => entry.scope))];
+    throw new ApiRequestError('MISSING_VARIABLES', `Unknown variables: ${names}`, names, searched);
+  };
+
   const urlText = interpolate(input.url.trim());
   const query: Array<[string, string]> = enabledItems(input.params).map((item) => [
     interpolate(item.key),
@@ -358,6 +384,28 @@ async function assembleRequest(
         }
       }
       break;
+    case 'oauth2': {
+      const prefix = auth.config.headerPrefix?.trim() || 'Bearer';
+      if (keepPlaceholders) {
+        headers['Authorization'] = `${prefix} {{oauthAccessToken}}`;
+        break;
+      }
+      const resolved: ResolvedOAuth = {
+        grantType: auth.config.grantType === 'authorization_code' ? 'authorization_code' : 'client_credentials',
+        tokenUrl: interpolate(auth.config.tokenUrl ?? '').trim(),
+        authUrl: interpolate(auth.config.authUrl ?? '').trim(),
+        clientId: interpolate(auth.config.clientId ?? '').trim(),
+        clientSecret: interpolate(auth.config.clientSecret ?? ''),
+        scopes: interpolate(auth.config.scopes ?? '').trim(),
+        audience: interpolate(auth.config.audience ?? '').trim(),
+        clientAuth: auth.config.clientAuth === 'body' ? 'body' : 'basic',
+      };
+      // Never ask the token endpoint with an unresolved {{variable}}.
+      throwIfMissing();
+      const token = context.oauthToken ? await context.oauthToken(resolved, auth.sourceId) : undefined;
+      headers['Authorization'] = `${prefix} ${token ?? '{{oauthAccessToken}}'}`;
+      break;
+    }
   }
 
   const sendsBody = input.method !== 'GET' && input.method !== 'HEAD';
@@ -450,14 +498,7 @@ async function assembleRequest(
     }
   }
 
-  if (missing.size > 0) {
-    const names = [...missing].join(', ');
-    if (context.variablesLocked) {
-      throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to resolve environment variables', names);
-    }
-    const searched = [...new Set(scopes.map((entry) => entry.scope))];
-    throw new ApiRequestError('MISSING_VARIABLES', `Unknown variables: ${names}`, names, searched);
-  }
+  throwIfMissing();
 
   if (body && body.length > MAX_REQUEST_BODY_BYTES) {
     throw new ApiRequestError('BODY_TOO_LARGE', 'Request body exceeds the 50 MB limit');
