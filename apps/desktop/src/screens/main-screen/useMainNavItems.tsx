@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { visibleFeatures } from '../../features/registry';
-import type { EntitlementFeature, FeatureCountKey, FeatureCounts } from '../../features/types';
-import { useLicenseStore } from '../../stores/useLicenseStore';
+import type { FeatureCountKey, FeatureCounts } from '../../features/types';
 import type { SidebarNavItem } from './types';
 
 interface UseMainNavItemsOptions {
@@ -22,7 +21,6 @@ export function useMainNavItems({
   s3ConnectionCount,
 }: UseMainNavItemsOptions): SidebarNavItem[] {
   const { t } = useTranslation();
-  const licenseInfo = useLicenseStore((state) => state.licenseInfo);
 
   return useMemo(
     () => {
@@ -38,15 +36,6 @@ export function useMainNavItems({
       const countFor = (countKey?: FeatureCountKey) =>
         countKey ? counts[countKey] : undefined;
 
-      const licenseValid =
-        licenseInfo?.status === 'active' ||
-        (licenseInfo?.status === 'trial' && (licenseInfo.trialDaysLeft ?? 0) > 0);
-
-      const allowsFeature = (feature?: EntitlementFeature): boolean => {
-        if (!feature || !licenseInfo) return true;
-        return licenseValid && Boolean(licenseInfo.features?.includes(feature));
-      };
-
       return visibleFeatures.map((feature) => {
         const Icon = feature.icon;
 
@@ -55,8 +44,7 @@ export function useMainNavItems({
           icon: <Icon className="w-5 h-5" />,
           label: t(feature.labelKey, feature.fallbackLabel),
           count: countFor(feature.countKey),
-          disabled:
-            feature.releaseState === 'disabled' || !allowsFeature(feature.entitlementFeature),
+          disabled: feature.releaseState === 'disabled',
         };
       });
     },
@@ -67,7 +55,6 @@ export function useMainNavItems({
       databaseCount,
       sftpHostCount,
       s3ConnectionCount,
-      licenseInfo,
     ]
   );
 }

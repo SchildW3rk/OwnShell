@@ -9,7 +9,6 @@ export const storageFeature: OwnShellFeature = {
   icon: Cloud,
   countKey: 'storage',
   releaseState: 'enabled',
-  entitlementFeature: 's3',
   placement: 'primary',
   order: 40,
 };

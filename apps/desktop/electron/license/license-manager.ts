@@ -1,10 +1,10 @@
 /**
  * License Manager
  *
- * The desktop app never decides paid entitlement by itself. It asks the
- * OwnShell License API for a short-lived, signed entitlement token and verifies
- * that token locally with the bundled public key.
- * The native evaluation trial is separate and uses an OS-protected local record.
+ * Honor model: no feature is gated. A commercial license is only used to hide the
+ * "personal use" reminder and to tell which builds it covers (`updatesUntil`).
+ * The license itself still comes from the OwnShell License API as a short-lived,
+ * signed, device-bound entitlement that is verified locally with the bundled public key.
  */
 
 import { SETTINGS_KEYS, SettingsQueries, Database } from '@ownshell/core';
@@ -14,44 +14,40 @@ import { logger } from '../logger';
 import { cryptoManager } from '../security/crypto';
 import { getMachineId } from '../security/machine-id';
 import {
+  LicenseApiRejectedError,
   activateLicenseEntitlement,
   deactivateLicenseEntitlement,
   refreshLicenseEntitlement,
   type LicenseApiEntitlementResponse,
 } from './license-api-client';
 import {
-  getEntitlementExpiresAt,
   RefreshGate,
   shouldRefreshEntitlement,
   verifyEntitlementToken,
   type EntitlementPayload,
 } from './entitlement';
-import {
-  evaluateEntitlementFeatures,
-  normalizeEntitlementFeatures,
-  type EntitlementFeature,
-  type FeatureEntitlementDecision,
-  type LicenseInfo,
-} from './types';
-import { LocalTrial } from './local-trial';
+import type { CommercialLicense, LicenseErrorCode, LicenseInfo } from './types';
 
-export type { LicenseInfo, LicenseStatus } from './types';
+export type { LicenseInfo } from './types';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const ONE_HOUR_MS = 60 * 60 * 1000;
-// Highest wall-clock time seen, so rolling the system clock back cannot extend an entitlement.
-const LICENSE_LAST_SEEN_AT = 'license_last_seen_at';
+// Injected by vite at build time (see vite.config.mts); undefined in tests.
+declare const __OWNSHELL_RELEASED_AT__: string | undefined;
+const BUILD_RELEASED_AT =
+  typeof __OWNSHELL_RELEASED_AT__ === 'string' ? Date.parse(__OWNSHELL_RELEASED_AT__) : NaN;
+
+function toLicenseErrorCode(error: unknown): LicenseErrorCode {
+  if (!(error instanceof LicenseApiRejectedError)) return 'unavailable';
+  return /activation limit/i.test(error.message) ? 'activationLimit' : 'rejected';
+}
 
 class LicenseManager {
   private settingsQueries: SettingsQueries | null = null;
-  private localTrial: LocalTrial | null = null;
-  private refreshGate = new RefreshGate<LicenseInfo | null>();
-  private lastSeenAt: number | null = null;
-  private persistedLastSeenAt = 0;
+  private refreshGate = new RefreshGate<void>();
+  /** Called after a background refresh changed the stored license (e.g. renewal). */
+  onStatusChanged: (() => void) | null = null;
 
   init(db: Kysely<Database>) {
     this.settingsQueries = new SettingsQueries(db);
-    this.localTrial = new LocalTrial(this.settingsQueries, getMachineId());
     logger.info('License manager initialized');
   }
 
@@ -79,125 +75,55 @@ class LicenseManager {
     }
   }
 
-  /** max(now, highest time seen before); persisted at most hourly. */
-  private async trustedNow(): Promise<number> {
-    if (this.lastSeenAt === null) {
-      this.persistedLastSeenAt = Number(await this.settings.get(LICENSE_LAST_SEEN_AT)) || 0;
-      this.lastSeenAt = this.persistedLastSeenAt;
-    }
-    this.lastSeenAt = Math.max(this.lastSeenAt, Date.now());
-    if (this.lastSeenAt - this.persistedLastSeenAt > ONE_HOUR_MS) {
-      await this.persistLastSeen(this.lastSeenAt);
-    }
-    return this.lastSeenAt;
+  private async getTimestampSetting(key: string): Promise<number | undefined> {
+    const value = Number(await this.settings.get(key));
+    return Number.isSafeInteger(value) && value > 0 ? value : undefined;
   }
 
-  private async persistLastSeen(value: number): Promise<void> {
-    await this.settings.set({ key: LICENSE_LAST_SEEN_AT, value: String(value), updated_at: Date.now() });
-    this.persistedLastSeenAt = value;
-  }
-
-  /** A fresh server entitlement carries trusted time; it also clears a bogus future clock. */
-  private async syncClockWithServer(payload: EntitlementPayload): Promise<void> {
-    this.lastSeenAt = Math.max(Date.now(), payload.iat * 1000);
-    await this.persistLastSeen(this.lastSeenAt);
-  }
-
-  private async clearEntitlementSettings(): Promise<void> {
-    await this.settings.delete(SETTINGS_KEYS.LICENSE_ENTITLEMENT_TOKEN);
-    await this.settings.delete(SETTINGS_KEYS.LICENSE_ENTITLEMENT_EXPIRES_AT);
-  }
-
-  private async markExpired(): Promise<void> {
-    await this.clearEntitlementSettings();
+  private async getFirstLaunchAt(): Promise<number> {
+    const stored = await this.getTimestampSetting(SETTINGS_KEYS.EVALUATION_STARTED_AT);
+    if (stored) return stored;
+    const now = Date.now();
     await this.settings.set({
-      key: SETTINGS_KEYS.LICENSE_STATUS,
-      value: 'expired',
-      updated_at: Date.now(),
+      key: SETTINGS_KEYS.EVALUATION_STARTED_AT,
+      value: String(now),
+      updated_at: now,
     });
+    return now;
   }
 
-  private toLicenseInfo(payload: EntitlementPayload, maskedKey?: string): LicenseInfo {
-    const features = normalizeEntitlementFeatures(payload.features);
-
-    if (payload.status === 'trial') {
-      const trialDaysLeft = Math.max(
-        0,
-        Math.ceil((getEntitlementExpiresAt(payload) - Date.now()) / ONE_DAY_MS)
-      );
-      return {
-        status: trialDaysLeft > 0 ? 'trial' : 'expired',
-        trialDaysLeft,
-        trialExpiresAt: getEntitlementExpiresAt(payload),
-        licenseType: payload.licenseType,
-        features,
-      };
-    }
-
+  private toLicense(payload: EntitlementPayload, maskedKey?: string): CommercialLicense {
     return {
-      status: 'active',
       maskedKey,
       licenseType: payload.licenseType,
-      features,
+      updatesUntil: payload.updatesUntil * 1000,
     };
   }
 
-  private async storeEntitlement(
-    response: LicenseApiEntitlementResponse,
-    payload: EntitlementPayload
-  ): Promise<void> {
+  private async storeEntitlement(response: LicenseApiEntitlementResponse): Promise<void> {
     await this.settings.set({
       key: SETTINGS_KEYS.LICENSE_ENTITLEMENT_TOKEN,
       value: response.entitlement,
       updated_at: Date.now(),
     });
-    await this.settings.set({
-      key: SETTINGS_KEYS.LICENSE_ENTITLEMENT_EXPIRES_AT,
-      value: String(response.expiresAt),
-      updated_at: Date.now(),
-    });
-    await this.settings.set({
-      key: SETTINGS_KEYS.LICENSE_STATUS,
-      value: payload.status,
-      updated_at: Date.now(),
-    });
-
-    if (response.instanceId || payload.instanceId) {
+    if (response.instanceId) {
       await this.settings.set({
         key: SETTINGS_KEYS.LICENSE_INSTANCE_ID,
-        value: response.instanceId || payload.instanceId || '',
+        value: response.instanceId,
         updated_at: Date.now(),
       });
     }
-
-    if (response.licenseType || payload.licenseType) {
-      await this.settings.set({
-        key: SETTINGS_KEYS.LICENSE_TYPE,
-        value: response.licenseType || payload.licenseType || '',
-        updated_at: Date.now(),
-      });
-    }
-
-    await this.settings.set({
-      key: SETTINGS_KEYS.LICENSE_EVER_ACTIVATED,
-      value: 'true',
-      updated_at: Date.now(),
-    });
   }
 
   private verifyResponseEntitlement(response: LicenseApiEntitlementResponse): EntitlementPayload {
-    const deviceId = getMachineId();
-    const verification = verifyEntitlementToken(response.entitlement, deviceId);
+    const verification = verifyEntitlementToken(response.entitlement, getMachineId());
     if (!verification.valid || !verification.payload) {
       throw new Error(verification.reason || 'License service returned an invalid entitlement');
     }
     return verification.payload;
   }
 
-  private async refreshFromServer(maskedKey?: string): Promise<LicenseInfo | null> {
-    const licenseKey = await this.getDecryptedLicenseKey();
-    if (!licenseKey) return null;
-
+  private async refreshFromServer(licenseKey: string, previous?: EntitlementPayload): Promise<void> {
     const instanceId = await this.settings.get(SETTINGS_KEYS.LICENSE_INSTANCE_ID);
     const response = await refreshLicenseEntitlement({
       licenseKey,
@@ -207,16 +133,21 @@ class LicenseManager {
       platform: process.platform,
     });
     const payload = this.verifyResponseEntitlement(response);
-    await this.storeEntitlement(response, payload);
-    await this.syncClockWithServer(payload);
-
-    return this.toLicenseInfo(payload, response.maskedKey || maskedKey || this.maskKey(licenseKey));
+    await this.storeEntitlement(response);
+    if (
+      payload.updatesUntil !== previous?.updatesUntil ||
+      payload.licenseType !== previous?.licenseType
+    ) {
+      this.onStatusChanged?.();
+    }
   }
 
-  async activate(key: string): Promise<{ success: boolean; error?: string; info?: LicenseInfo }> {
+  async activate(
+    key: string
+  ): Promise<{ success: boolean; error?: LicenseErrorCode; info?: LicenseInfo }> {
     const licenseKey = key.trim();
     if (!licenseKey) {
-      return { success: false, error: 'Please enter a license key' };
+      return { success: false, error: 'emptyKey' };
     }
 
     try {
@@ -233,105 +164,75 @@ class LicenseManager {
         (instanceId &&
           (await refreshLicenseEntitlement({ ...request, instanceId }).catch(() => null))) ||
         (await activateLicenseEntitlement(request));
-      const payload = this.verifyResponseEntitlement(response);
+      this.verifyResponseEntitlement(response);
 
       await this.settings.set({
         key: SETTINGS_KEYS.LICENSE_KEY_ENCRYPTED,
         value: cryptoManager.encryptData(licenseKey),
         updated_at: Date.now(),
       });
-      await this.storeEntitlement(response, payload);
-      await this.syncClockWithServer(payload);
-
-      await this.settings.delete(SETTINGS_KEYS.TRIAL_START);
-      await this.settings.delete(SETTINGS_KEYS.TRIAL_CHECKSUM);
-      await this.settings.delete(SETTINGS_KEYS.ACTIVATION_CHECKSUM);
+      await this.storeEntitlement(response);
 
       logger.info('License activated with server-signed entitlement');
-      return {
-        success: true,
-        info: this.toLicenseInfo(payload, response.maskedKey || this.maskKey(licenseKey)),
-      };
+      return { success: true, info: await this.getStatus() };
     } catch (error) {
       logger.error('Failed to activate license', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'License activation failed',
-      };
-    }
-  }
-
-  async startTrial(): Promise<{ success: boolean; info?: LicenseInfo; errorCode?: string }> {
-    if (!cryptoManager.isUnlocked()) return { success: false, errorCode: 'license.trialLocked' };
-    try {
-      const current = await this.getStatus();
-      if (current.status === 'active' || current.status === 'trial') return { success: true, info: current };
-      if (!current.canStartTrial || !this.localTrial) return { success: false, errorCode: 'license.trialUnavailable' };
-      const info = await this.localTrial.start();
-      return info.status === 'trial'
-        ? { success: true, info }
-        : { success: false, errorCode: 'license.trialUnavailable' };
-    } catch (error) {
-      logger.error('Failed to start local trial', error);
-      return { success: false, errorCode: 'license.trialStartFailed' };
+      return { success: false, error: toLicenseErrorCode(error) };
     }
   }
 
   async getStatus(): Promise<LicenseInfo> {
-    try {
-      const status = await this.settings.get(SETTINGS_KEYS.LICENSE_STATUS);
-      if (!status || status === 'none') {
-        return this.localTrial ? await this.localTrial.getStatus() : { status: 'none', canStartTrial: false };
-      }
+    const now = Date.now();
+    const firstLaunchAt = await this.getFirstLaunchAt();
+    const personalConfirmedAt = await this.getTimestampSetting(
+      SETTINGS_KEYS.PERSONAL_USE_CONFIRMED_AT
+    );
+    const token = await this.settings.get(SETTINGS_KEYS.LICENSE_ENTITLEMENT_TOKEN);
+    const licenseKey = await this.getDecryptedLicenseKey();
 
-      const token = await this.settings.get(SETTINGS_KEYS.LICENSE_ENTITLEMENT_TOKEN);
-      const decryptedKey = await this.getDecryptedLicenseKey();
-      const maskedKey = decryptedKey ? this.maskKey(decryptedKey) : undefined;
-
-      if (status === 'trial' && !token && this.localTrial) return await this.localTrial.getStatus();
-
-      const now = await this.trustedNow();
-      let payload: EntitlementPayload | undefined;
-      if (token) {
-        const verification = verifyEntitlementToken(token, getMachineId(), now);
-        if (verification.valid && verification.payload) {
-          payload = verification.payload;
-        } else {
-          logger.warn('Stored entitlement token is invalid', { reason: verification.reason });
-        }
-      }
-
-      if (
-        shouldRefreshEntitlement({
-          storedStatus: status,
-          hasLicenseKey: Boolean(decryptedKey),
-          payload,
-          now,
-        })
-      ) {
-        // Shared across concurrent gated IPC calls; null while backing off after a failure.
-        const refresh = this.refreshGate.run(() => this.refreshFromServer(maskedKey));
-        if (refresh) {
-          try {
-            const refreshed = await refresh;
-            if (refreshed) return refreshed;
-          } catch (error) {
-            logger.warn('Could not refresh license entitlement', error);
-          }
-        }
-      }
-
-      if (payload) return this.toLicenseInfo(payload, maskedKey);
-
-      if (status !== 'expired' || token) await this.markExpired();
-      return { status: 'expired', maskedKey };
-    } catch (error) {
-      logger.error('Failed to get license status', error);
-      return { status: 'none' };
+    let payload: EntitlementPayload | undefined;
+    if (token) {
+      const verification = verifyEntitlementToken(token, getMachineId(), now, true);
+      if (verification.valid) payload = verification.payload;
+      else logger.warn('Stored entitlement token is invalid', { reason: verification.reason });
     }
+
+    if (licenseKey && shouldRefreshEntitlement({ hasLicenseKey: true, payload, now })) {
+      // Background only: nothing waits on the license. A failed refresh (offline, key
+      // expired at Lemon Squeezy) keeps the last signed license and its updatesUntil.
+      this.refreshGate
+        .run(() => this.refreshFromServer(licenseKey, payload))
+        ?.catch((error) => logger.warn('Could not refresh license entitlement', error));
+    }
+
+    return {
+      license: payload
+        ? this.toLicense(payload, licenseKey ? this.maskKey(licenseKey) : undefined)
+        : null,
+      firstLaunchAt,
+      personalConfirmedAt,
+      buildReleasedAt: Number.isFinite(BUILD_RELEASED_AT) ? BUILD_RELEASED_AT : undefined,
+    };
   }
 
-  async deactivate(): Promise<{ success: boolean; error?: string; requiresOnline?: boolean }> {
+  async setPersonalUseConfirmed(confirmed: boolean): Promise<LicenseInfo> {
+    if (confirmed) {
+      await this.settings.set({
+        key: SETTINGS_KEYS.PERSONAL_USE_CONFIRMED_AT,
+        value: String(Date.now()),
+        updated_at: Date.now(),
+      });
+    } else {
+      await this.settings.delete(SETTINGS_KEYS.PERSONAL_USE_CONFIRMED_AT);
+    }
+    return this.getStatus();
+  }
+
+  async deactivate(): Promise<{
+    success: boolean;
+    error?: LicenseErrorCode;
+    requiresOnline?: boolean;
+  }> {
     try {
       const licenseKey = await this.getDecryptedLicenseKey();
       const instanceId = await this.settings.get(SETTINGS_KEYS.LICENSE_INSTANCE_ID);
@@ -341,15 +242,14 @@ class LicenseManager {
       } else if (licenseKey) {
         return {
           success: false,
-          error: 'License instance id is missing. Please contact support.',
+          error: 'instanceMissing',
           requiresOnline: true,
         };
       }
 
       await this.settings.delete(SETTINGS_KEYS.LICENSE_KEY_ENCRYPTED);
       await this.settings.delete(SETTINGS_KEYS.LICENSE_INSTANCE_ID);
-      await this.settings.delete(SETTINGS_KEYS.LICENSE_TYPE);
-      await this.markExpired();
+      await this.settings.delete(SETTINGS_KEYS.LICENSE_ENTITLEMENT_TOKEN);
 
       logger.info('License deactivated');
       return { success: true };
@@ -357,31 +257,10 @@ class LicenseManager {
       logger.warn('License deactivation requires online server confirmation', error);
       return {
         success: false,
-        error:
-          'Lizenzschutz-System: Zum Deaktivieren der Lizenz ist eine aktive Internetverbindung erforderlich.',
+        error: toLicenseErrorCode(error),
         requiresOnline: true,
       };
     }
-  }
-
-  async isValid(): Promise<boolean> {
-    const info = await this.getStatus();
-    return info.status === 'active' || (info.status === 'trial' && (info.trialDaysLeft ?? 0) > 0);
-  }
-
-  async hasFeature(feature: EntitlementFeature): Promise<boolean> {
-    return (await this.getFeatureDecision([feature])).allowed;
-  }
-
-  async hasAnyFeature(features: readonly EntitlementFeature[]): Promise<boolean> {
-    return (await this.getFeatureDecision(features)).allowed;
-  }
-
-  async getFeatureDecision(
-    features: readonly EntitlementFeature[]
-  ): Promise<FeatureEntitlementDecision> {
-    const info = await this.getStatus();
-    return evaluateEntitlementFeatures(info, features);
   }
 }
 

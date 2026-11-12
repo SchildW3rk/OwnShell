@@ -2,11 +2,10 @@
  * Main App Component
  *
  * Handles routing between Setup, Lock, and Main screens
- * Includes i18n initialization and license management
+ * Includes i18n initialization and the license status check (never gates the app)
  */
 
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './stores/useAuthStore';
 import { useLicenseStore } from './stores/useLicenseStore';
 import { useInitializeTheme } from './stores/useThemeStore';
@@ -29,11 +28,6 @@ const LockScreen = React.lazy(() =>
 );
 const MainScreen = React.lazy(() =>
   import('./screens/MainScreen').then((module) => ({ default: module.MainScreen }))
-);
-const LicenseActivationModal = React.lazy(() =>
-  import('./components/LicenseActivationModal').then((module) => ({
-    default: module.LicenseActivationModal,
-  }))
 );
 const WhatsNewModal = React.lazy(() =>
   import('./components/changelog/WhatsNewModal').then((module) => ({
@@ -59,14 +53,13 @@ function compareVersions(v1: string, v2: string): number {
 }
 
 export const App: React.FC = () => {
-  const { t } = useTranslation();
   const { isSetup, isLocked, checkSetup } = useAuthStore();
-  const { showActivationModal, checkLicense, hasCheckedLicense, licenseInfo } = useLicenseStore();
+  const checkLicense = useLicenseStore((state) => state.checkLicense);
 
   // What's New modal state
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
-  const appReadyForUpdates = !isLocked && isSetup && hasCheckedLicense && !showActivationModal;
+  const appReadyForUpdates = !isLocked && isSetup;
 
   // Initialize theme system
   useInitializeTheme();
@@ -83,20 +76,6 @@ export const App: React.FC = () => {
       checkLicense();
     }
   }, [isLocked, isSetup, checkLicense]);
-
-  const trialExpiresAt = licenseInfo?.status === 'trial' ? licenseInfo.trialExpiresAt : undefined;
-  useEffect(() => {
-    if (isLocked || !isSetup || !trialExpiresAt) return;
-    const checkExpiry = () => {
-      if (Date.now() >= trialExpiresAt) void checkLicense();
-    };
-    const timer = window.setTimeout(checkExpiry, Math.max(0, trialExpiresAt - Date.now()));
-    window.addEventListener('focus', checkExpiry);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('focus', checkExpiry);
-    };
-  }, [isLocked, isSetup, trialExpiresAt, checkLicense]);
 
   // Check for app update and show What's New modal
   useEffect(() => {
@@ -146,32 +125,6 @@ export const App: React.FC = () => {
 
     if (isLocked) {
       return <LockScreen />;
-    }
-
-    if (!hasCheckedLicense) {
-      return (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-border bg-surface">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">OwnShell</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t('license.checking', 'Checking license...')}
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (showActivationModal) {
-      return (
-        <div className="min-h-screen bg-background">
-          <LicenseActivationModal />
-        </div>
-      );
     }
 
     return (

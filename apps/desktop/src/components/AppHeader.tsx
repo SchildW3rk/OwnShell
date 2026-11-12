@@ -16,6 +16,7 @@ import { cn } from '@ownshell/ui';
 import { useSidebar } from './sidebar/SidebarContext';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { LicenseBadge } from './LicenseBadge';
 import { LANGUAGES, changeLanguage, getCurrentLanguage, type LanguageCode } from '../i18n/config';
 
 /** Fixed header height */
@@ -91,6 +92,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenSettings }) => {
 
       {/* Right Section: Actions */}
       <div className="flex items-center gap-1 pr-3 h-full">
+        <LicenseBadge />
+
         {/* Language Toggle */}
         <button
           type="button"

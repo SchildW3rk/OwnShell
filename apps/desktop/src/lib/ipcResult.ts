@@ -1,6 +1,6 @@
 /**
  * safeHandle returns `{ success: false, error }` instead of rejecting (invalid payload,
- * missing entitlement, handler errors). Mutations must surface that as a thrown Error.
+ * handler errors). Mutations must surface that as a thrown Error.
  */
 export function assertIpcSuccess<T>(result: T, fallbackMessage = 'Operation failed'): T {
   if (result && typeof result === 'object' && (result as { success?: unknown }).success === false) {

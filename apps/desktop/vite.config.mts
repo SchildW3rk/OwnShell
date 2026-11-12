@@ -61,8 +61,19 @@ function rendererManualChunks(id: string): string | undefined {
   return undefined;
 }
 
+// Release date this build reports for license coverage ("updates until"). Production builds only:
+// CI can pin it via OWNSHELL_RELEASED_AT (ISO 8601), otherwise build time. Dev servers report none.
+function releasedAtDefine(command: 'build' | 'serve'): string {
+  if (command !== 'build') return 'undefined';
+  const pinned = process.env.OWNSHELL_RELEASED_AT;
+  if (pinned && !Number.isFinite(Date.parse(pinned))) {
+    throw new Error(`OWNSHELL_RELEASED_AT is not a valid ISO 8601 date: ${pinned}`);
+  }
+  return JSON.stringify(pinned || new Date().toISOString());
+}
+
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     tailwindcss(),
     react(),
@@ -71,6 +82,9 @@ export default defineConfig({
         // Main process entry file
         entry: 'electron/main.ts',
         vite: {
+          define: {
+            __OWNSHELL_RELEASED_AT__: releasedAtDefine(command),
+          },
           build: {
             outDir: 'dist-electron',
             rollupOptions: {
@@ -138,4 +152,4 @@ export default defineConfig({
   server: {
     port: 5173,
   },
-});
+}));

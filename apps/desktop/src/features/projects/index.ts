@@ -8,7 +8,6 @@ export const projectsFeature: OwnShellFeature = {
   icon: FolderGit2,
   countKey: 'projects',
   releaseState: 'enabled',
-  entitlementFeature: 'ssh',
   placement: 'primary',
   order: 5,
 };

@@ -1,130 +1,75 @@
-export type LicenseStatus = 'active' | 'trial' | 'expired' | 'none';
+/**
+ * Honor-model licensing: every feature works without a license. These helpers only decide
+ * which reminder to show. Pure (no electron imports) so the renderer and tests can use them.
+ */
 
-export const KNOWN_ENTITLEMENT_FEATURES = [
-  'ssh',
-  'sftp',
-  's3',
-  'database',
-  'docker',
-  'tunnel',
-  'snippets',
-] as const;
+const DAY_MS = 86_400_000;
+export const EVALUATION_DAYS = 30;
 
-export type EntitlementFeature = (typeof KNOWN_ENTITLEMENT_FEATURES)[number];
-
-export interface LicenseInfo {
-  status: LicenseStatus;
-  trialDaysLeft?: number;
-  trialExpiresAt?: number;
-  canStartTrial?: boolean;
-  isLocalTrial?: boolean;
+export interface CommercialLicense {
   maskedKey?: string;
   licenseType?: string;
-  features?: string[];
+  /** ms timestamp: builds released up to this moment are covered forever. */
+  updatesUntil: number;
 }
 
-export type FeatureEntitlementDecisionReason =
-  | 'feature-not-required'
-  | 'feature-granted'
-  | 'feature-not-granted'
-  | 'license-inactive'
-  | 'verification-failed';
-
-export interface FeatureEntitlementCheck {
-  feature: EntitlementFeature;
-  allowed: boolean;
+export interface LicenseInfo {
+  /** Last server-signed license for this device, kept after expiry so it still covers older builds. */
+  license: CommercialLicense | null;
+  firstLaunchAt: number;
+  personalConfirmedAt?: number;
+  /** ms timestamp embedded in production builds; undefined in dev/test builds. */
+  buildReleasedAt?: number;
 }
 
-export interface FeatureEntitlementDecision {
-  allowed: boolean;
-  status: LicenseStatus;
-  licenseValid: boolean;
-  requiredFeatures: EntitlementFeature[];
-  grantedFeatures: EntitlementFeature[];
-  missingFeatures: EntitlementFeature[];
-  checks: FeatureEntitlementCheck[];
-  reason: FeatureEntitlementDecisionReason;
-}
+/** Error codes returned to the renderer, which maps them to translated messages. */
+export type LicenseErrorCode = 'emptyKey' | 'activationLimit' | 'rejected' | 'unavailable' | 'instanceMissing';
 
-export function normalizeEntitlementFeatures(features: readonly string[] | undefined): string[] {
-  if (!features?.length) return [];
-  return Array.from(
-    new Set(
-      features
-        .map((feature) => feature.trim())
-        .filter((feature) => feature.length > 0)
-    )
-  ).sort();
-}
+export type LicenseBadgeState =
+  | null
+  | { kind: 'evaluation'; daysLeft: number }
+  | { kind: 'personal' }
+  | { kind: 'uncovered' };
 
-export function isLicenseInfoUsable(info: LicenseInfo): boolean {
-  return (
-    info.status === 'active' || (info.status === 'trial' && (info.trialDaysLeft ?? 0) > 0)
-  );
-}
-
-export function evaluateEntitlementFeatures(
-  info: LicenseInfo,
-  features: readonly EntitlementFeature[]
-): FeatureEntitlementDecision {
-  const requiredFeatures = Array.from(new Set(features));
-  const licenseValid = isLicenseInfoUsable(info);
-  const featureSet = new Set(normalizeEntitlementFeatures(info.features));
-  const checks = requiredFeatures.map((feature) => ({
-    feature,
-    allowed: licenseValid && featureSet.has(feature),
-  }));
-  const grantedFeatures = checks.filter((check) => check.allowed).map((check) => check.feature);
-  const missingFeatures = checks.filter((check) => !check.allowed).map((check) => check.feature);
-
-  if (requiredFeatures.length === 0) {
-    return {
-      allowed: true,
-      status: info.status,
-      licenseValid,
-      requiredFeatures,
-      grantedFeatures,
-      missingFeatures,
-      checks,
-      reason: 'feature-not-required',
-    };
-  }
-
-  if (!licenseValid) {
-    return {
-      allowed: false,
-      status: info.status,
-      licenseValid,
-      requiredFeatures,
-      grantedFeatures,
-      missingFeatures,
-      checks,
-      reason: 'license-inactive',
-    };
-  }
-
-  return {
-    allowed: grantedFeatures.length > 0,
-    status: info.status,
-    licenseValid,
-    requiredFeatures,
-    grantedFeatures,
-    missingFeatures,
-    checks,
-    reason: grantedFeatures.length > 0 ? 'feature-granted' : 'feature-not-granted',
-  };
-}
-
-export function licenseInfoAllowsFeature(
-  info: LicenseInfo,
-  feature: EntitlementFeature
+/** Unknown dates count as covered: the notice must never nag because of missing metadata. */
+export function isReleaseCovered(
+  releasedAt: number | undefined,
+  license: Pick<CommercialLicense, 'updatesUntil'> | null
 ): boolean {
-  return evaluateEntitlementFeatures(info, [feature]).allowed;
+  if (!license || releasedAt === undefined || !Number.isFinite(releasedAt)) return true;
+  return releasedAt <= license.updatesUntil;
 }
 
-export function licenseInfoAllowsAnyFeature(
-  info: LicenseInfo,
-  features: readonly EntitlementFeature[]
-): boolean {
-  return evaluateEntitlementFeatures(info, features).allowed;
+export function licenseBadgeState(
+  now: number,
+  firstLaunchAt: number,
+  personalConfirmedAt: number | undefined,
+  license: Pick<CommercialLicense, 'updatesUntil'> | null,
+  buildReleasedAt: number | undefined
+): LicenseBadgeState {
+  if (personalConfirmedAt) return null;
+  if (license) return isReleaseCovered(buildReleasedAt, license) ? null : { kind: 'uncovered' };
+  const evaluationEndsAt = firstLaunchAt + EVALUATION_DAYS * DAY_MS;
+  if (now < evaluationEndsAt) {
+    // Clamped: a clock set back before firstLaunchAt must not show more than the evaluation length.
+    const daysLeft = Math.ceil((evaluationEndsAt - now) / DAY_MS);
+    return { kind: 'evaluation', daysLeft: Math.min(EVALUATION_DAYS, Math.max(0, daysLeft)) };
+  }
+  return { kind: 'personal' };
+}
+
+export type UpdateLicenseCoverage = 'covered' | 'uncovered' | 'unknown';
+
+/**
+ * Coverage of an available update (electron-updater `releaseDate`, ISO string).
+ * 'unknown' (license present, release date missing/invalid) must not install silently.
+ */
+export function updateLicenseCoverage(
+  releaseDate: string | undefined,
+  license: Pick<CommercialLicense, 'updatesUntil'> | null
+): UpdateLicenseCoverage {
+  if (!license) return 'covered';
+  const releasedAt = releaseDate ? Date.parse(releaseDate) : NaN;
+  if (!Number.isFinite(releasedAt)) return 'unknown';
+  return releasedAt <= license.updatesUntil ? 'covered' : 'uncovered';
 }

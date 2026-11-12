@@ -66,40 +66,48 @@ Wenn du es verlierst, musst du den Vault zurücksetzen (und verlierst alle gespe
 
 Die einzigen Netzwerk-Anfragen sind:
 
-1. Lizenz-Validierung (einmalig)
+1. Lizenzaktivierung und -aktualisierung, nur wenn du einen Lizenzschlüssel eingibst
 2. Update-Checks (via GitHub API)
 
 Bugs und Feedback werden manuell per E-Mail an `support@ownshell.app` gemeldet. OwnShell sendet keine automatischen Crash-, Fehler- oder Diagnoseberichte.
 
 ### Kann ich OwnShell offline nutzen?
 
-Ja! Nach Aktivierung deiner Lizenz funktioniert OwnShell **100% offline**.
+Ja. OwnShell braucht kein Konto und funktioniert **100% offline**. Nur das Aktivieren eines Lizenzschlüssels braucht eine Verbindung.
 
 ## Lizenzierung
 
-### Kann ich OwnShell kostenlos testen?
+### Ist OwnShell kostenlos?
 
-Ja. Wähle nach dem Einrichten des Master-Passworts **14 Tage kostenlos testen** direkt in der App. Dieser lokale Test benötigt weder Konto noch Checkout oder Zahlungsdaten und startet kein Abo. Das ursprüngliche Ablaufdatum bleibt bei Neustarts erhalten; nach 14 Tagen musst du eine gültige Lizenz aktivieren, um den Workspace weiterzunutzen.
+Für die private Nutzung ja: Die offiziellen Builds sind kostenlos, brauchen kein Konto, und alle Funktionen sind dauerhaft ohne Einschränkung nutzbar.
 
-Der Abo-Checkout ist davon getrennt: Lemon-Squeezy-Abos beinhalten ebenfalls 14 Tage Testzeitraum. Danach startet die Abrechnung, sofern du nicht im Kundenportal kündigst.
+Wenn du OwnShell beruflich oder für umsatzbringende Tätigkeiten nutzt, kauf bitte eine Lizenz. Das ist ein Vertrauensmodell: In keinem Fall wird etwas gesperrt.
 
-### Was sind die Preisoptionen?
+### Wie funktioniert der Testzeitraum?
 
-- **Monatlich**: €18/Monat, im ersten bezahlten Monat €16,20 mit Launch-Code `CZOTU1MG`
-- **Jährlich**: €180/Jahr, im ersten bezahlten Jahr €162 mit Launch-Code `CZOTU1MG`
+Du kannst OwnShell ab dem ersten Start 30 Tage lang testen. Der Testzeitraum läuft komplett lokal, ohne Konto und ohne Zahlungsdaten. Währenddessen zeigt ein kleines Badge in der Kopfzeile die verbleibenden Tage.
 
-Der Launch-Code ist auf die ersten 100 Einlösungen begrenzt. Siehe [Preis-Seite](https://ownshell.app/#pricing) für Details.
+Nach 30 Tagen ohne Lizenz zeigt das Badge **Persönliche Nutzung**. Ein Klick darauf öffnet einen Dialog: Du kannst bestätigen, dass du OwnShell nur privat nutzt (das blendet das Badge aus, wird nur lokal gespeichert und lässt sich unter Einstellungen → Lizenz zurücknehmen), eine Lizenz kaufen oder einen Lizenzschlüssel eingeben.
 
-### Kann ich OwnShell kommerziell nutzen?
+### Was kostet eine Lizenz?
 
-Ja, alle Lizenzen beinhalten kommerzielle Nutzung. Für Teams, erwäge:
+- **Individual**: 79 € pro Jahr, inkl. MwSt.
 
-- Jährliche Lizenzen für einfachere Verwaltung
-- Mengenrabatte (kontaktiere uns für 10+ Lizenzen)
+Eine Business-Variante ist geplant. Siehe [Preis-Seite](https://ownshell.app/#pricing).
 
-### Was passiert, wenn mein Abo abläuft?
+### Was passiert, wenn meine Lizenz abläuft?
 
-Wenn weder Testzeitraum noch Lizenz gültig sind, zeigt OwnShell die Lizenzaktivierung. Aktiviere eine gültige Lizenz, um den Workspace weiterzunutzen. Deine lokal gespeicherten Daten werden nicht gelöscht.
+Nichts hört auf zu funktionieren. Deine Lizenz deckt dauerhaft alle OwnShell-Versionen ab, die vor ihrem Ablaufdatum erschienen sind („Updates bis“). Neuere Versionen zeigen einen kleinen Hinweis in der Kopfzeile, und der Updater weist dich vor der Installation darauf hin, wenn ein Update nicht abgedeckt ist. Verlängere die Lizenz für neuere Versionen oder bleib bei einer abgedeckten Version.
+
+### Kann ich meine Lizenz auf einen anderen Computer übertragen?
+
+Ja. Deaktiviere sie auf dem alten Gerät:
+
+1. Einstellungen → Lizenz
+2. Klicke auf **Dieses Gerät deaktivieren**
+3. Gib denselben Lizenzschlüssel auf dem neuen Gerät ein
+
+Jede Lizenz erlaubt **3 Aktivierungen**.
 
 ## SSH & Verbindungen
 

@@ -20,19 +20,13 @@ export const SETTINGS_KEYS = {
   AUTO_LOCK_TIMEOUT: 'auto_lock_timeout', // In minutes
   // License settings
   LICENSE_KEY_ENCRYPTED: 'license_key_encrypted',
-  LICENSE_STATUS: 'license_status', // 'active' | 'trial' | 'expired' | 'none'
   LICENSE_INSTANCE_ID: 'license_instance_id', // Lemon Squeezy instance ID for deactivation
   LICENSE_ENTITLEMENT_TOKEN: 'license_entitlement_token', // Server-signed entitlement JWS
-  LICENSE_ENTITLEMENT_EXPIRES_AT: 'license_entitlement_expires_at',
-  TRIAL_START: 'trial_start_date',
-  TRIAL_CHECKSUM: 'trial_checksum', // Anti-tampering: hash(date + machineId + secret)
-  // Permanent activation marker (NEVER deleted - prevents trial restart after deactivation)
-  LICENSE_EVER_ACTIVATED: 'license_ever_activated', // 'true' once trial/license was used
-  ACTIVATION_CHECKSUM: 'activation_checksum', // hash(machineId + secret) - proves activation history
+  // Honor-model license reminder state (nothing is gated on these)
+  EVALUATION_STARTED_AT: 'evaluation_started_at', // ms timestamp of first launch
+  PERSONAL_USE_CONFIRMED_AT: 'personal_use_confirmed_at', // ms timestamp, absent = not confirmed
   // Language settings
   LANGUAGE: 'language',
-  // License type (from Lemon Squeezy variant_name)
-  LICENSE_TYPE: 'license_type',
   // Recovery key
   RECOVERY_KEY_HASH: 'recovery_key_hash', // Scrypt hash of recovery key for password reset
   // Docker Compose settings

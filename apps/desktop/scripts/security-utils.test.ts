@@ -17,13 +17,7 @@ import {
 } from '../electron/db-explorer/sql-identifiers';
 import { assertKnownColumns, assertKnownTable } from '../electron/db-explorer/identifier-whitelist';
 import { validateSafeIpcPayload } from '../electron/ipc/safe-ipc-validation';
-import {
-  getEntitlementFeaturesForChannel,
-  isChannelAllowedByLicenseInfo,
-} from '../electron/ipc/entitlement-gates';
 import { verifyEntitlementToken } from '../electron/license/entitlement';
-import { licenseManager } from '../electron/license/license-manager';
-import { evaluateEntitlementFeatures } from '../electron/license/types';
 import { buildContentSecurityPolicy } from '../electron/security/content-security-policy';
 import { safeHandle } from '../electron/ipc/safe-ipc';
 import { parseDockerComposeLabelOutput } from '../electron/projects/compose-discovery';
@@ -773,168 +767,37 @@ function testContentSecurityPolicy() {
   assert.match(developmentCsp, /connect-src 'self' http: https: ws: wss:/);
 }
 
-function testEntitlementChannelMapping() {
-  assert.deepEqual(getEntitlementFeaturesForChannel('native-ssh:create'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('pty:create'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:connect'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:status'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:history'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:commit-details'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:diff'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:stage-file'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:unstage-file'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:create-commit'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:branches'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:create-branch'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:git:init'), ['ssh']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:docker:discover-projects'), ['docker']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:docker:list-containers'), ['docker']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('local:docker:check'), ['docker']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('local:docker:action'), ['docker']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:sftp:list'), ['sftp']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('ssh:tunnel:start'), ['tunnel']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('s3:list-objects'), ['s3']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:s3:get-all'), ['s3']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:hosts:get-all'), ['ssh', 'sftp']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:keys:get-all'), ['ssh', 'sftp']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:dbconnections:create'), ['database']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('dbexplorer:query'), ['database']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('redis:get'), ['database']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('mongodb:list-databases'), ['database']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:tunnels:create'), ['tunnel']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('db:snippets:create'), ['snippets']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('file-picker:open-ssh-key'), ['ssh', 'sftp']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('file-picker:open-sqlite-file'), ['database']);
-  assert.deepEqual(getEntitlementFeaturesForChannel('vault:environments:deploy-to-sftp'), ['sftp']);
-  assert.equal(getEntitlementFeaturesForChannel('license:get-status'), null);
-  assert.equal(getEntitlementFeaturesForChannel('updater:check'), null);
-}
-
-function testEntitlementChannelEnforcement() {
-  const s3Only = { status: 'active' as const, features: ['s3'] };
-  const sshOnly = { status: 'active' as const, features: ['ssh'] };
-  const sftpOnly = { status: 'active' as const, features: ['sftp'] };
-  const databaseOnly = { status: 'active' as const, features: ['database'] };
-  const expiredFull = { status: 'expired' as const, features: ['ssh', 'sftp'] };
-
-  assert.equal(isChannelAllowedByLicenseInfo('s3:list-objects', s3Only), true);
-  assert.equal(isChannelAllowedByLicenseInfo('db:hosts:get-all', s3Only), false);
-  assert.equal(isChannelAllowedByLicenseInfo('db:keys:get-all', s3Only), false);
-  assert.equal(isChannelAllowedByLicenseInfo('db:hosts:get-all', sshOnly), true);
-  assert.equal(isChannelAllowedByLicenseInfo('db:keys:get-all', sshOnly), true);
-  assert.equal(isChannelAllowedByLicenseInfo('dbexplorer:query', sshOnly), false);
-  assert.equal(isChannelAllowedByLicenseInfo('s3:list-objects', databaseOnly), false);
-  assert.equal(isChannelAllowedByLicenseInfo('dbexplorer:query', databaseOnly), true);
-  assert.equal(isChannelAllowedByLicenseInfo('vault:environments:deploy-to-sftp', s3Only), false);
-  assert.equal(isChannelAllowedByLicenseInfo('file-picker:open-ssh-key', sftpOnly), true);
-  assert.equal(isChannelAllowedByLicenseInfo('vault:environments:deploy-to-sftp', sftpOnly), true);
-  assert.equal(isChannelAllowedByLicenseInfo('db:hosts:get-all', expiredFull), false);
-  assert.equal(isChannelAllowedByLicenseInfo('updater:check', s3Only), true);
-}
-
-function testEntitlementFeatureDecision() {
-  const sftpOnly = { status: 'active' as const, features: ['sftp'] };
-  const expiredFull = { status: 'expired' as const, features: ['ssh', 'sftp'] };
-
-  const sharedCredentialDecision = evaluateEntitlementFeatures(sftpOnly, ['ssh', 'sftp']);
-  assert.equal(sharedCredentialDecision.allowed, true);
-  assert.deepEqual(sharedCredentialDecision.requiredFeatures, ['ssh', 'sftp']);
-  assert.deepEqual(sharedCredentialDecision.grantedFeatures, ['sftp']);
-  assert.deepEqual(sharedCredentialDecision.missingFeatures, ['ssh']);
-  assert.deepEqual(sharedCredentialDecision.checks, [
-    { feature: 'ssh', allowed: false },
-    { feature: 'sftp', allowed: true },
-  ]);
-
-  const databaseDecision = evaluateEntitlementFeatures(sftpOnly, ['database']);
-  assert.equal(databaseDecision.allowed, false);
-  assert.equal(databaseDecision.reason, 'feature-not-granted');
-  assert.deepEqual(databaseDecision.missingFeatures, ['database']);
-
-  const expiredDecision = evaluateEntitlementFeatures(expiredFull, ['ssh']);
-  assert.equal(expiredDecision.allowed, false);
-  assert.equal(expiredDecision.reason, 'license-inactive');
-  assert.deepEqual(expiredDecision.checks, [{ feature: 'ssh', allowed: false }]);
-}
-
-async function testSafeHandleRejectsMissingEntitlement() {
+// Honor model: no channel is license-gated, but sender and payload validation still apply.
+async function testSafeHandleHasNoLicenseGateButValidates() {
   __testIpcMainHandlers.clear();
-
-  const originalGetFeatureDecision = licenseManager.getFeatureDecision.bind(licenseManager);
-  let handlerCalled = false;
-  let checkedFeatures: readonly string[] | null = null;
-
-  licenseManager.getFeatureDecision = async (features) => {
-    checkedFeatures = features;
-    return {
-      allowed: false,
-      status: 'active',
-      licenseValid: true,
-      requiredFeatures: [...features],
-      grantedFeatures: [],
-      missingFeatures: [...features],
-      checks: features.map((feature) => ({ feature, allowed: false })),
-      reason: 'feature-not-granted',
-    };
-  };
-
+  let calls = 0;
   try {
-    safeHandle('db:hosts:get-all', z.undefined(), async () => {
-      handlerCalled = true;
-      return { success: true };
-    });
+    for (const channel of ['db:hosts:get-by-id', 'dbexplorer:query', 's3:list-objects', 'ssh:connect']) {
+      safeHandle(channel, z.string().min(1), async (_event, value) => {
+        calls += 1;
+        return { success: true, value };
+      });
+      const handler = __testIpcMainHandlers.get(channel);
+      assert.ok(handler, 'safeHandle should register the IPC handler');
 
-    const handler = __testIpcMainHandlers.get('db:hosts:get-all');
-    assert.ok(handler, 'safeHandle should register the IPC handler');
+      const mainFrame = { url: 'ownshell://app/index.html' };
+      const event = { senderFrame: mainFrame, sender: { mainFrame } };
+      assert.deepEqual(await handler(event, 'x'), { success: true, value: 'x' });
+      assert.deepEqual(await handler(event, ''), { success: false, error: 'Invalid IPC payload' });
 
-    const mainFrame = { url: 'ownshell://app/index.html' };
-    const result = await handler({ senderFrame: mainFrame, sender: { mainFrame } }, undefined);
-
-    assert.deepEqual(checkedFeatures, ['ssh', 'sftp']);
-    assert.deepEqual(result, {
-      success: false,
-      error: 'Feature not available for this license',
-      code: 'FEATURE_NOT_ENTITLED',
-      features: ['ssh', 'sftp'],
-    });
-    assert.equal(handlerCalled, false);
+      const foreignFrame = { url: 'https://example.com/' };
+      assert.deepEqual(
+        await handler({ senderFrame: foreignFrame, sender: { mainFrame: foreignFrame } }, 'x'),
+        { success: false, error: 'Unauthorized IPC sender' }
+      );
+      const subFrame = { url: 'ownshell://app/index.html' };
+      assert.deepEqual(await handler({ senderFrame: subFrame, sender: { mainFrame } }, 'x'), {
+        success: false,
+        error: 'Unauthorized IPC sender',
+      });
+    }
+    assert.equal(calls, 4, 'only valid, authorized invokes reach the handler');
   } finally {
-    licenseManager.getFeatureDecision = originalGetFeatureDecision;
-    __testIpcMainHandlers.clear();
-  }
-}
-
-async function testSafeHandleAllowsEntitledInvoke() {
-  __testIpcMainHandlers.clear();
-
-  const originalGetFeatureDecision = licenseManager.getFeatureDecision.bind(licenseManager);
-
-  licenseManager.getFeatureDecision = async (features) => ({
-    allowed: true,
-    status: 'active',
-    licenseValid: true,
-    requiredFeatures: [...features],
-    grantedFeatures: features.slice(0, 1),
-    missingFeatures: features.slice(1),
-    checks: features.map((feature, index) => ({ feature, allowed: index === 0 })),
-    reason: 'feature-granted',
-  });
-
-  try {
-    safeHandle('db:hosts:get-by-id', z.string().min(1), async (_event, hostId) => ({
-      success: true,
-      hostId,
-    }));
-
-    const handler = __testIpcMainHandlers.get('db:hosts:get-by-id');
-    assert.ok(handler, 'safeHandle should register the IPC handler');
-
-    const mainFrame = { url: 'ownshell://app/index.html' };
-    const result = await handler({ senderFrame: mainFrame, sender: { mainFrame } }, 'host-1');
-
-    assert.deepEqual(result, { success: true, hostId: 'host-1' });
-  } finally {
-    licenseManager.getFeatureDecision = originalGetFeatureDecision;
     __testIpcMainHandlers.clear();
   }
 }
@@ -951,7 +814,7 @@ function testEntitlementHeaderValidation() {
     sub: 'license:test',
     status: 'active',
     deviceId,
-    features: ['ssh'],
+    updatesUntil: Math.floor(Date.now() / 1000) + 3600,
     iat: 1,
     nbf: 1,
     exp: Math.floor(Date.now() / 1000) + 3600,
@@ -998,9 +861,5 @@ test('LocalToolPathEnv', testLocalToolPathEnv);
 test('ClearDatabaseCommandQuoting', testClearDatabaseCommandQuoting);
 test('SafeIpcPayloadValidation', testSafeIpcPayloadValidation);
 test('ContentSecurityPolicy', testContentSecurityPolicy);
-test('EntitlementChannelMapping', testEntitlementChannelMapping);
-test('EntitlementChannelEnforcement', testEntitlementChannelEnforcement);
-test('EntitlementFeatureDecision', testEntitlementFeatureDecision);
-test('SafeHandleRejectsMissingEntitlement', testSafeHandleRejectsMissingEntitlement);
-test('SafeHandleAllowsEntitledInvoke', testSafeHandleAllowsEntitledInvoke);
+test('SafeHandleHasNoLicenseGateButValidates', testSafeHandleHasNoLicenseGateButValidates);
 test('EntitlementHeaderValidation', testEntitlementHeaderValidation);

@@ -1,9 +1,6 @@
 import { IpcMainEvent, IpcMainInvokeEvent, app, ipcMain } from 'electron';
 import { z } from 'zod';
 import { logger } from '../logger';
-import { licenseManager } from '../license/license-manager';
-import type { EntitlementFeature, FeatureEntitlementDecision } from '../license/types';
-import { getEntitlementFeaturesForChannel } from './entitlement-gates';
 import { validateSafeIpcPayload } from './safe-ipc-validation';
 
 type SafeHandleResult = unknown | Promise<unknown>;
@@ -55,67 +52,6 @@ function rejectUnauthorizedIpcSender(
   return { success: false, error: 'Unauthorized IPC sender' };
 }
 
-function isDevelopmentMode(): boolean {
-  return (
-    !app.isPackaged &&
-    (Boolean(process.env.VITE_DEV_SERVER_URL) || process.env.NODE_ENV === 'development')
-  );
-}
-
-async function getDeniedEntitlementDecision(
-  channel: string
-): Promise<FeatureEntitlementDecision | null> {
-  const requiredFeatures = getEntitlementFeaturesForChannel(channel);
-  if (!requiredFeatures || isDevelopmentMode()) {
-    return null;
-  }
-
-  try {
-    const decision = await licenseManager.getFeatureDecision(requiredFeatures);
-    return decision.allowed ? null : decision;
-  } catch (error) {
-    logger.warn('Could not verify feature entitlement', {
-      channel,
-      requiredFeatures,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return {
-      allowed: false,
-      status: 'none',
-      licenseValid: false,
-      requiredFeatures: [...requiredFeatures],
-      grantedFeatures: [],
-      missingFeatures: [...requiredFeatures],
-      checks: requiredFeatures.map((feature) => ({ feature, allowed: false })),
-      reason: 'verification-failed',
-    };
-  }
-}
-
-function rejectMissingEntitlement(
-  channel: string,
-  decision: FeatureEntitlementDecision
-): { success: false; error: string; code: string; features: EntitlementFeature[] } {
-  const features =
-    decision.missingFeatures.length > 0 ? decision.missingFeatures : decision.requiredFeatures;
-
-  logger.warn('Rejected IPC invoke without required entitlement', {
-    channel,
-    requiredFeatures: decision.requiredFeatures,
-    grantedFeatures: decision.grantedFeatures,
-    missingFeatures: decision.missingFeatures,
-    licenseStatus: decision.status,
-    reason: decision.reason,
-  });
-
-  return {
-    success: false,
-    error: 'Feature not available for this license',
-    code: 'FEATURE_NOT_ENTITLED',
-    features: [...features],
-  };
-}
-
 export function safeHandle<TSchema extends z.ZodTypeAny>(
   channel: string,
   schema: TSchema,
@@ -133,11 +69,6 @@ export function safeHandle<TSchema extends z.ZodTypeAny>(
         issues: parsed.issues,
       });
       return { success: false, error: 'Invalid IPC payload' };
-    }
-
-    const deniedEntitlement = await getDeniedEntitlementDecision(channel);
-    if (deniedEntitlement) {
-      return rejectMissingEntitlement(channel, deniedEntitlement);
     }
 
     return handler(event, parsed.data);
@@ -161,11 +92,6 @@ export function safeHandleArgs<TSchema extends z.ZodTypeAny>(
         issues: parsed.issues,
       });
       return { success: false, error: 'Invalid IPC payload' };
-    }
-
-    const deniedEntitlement = await getDeniedEntitlementDecision(channel);
-    if (deniedEntitlement) {
-      return rejectMissingEntitlement(channel, deniedEntitlement);
     }
 
     return handler(event, parsed.data);

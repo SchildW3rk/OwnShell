@@ -373,28 +373,11 @@
   },
   "license": {
     "status": "Status",
-    "active": "Active (Pro)",
-    "trial": "Trial",
-    "trialDays": "{{days}} days remaining",
-    "startTrial": "Start 14-day trial",
-    "startingTrial": "Starting trial…",
-    "localTrialDescription": "Your 14-day trial runs locally. It does not start a subscription or automatic billing. Activate a license to continue afterwards.",
-    "trialUnavailable": "The trial has already been used on this installation. Activate a license to continue.",
-    "trialLocked": "Unlock OwnShell before starting the trial.",
-    "trialStartFailed": "The trial could not be started. Please make sure your system's secure storage is available and try again.",
-    "expired": "Expired",
-    "none": "No License",
     "checkingDescription": "OwnShell is checking the current license state.",
-    "activeDescription": "Your OwnShell subscription is active on this device.",
-    "trialDescription": "Your Lemon Squeezy trial is active. You can manage or cancel it in the billing portal.",
-    "expiredDescription": "Your trial or subscription is no longer active. Renew or activate another license key.",
-    "noneDescription": "Start the 14-day trial in the app or activate an existing license key.",
     "deactivateDevice": "Deactivate this device",
-    "deactivateConfirm": "Deactivate this device? This only frees one activation. It does not cancel your subscription.",
-    "manageSubscription": "Manage subscription",
+    "deactivateConfirm": "Deactivate this device? This frees one of your 3 activations.",
     "checking": "Checking license...",
     "activate": "Activate",
-    "activating": "Activating...",
     "enterKey": "Enter License Key",
     "keyPlaceholder": "OS-XXXX-XXXX-XXXX",
     "buyLicense": "Buy license",
@@ -402,11 +385,31 @@
     "alreadyHaveKey": "Already have a license key?",
     "alreadyHaveKeyDescription": "Paste your key here if you bought OwnShell outside this installation.",
     "activateNewKey": "Activate another license key",
-    "activateNewKeyDescription": "Use a new or renewed license key to unlock OwnShell again.",
-    "welcome": "Welcome to OwnShell",
-    "welcomeSubtitle": "Start your 14-day trial here or activate OwnShell with an existing license key",
-    "quitApp": "Quit App",
-    "licenseKey": "License Key"
+    "activateNewKeyDescription": "Use a new or renewed license key, for example after renewing your license.",
+    "licenseKey": "License Key",
+    "badge": {
+      "evaluation_one": "Evaluation · {{count}} day",
+      "evaluation_other": "Evaluation · {{count}} days",
+      "personal": "Personal use",
+      "uncovered": "License does not cover this version"
+    },
+    "dialog": {
+      "title": "Using OwnShell for work?",
+      "body": "OwnShell is free for personal use, with every feature included. If you use it for work or revenue-generating activities, please buy an Individual license (€79 per year). Nothing is ever locked: this is an honor system.",
+      "uncoveredBody": "Your license covers all versions released until {{date}}. This version is newer: renew your license, or keep using a covered version. Nothing is locked.",
+      "confirmPersonal": "I only use OwnShell personally"
+    },
+    "commercialUpdatesUntil": "Commercial license · updates until {{date}}",
+    "commercialDescription": "Thanks for supporting OwnShell. Your license covers every version released until this date, forever.",
+    "personalConfirmed": "You confirmed personal use on {{date}}. This is stored on this device only.",
+    "undoPersonalConfirm": "Undo",
+    "errors": {
+      "activationLimit": "This license key has reached its activation limit. Deactivate OwnShell on another device first.",
+      "rejected": "The license service rejected this license key. Check the key or contact support.",
+      "unavailable": "The license service is not reachable right now. Check your connection and try again.",
+      "instanceMissing": "This device's activation could not be found. Please contact support.",
+      "generic": "Something went wrong with your license. Please try again."
+    }
   },
   "common": {
     "cancel": "Cancel",
@@ -442,7 +445,9 @@
     "creating": "Creating...",
     "update": "Update",
     "deleting": "Deleting...",
-    "browse": "Browse"
+    "browse": "Browse",
+    "rename": "Rename",
+    "duplicate": "Duplicate"
   },
   "permissions": {
     "title": "Edit Permissions",
@@ -1392,7 +1397,7 @@
         "token": "Token",
         "tokenPlaceholder": "Enter token or {{variable}}"
       },
-      "inherit": "This request will inherit authentication from its parent collection",
+      "inherit": "This request uses the authentication of its folder. Top-level requests send no authentication.",
       "noAuth": "This request does not use any authorization",
       "type": "Authentication Type",
       "types": {
@@ -1401,7 +1406,8 @@
         "basic": "Basic Auth",
         "api-key": "API Key",
         "inherit": "Inherit"
-      }
+      },
+      "inheritCollection": "This folder uses the authentication of its parent folder. Top-level folders send no authentication."
     },
     "headers": {
       "key": "Header",
@@ -1430,7 +1436,12 @@
         "form-urlencoded": "x-www-form-urlencoded",
         "raw": "Raw",
         "binary": "Binary"
-      }
+      },
+      "reselectFile": "Select the file again to send it.",
+      "formFieldName": "Field name",
+      "formFieldType": "Field type",
+      "formFieldText": "Text",
+      "formFieldFile": "File"
     },
     "response": {
       "body": "Body",
@@ -1442,7 +1453,8 @@
       "noHeaders": "No response headers",
       "headerName": "Name",
       "headerValue": "Value",
-      "previewWarning": "Preview is sandboxed. Scripts and external resources are blocked."
+      "previewWarning": "Preview is sandboxed. Scripts and external resources are blocked.",
+      "binaryBody": "Binary response ({{type}})"
     },
     "addItem": "Add Item",
     "addRow": "Add Row",
@@ -1451,7 +1463,21 @@
     "disabled": "disabled",
     "enableAll": "Enable All",
     "enabled": "enabled",
-    "noItems": "No items yet"
+    "noItems": "No items yet",
+    "errors": {
+      "changeFailed": "Could not save changes: {{error}}",
+      "MISSING_VARIABLES": "Unknown variables: {{detail}}. Define them in the selected environment.",
+      "VAULT_LOCKED": "OwnShell is locked, so environment variables cannot be resolved ({{detail}}). Unlock and send again.",
+      "INVALID_URL": "The URL is invalid. Use a full http:// or https:// URL.",
+      "FILE_ERROR": "The file {{detail}} cannot be read. Select it again.",
+      "BODY_TOO_LARGE": "The request body exceeds the 50 MB limit.",
+      "NETWORK_HOST_UNAVAILABLE": "The request was not sent: the selected SSH host could not reach the target ({{detail}}).",
+      "requestFailed": "Request failed: {{error}}"
+    },
+    "collectionAuth": {
+      "menu": "Authentication",
+      "title": "Authentication for {{name}}"
+    }
   },
   "changelog": {
     "whatsNew": "What's New",
@@ -1467,7 +1493,9 @@
     "error": "Update failed",
     "whatsNew": "What's new?",
     "installNow": "Install now",
-    "download": "Download"
+    "download": "Download",
+    "notCoveredByLicense": "This update is not covered by your license. Renew your license, or stay on your current version.",
+    "coverageUnknown": "OwnShell can't verify that this update is covered by your license, so it won't install automatically. You can still install it manually."
   },
   "workspace": {
     "closePane": "Close pane",

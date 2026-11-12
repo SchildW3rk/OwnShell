@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { WhatsNewModal } from './changelog/WhatsNewModal';
 import { useUpdaterState } from '../hooks/useUpdaterState';
 import type { UpdateStatus } from '../../electron/preload/updates';
+import type { UpdateLicenseCoverage } from '../../electron/license/types';
 
 
 interface UpdateNotificationProps {
@@ -152,6 +153,8 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ suppress
             </button>
           </div>
 
+          <UpdateCoverageNotice coverage={updateInfo?.licenseCoverage} className="mb-3" />
+
           {/* Download Progress */}
           {status === 'downloading' && progress && (
             <div className="mb-3">
@@ -223,3 +226,19 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ suppress
 };
 
 export default UpdateNotification;
+
+/** Honor notice shown wherever an update can be installed; renders nothing when covered. */
+export const UpdateCoverageNotice: React.FC<{
+  coverage: UpdateLicenseCoverage | undefined;
+  className?: string;
+}> = ({ coverage, className }) => {
+  const { t } = useTranslation();
+  if (coverage !== 'uncovered' && coverage !== 'unknown') return null;
+  return (
+    <p
+      className={`rounded border border-warning/30 bg-warning/10 p-2 text-xs text-foreground ${className ?? ''}`}
+    >
+      {t(coverage === 'uncovered' ? 'update.notCoveredByLicense' : 'update.coverageUnknown')}
+    </p>
+  );
+};

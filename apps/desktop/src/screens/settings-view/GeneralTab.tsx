@@ -33,6 +33,8 @@ import {
 } from '../../utils/appearance';
 import { ThemeToggle } from './ThemeToggle';
 import type { LanguageCode, UpdateStatus } from './types';
+import { UpdateCoverageNotice } from '../../components/UpdateNotification';
+import type { UpdateLicenseCoverage } from '../../../electron/license/types';
 
 interface GeneralTabProps {
   currentLang: LanguageCode;
@@ -41,6 +43,7 @@ interface GeneralTabProps {
   autoUpdateEnabled: boolean;
   updateStatus: UpdateStatus;
   availableVersion: string | null;
+  updateLicenseCoverage: UpdateLicenseCoverage | undefined;
   downloadProgress: number;
   updateError: string | null;
   onLanguageChange: (language: LanguageCode) => void;
@@ -62,6 +65,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
   autoUpdateEnabled,
   updateStatus,
   availableVersion,
+  updateLicenseCoverage,
   downloadProgress,
   updateError,
   onLanguageChange,
@@ -501,6 +505,8 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <span className="text-sm text-destructive">{updateError}</span>
             </div>
           )}
+
+          {hasKnownUpdate && <UpdateCoverageNotice coverage={updateLicenseCoverage} />}
 
           <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
             {updateStatus !== 'ready' ? (

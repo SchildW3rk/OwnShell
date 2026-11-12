@@ -373,28 +373,11 @@
   },
   "license": {
     "status": "Status",
-    "active": "Aktiv (Pro)",
-    "trial": "Testversion",
-    "trialDays": "{{days}} Tage verbleibend",
-    "startTrial": "14-Tage-Test starten",
-    "startingTrial": "Testversion wird gestartet…",
-    "localTrialDescription": "Dein 14-Tage-Test läuft lokal. Es wird kein Abo und keine automatische Abbuchung gestartet. Aktiviere danach eine Lizenz, um OwnShell weiter zu nutzen.",
-    "trialUnavailable": "Die Testversion wurde auf dieser Installation bereits verwendet. Aktiviere eine Lizenz, um fortzufahren.",
-    "trialLocked": "Entsperre OwnShell, bevor du die Testversion startest.",
-    "trialStartFailed": "Die Testversion konnte nicht gestartet werden. Prüfe, ob der sichere Speicher deines Systems verfügbar ist, und versuche es erneut.",
-    "expired": "Abgelaufen",
-    "none": "Keine Lizenz",
     "checkingDescription": "OwnShell prüft den aktuellen Lizenzstatus.",
-    "activeDescription": "Dein OwnShell-Abo ist auf diesem Gerät aktiv.",
-    "trialDescription": "Dein Lemon-Squeezy-Testzeitraum ist aktiv. Du kannst ihn im Abo-Portal verwalten oder kündigen.",
-    "expiredDescription": "Dein Testzeitraum oder Abo ist nicht mehr aktiv. Erneuere die Lizenz oder aktiviere einen anderen Schlüssel.",
-    "noneDescription": "Starte den 14-Tage-Test direkt in der App oder aktiviere einen vorhandenen Lizenzschlüssel.",
     "deactivateDevice": "Dieses Gerät deaktivieren",
-    "deactivateConfirm": "Dieses Gerät deaktivieren? Das gibt nur eine Aktivierung frei. Dein Abo wird dadurch nicht gekündigt.",
-    "manageSubscription": "Abo verwalten",
+    "deactivateConfirm": "Dieses Gerät deaktivieren? Das gibt eine deiner 3 Aktivierungen frei.",
     "checking": "Lizenz wird geprüft...",
     "activate": "Aktivieren",
-    "activating": "Aktiviere...",
     "enterKey": "Lizenzschlüssel eingeben",
     "keyPlaceholder": "OS-XXXX-XXXX-XXXX",
     "buyLicense": "Lizenz kaufen",
@@ -402,11 +385,31 @@
     "alreadyHaveKey": "Du hast schon einen Lizenzschlüssel?",
     "alreadyHaveKeyDescription": "Füge deinen Schlüssel hier ein, wenn du OwnShell außerhalb dieser Installation gekauft hast.",
     "activateNewKey": "Anderen Lizenzschlüssel aktivieren",
-    "activateNewKeyDescription": "Nutze einen neuen oder erneuerten Lizenzschlüssel, um OwnShell wieder freizuschalten.",
-    "welcome": "Willkommen bei OwnShell",
-    "welcomeSubtitle": "Starte hier deinen 14-Tage-Test oder aktiviere OwnShell mit einem vorhandenen Lizenzschlüssel",
-    "quitApp": "App beenden",
-    "licenseKey": "Lizenzschlüssel"
+    "activateNewKeyDescription": "Nutze einen neuen oder erneuerten Lizenzschlüssel, zum Beispiel nach einer Verlängerung.",
+    "licenseKey": "Lizenzschlüssel",
+    "badge": {
+      "evaluation_one": "Testzeitraum · {{count}} Tag",
+      "evaluation_other": "Testzeitraum · {{count}} Tage",
+      "personal": "Persönliche Nutzung",
+      "uncovered": "Lizenz deckt diese Version nicht ab"
+    },
+    "dialog": {
+      "title": "Nutzt du OwnShell beruflich?",
+      "body": "OwnShell ist für die private Nutzung kostenlos, mit allen Funktionen. Wenn du es beruflich oder für umsatzbringende Tätigkeiten nutzt, kauf bitte eine Individual-Lizenz (79 € pro Jahr). Es wird nie etwas gesperrt: Das ist ein Vertrauensmodell.",
+      "uncoveredBody": "Deine Lizenz deckt alle Versionen ab, die bis zum {{date}} erschienen sind. Diese Version ist neuer: Verlängere deine Lizenz oder nutze weiter eine abgedeckte Version. Es wird nichts gesperrt.",
+      "confirmPersonal": "Ich nutze OwnShell nur privat"
+    },
+    "commercialUpdatesUntil": "Kommerzielle Lizenz · Updates bis {{date}}",
+    "commercialDescription": "Danke, dass du OwnShell unterstützt. Deine Lizenz deckt dauerhaft alle Versionen ab, die bis zu diesem Datum erscheinen.",
+    "personalConfirmed": "Du hast am {{date}} die private Nutzung bestätigt. Das ist nur auf diesem Gerät gespeichert.",
+    "undoPersonalConfirm": "Zurücknehmen",
+    "errors": {
+      "activationLimit": "Dieser Lizenzschlüssel hat sein Aktivierungslimit erreicht. Deaktiviere OwnShell zuerst auf einem anderen Gerät.",
+      "rejected": "Der Lizenzdienst hat diesen Lizenzschlüssel abgelehnt. Prüfe den Schlüssel oder kontaktiere den Support.",
+      "unavailable": "Der Lizenzdienst ist gerade nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
+      "instanceMissing": "Die Aktivierung dieses Geräts wurde nicht gefunden. Bitte kontaktiere den Support.",
+      "generic": "Bei deiner Lizenz ist etwas schiefgelaufen. Bitte versuche es erneut."
+    }
   },
   "common": {
     "cancel": "Abbrechen",
@@ -442,7 +445,9 @@
     "creating": "Erstelle...",
     "update": "Aktualisieren",
     "deleting": "Löscht...",
-    "browse": "Durchsuchen"
+    "browse": "Durchsuchen",
+    "rename": "Umbenennen",
+    "duplicate": "Duplizieren"
   },
   "permissions": {
     "title": "Berechtigungen bearbeiten",
@@ -1392,7 +1397,7 @@
         "token": "Token",
         "tokenPlaceholder": "Token oder {{variable}} eingeben"
       },
-      "inherit": "Diese Anfrage übernimmt die Authentifizierung der übergeordneten Collection",
+      "inherit": "Diese Anfrage nutzt die Authentifizierung ihres Ordners. Anfragen auf oberster Ebene senden keine Authentifizierung.",
       "noAuth": "Diese Anfrage verwendet keine Authentifizierung",
       "type": "Authentifizierungstyp",
       "types": {
@@ -1401,7 +1406,8 @@
         "basic": "Basic Auth",
         "api-key": "API-Key",
         "inherit": "Erben"
-      }
+      },
+      "inheritCollection": "Dieser Ordner nutzt die Authentifizierung seines übergeordneten Ordners. Ordner auf oberster Ebene senden keine Authentifizierung."
     },
     "headers": {
       "key": "Header",
@@ -1430,7 +1436,12 @@
         "form-urlencoded": "x-www-form-urlencoded",
         "raw": "Raw",
         "binary": "Binary"
-      }
+      },
+      "reselectFile": "Wähle die Datei erneut aus, um sie zu senden.",
+      "formFieldName": "Feldname",
+      "formFieldType": "Feldtyp",
+      "formFieldText": "Text",
+      "formFieldFile": "Datei"
     },
     "response": {
       "body": "Body",
@@ -1442,7 +1453,8 @@
       "noHeaders": "Keine Antwort-Header",
       "headerName": "Name",
       "headerValue": "Wert",
-      "previewWarning": "Vorschau ist sandboxed. Scripts und externe Ressourcen sind blockiert."
+      "previewWarning": "Vorschau ist sandboxed. Scripts und externe Ressourcen sind blockiert.",
+      "binaryBody": "Binäre Antwort ({{type}})"
     },
     "addItem": "Eintrag hinzufügen",
     "addRow": "Zeile hinzufügen",
@@ -1451,7 +1463,21 @@
     "disabled": "deaktiviert",
     "enableAll": "Alle aktivieren",
     "enabled": "aktiviert",
-    "noItems": "Noch keine Einträge"
+    "noItems": "Noch keine Einträge",
+    "errors": {
+      "changeFailed": "Änderungen konnten nicht gespeichert werden: {{error}}",
+      "MISSING_VARIABLES": "Unbekannte Variablen: {{detail}}. Lege sie in der gewählten Umgebung an.",
+      "VAULT_LOCKED": "OwnShell ist gesperrt, daher können Umgebungsvariablen nicht aufgelöst werden ({{detail}}). Entsperre und sende erneut.",
+      "INVALID_URL": "Die URL ist ungültig. Verwende eine vollständige http://- oder https://-URL.",
+      "FILE_ERROR": "Die Datei {{detail}} kann nicht gelesen werden. Wähle sie erneut aus.",
+      "BODY_TOO_LARGE": "Der Request-Body überschreitet das Limit von 50 MB.",
+      "NETWORK_HOST_UNAVAILABLE": "Die Anfrage wurde nicht gesendet: Der gewählte SSH-Host konnte das Ziel nicht erreichen ({{detail}}).",
+      "requestFailed": "Anfrage fehlgeschlagen: {{error}}"
+    },
+    "collectionAuth": {
+      "menu": "Authentifizierung",
+      "title": "Authentifizierung für {{name}}"
+    }
   },
   "changelog": {
     "whatsNew": "Was ist neu",
@@ -1467,7 +1493,9 @@
     "error": "Update fehlgeschlagen",
     "whatsNew": "Was ist neu?",
     "installNow": "Jetzt installieren",
-    "download": "Herunterladen"
+    "download": "Herunterladen",
+    "notCoveredByLicense": "Dieses Update ist nicht durch deine Lizenz abgedeckt. Verlängere deine Lizenz oder bleib bei deiner aktuellen Version.",
+    "coverageUnknown": "OwnShell kann nicht prüfen, ob dieses Update von deiner Lizenz abgedeckt ist. Es wird deshalb nicht automatisch installiert. Du kannst es aber manuell installieren."
   },
   "workspace": {
     "closePane": "Bereich schließen",

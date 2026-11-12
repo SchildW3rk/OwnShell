@@ -1,9 +1,12 @@
 import type { IpcRenderer, IpcRendererEvent } from 'electron';
+import type { UpdateLicenseCoverage } from '../license/types';
 
 export interface UpdateInfo {
   version: string;
   releaseDate: string;
   releaseNotes?: string;
+  /** 'uncovered' when the stored license's updatesUntil is before this release. */
+  licenseCoverage?: UpdateLicenseCoverage;
 }
 
 export interface UpdateNotAvailableInfo {

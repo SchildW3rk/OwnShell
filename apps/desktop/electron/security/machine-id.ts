@@ -1,7 +1,7 @@
 /**
  * Machine ID Module
  *
- * Gets a stable, hashed hardware identifier for trial integrity verification.
+ * Gets a stable, hashed hardware identifier that binds a signed license entitlement to this device.
  * We hash the UUID for privacy - no raw hardware IDs stored in DB.
  *
  * Platform support:

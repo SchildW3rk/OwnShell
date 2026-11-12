@@ -9,24 +9,20 @@ import {
 } from '../electron/license/entitlement';
 
 const now = Date.UTC(2026, 10, 12);
-const payload = (status: 'active' | 'trial', expiresInMs: number) =>
-  ({ status, exp: (now + expiresInMs) / 1000 }) as EntitlementPayload;
+const payload = (expiresInMs: number) => ({ exp: (now + expiresInMs) / 1000 }) as EntitlementPayload;
 
 test('refresh decision', () => {
-  const base = { storedStatus: 'active', hasLicenseKey: true, now };
-  // Expired while offline: keep trying instead of staying expired forever
-  assert.equal(shouldRefreshEntitlement({ ...base, storedStatus: 'expired' }), true);
+  const base = { hasLicenseKey: true, now };
+  // Missing/invalid token or one close to exp: refresh so a renewal extends updatesUntil
   assert.equal(shouldRefreshEntitlement({ ...base, payload: undefined }), true);
-  assert.equal(shouldRefreshEntitlement({ ...base, payload: payload('active', 1000) }), true);
+  assert.equal(shouldRefreshEntitlement({ ...base, payload: payload(1000) }), true);
+  assert.equal(shouldRefreshEntitlement({ ...base, payload: payload(-1000) }), true);
   assert.equal(
-    shouldRefreshEntitlement({ ...base, payload: payload('active', ENTITLEMENT_REFRESH_WINDOW_MS + 1) }),
+    shouldRefreshEntitlement({ ...base, payload: payload(ENTITLEMENT_REFRESH_WINDOW_MS + 1) }),
     false
   );
-  assert.equal(shouldRefreshEntitlement({ ...base, payload: payload('trial', 1000) }), false);
-  // No key (deactivated, local trial, locked app) or never licensed: never call the API
-  assert.equal(shouldRefreshEntitlement({ ...base, storedStatus: 'expired', hasLicenseKey: false }), false);
-  assert.equal(shouldRefreshEntitlement({ ...base, storedStatus: 'none' }), false);
-  assert.equal(shouldRefreshEntitlement({ ...base, storedStatus: undefined }), false);
+  // No key (deactivated, recovery reset, locked app): never call the API
+  assert.equal(shouldRefreshEntitlement({ ...base, hasLicenseKey: false }), false);
 });
 
 test('refresh gate shares one request and backs off after failure', async () => {

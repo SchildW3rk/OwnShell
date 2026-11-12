@@ -9,7 +9,6 @@ export const serversFeature: OwnShellFeature = {
   icon: Server,
   countKey: 'sshHosts',
   releaseState: 'enabled',
-  entitlementFeature: 'ssh',
   placement: 'primary',
   order: 10,
 };

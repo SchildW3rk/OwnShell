@@ -9,7 +9,6 @@ export const databasesFeature: OwnShellFeature = {
   icon: Database,
   countKey: 'databases',
   releaseState: 'enabled',
-  entitlementFeature: 'database',
   placement: 'primary',
   order: 20,
 };

@@ -7,14 +7,14 @@ import type { DownloadProgress, UpdateInfo, UpdateStatus } from '../../electron/
  */
 export function useUpdaterState() {
   const [status, setStatus] = useState<UpdateStatus>('idle');
-  const [updateInfo, setUpdateInfo] = useState<Pick<UpdateInfo, 'version'> | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<Pick<UpdateInfo, 'version' | 'licenseCoverage'> | null>(null);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
   const hasUpdateRef = useRef(false);
 
   useEffect(() => {
-    const applyUpdateInfo = (info: Pick<UpdateInfo, 'version'>) => {
+    const applyUpdateInfo = (info: Pick<UpdateInfo, 'version' | 'licenseCoverage'>) => {
       setUpdateInfo(info);
       setError(null);
       hasUpdateRef.current = true;

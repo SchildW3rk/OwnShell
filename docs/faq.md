@@ -34,11 +34,7 @@ Or manually download the latest version from the OwnShell website.
 
 ### Is OwnShell open source?
 
-OwnShell is **source-available** proprietary software:
-
-- Core security components are auditable
-- Full source code available on request for security review
-- Not licensed for redistribution or modification
+Yes. The OwnShell source code is MIT-licensed and available on GitHub. The official builds are free for personal use; commercial use asks for a license (see [Licensing](#licensing)).
 
 ## Security & Privacy
 
@@ -73,14 +69,14 @@ OwnShell does not use analytics or usage tracking:
 
 The only application network requests are:
 
-1. Trial, license, or subscription validation when needed
+1. License activation and refresh, only if you enter a license key
 2. Update checks
 
 Bugs and feedback are reported manually by email to support@ownshell.app. OwnShell does not send automatic crash, error or diagnostics reports.
 
 ### Can I use OwnShell offline?
 
-Yes! After activating your license, OwnShell works **100% offline**.
+Yes. OwnShell needs no account and works **100% offline**. Only activating a license key needs a connection.
 
 ### Is my SSH password/key encrypted?
 
@@ -88,40 +84,37 @@ Yes. All credentials are encrypted with AES-256-GCM in the vault.
 
 ## Licensing
 
-### Can I try OwnShell for free?
+### Is OwnShell free?
 
-Yes. After setting up your master password, choose **Start 14-day trial** in the app. This local trial needs no account, checkout or payment details and does not start a subscription. Its original expiry date survives restarts; after 14 days, activate a valid license to continue using the workspace.
+For personal use, yes: the official builds are free, need no account, and every feature works without limits, forever.
 
-Subscription checkout is separate: Lemon Squeezy subscriptions also include a 14-day trial, followed by billing unless you cancel in the customer portal.
+If you use OwnShell for work or revenue-generating activities, please buy a license. This is an honor system: nothing is locked either way.
 
-### What are the pricing options?
+### How does the evaluation work?
 
-- **Monthly**: €18/month, or €16.20 for the first paid month with launch code `CZOTU1MG`
-- **Annual**: €180/year, or €162.00 for the first paid year with launch code `CZOTU1MG`
+You can evaluate OwnShell for 30 days from the first launch. The evaluation runs fully locally, with no account and no payment details. During that time a small badge in the header shows the days left.
 
-The launch code is limited to the first 100 redemptions. See [pricing page](https://ownshell.app/#pricing) for details.
+After 30 days without a license, the badge shows **Personal use**. Click it to confirm that you only use OwnShell personally (this hides the badge and is stored locally only; you can undo it under Settings → License), buy a license, or enter a license key.
 
-### Can I use OwnShell commercially?
+### What does a license cost?
 
-Yes, all licenses include commercial use. For teams, consider:
+- **Individual**: €79 per year, incl. VAT
 
-- Annual licenses for easier management
-- Volume discounts (contact us for 10+ licenses)
-- Team Vaults are planned as a future company feature
+A business tier is planned. See the [pricing page](https://ownshell.app/#pricing).
 
-### What happens when my subscription expires?
+### What happens when my license expires?
 
-When no valid trial or license remains, OwnShell shows the license activation screen. Activate a valid license to continue using the workspace. Your locally stored data is not deleted.
+Nothing stops working. Your license covers every OwnShell version released before its expiry date ("updates until"), forever. Newer versions show a small notice in the header, and the updater tells you before installing an update your license does not cover. Renew to get newer versions, or stay on a covered version.
 
 ### Can I transfer my license to another computer?
 
-Yes! Deactivate on the old machine:
+Yes. Deactivate it on the old machine:
 
 1. Settings → License
-2. Click "Deactivate License"
-3. Activate on new machine with same license key
+2. Click **Deactivate this device**
+3. Enter the same license key on the new machine
 
-Each license allows **2 concurrent activations**.
+Each license allows **3 activations**.
 
 ## SSH & Connections
 

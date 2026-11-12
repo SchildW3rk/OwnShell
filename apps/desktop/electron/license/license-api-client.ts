@@ -5,7 +5,7 @@ const REQUEST_TIMEOUT_MS = 15000;
 
 export interface LicenseApiEntitlementResponse {
   success: true;
-  status: 'active' | 'trial';
+  status: 'active';
   entitlement: string;
   expiresAt: number;
   licenseType?: string;
@@ -18,6 +18,9 @@ interface LicenseApiErrorResponse {
   error?: string;
 }
 
+/** The license service answered and refused the request (4xx), as opposed to being unreachable. */
+export class LicenseApiRejectedError extends Error {}
+
 function getLicenseApiBaseUrl(): string {
   const devUrl = !app.isPackaged ? process.env.OWNSHELL_LICENSE_API_URL : undefined;
   return (devUrl || DEFAULT_LICENSE_API_BASE_URL).replace(/\/+$/, '');
@@ -28,7 +31,7 @@ function isSuccessResponse(value: unknown): value is LicenseApiEntitlementRespon
   const response = value as Record<string, unknown>;
   return (
     response.success === true &&
-    (response.status === 'active' || response.status === 'trial') &&
+    response.status === 'active' &&
     typeof response.entitlement === 'string' &&
     typeof response.expiresAt === 'number'
   );
@@ -54,7 +57,9 @@ async function postJson<TResponse>(
 
     const json = (await response.json()) as TResponse | LicenseApiErrorResponse;
     if (!response.ok || (json as LicenseApiErrorResponse).success === false) {
-      throw new Error((json as LicenseApiErrorResponse).error || 'License service rejected request');
+      const message = (json as LicenseApiErrorResponse).error || 'License service rejected request';
+      const rejected = response.status >= 400 && response.status < 500 && response.status !== 429;
+      throw rejected ? new LicenseApiRejectedError(message) : new Error(message);
     }
 
     return json as TResponse;

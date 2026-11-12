@@ -1,3 +1,10 @@
+import {
+  getUpdatesUntilSeconds,
+  instanceNameForDevice,
+  isInstanceBoundToDevice,
+  type LemonLicenseKey,
+} from './license-rules';
+
 type LicenseStatus = 'active';
 
 interface Env {
@@ -29,20 +36,12 @@ interface EntitlementPayload {
   licenseType?: string;
   licenseKeyId?: number;
   instanceId?: string;
+  /** Unix seconds: desktop builds released up to this moment are covered forever. */
+  updatesUntil: number;
   features: string[];
   iat: number;
   nbf: number;
   exp: number;
-}
-
-interface LemonLicenseKey {
-  id: number;
-  status: string;
-  key: string;
-  activation_limit?: number;
-  activation_usage?: number;
-  created_at?: string;
-  expires_at?: string | null;
 }
 
 interface LemonActivateResponse {
@@ -87,6 +86,7 @@ const DEFAULT_ENTITLEMENT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const MAX_ENTITLEMENT_TTL_SECONDS = 30 * 24 * 60 * 60;
 const MAX_JSON_BYTES = 8192;
 
+// Desktop builds from 2026-11 on ignore this; older, feature-gated builds still require it.
 const ENTITLEMENT_FEATURES = [
   'ssh',
   'sftp',
@@ -380,6 +380,7 @@ function buildPayload(params: {
   status: LicenseStatus;
   deviceId: string;
   expiresAtSeconds: number;
+  updatesUntil: number;
   licenseType?: string;
   licenseKeyId?: number;
   instanceId?: string;
@@ -394,6 +395,7 @@ function buildPayload(params: {
     licenseType: params.licenseType,
     licenseKeyId: params.licenseKeyId,
     instanceId: params.instanceId,
+    updatesUntil: params.updatesUntil,
     features: ENTITLEMENT_FEATURES,
     iat: now,
     nbf: now - 60,
@@ -412,6 +414,7 @@ async function respondWithEntitlement(
     status: payload.status,
     entitlement,
     expiresAt: payload.exp * 1000,
+    updatesUntil: payload.updatesUntil * 1000,
     licenseType: payload.licenseType,
     instanceId: payload.instanceId,
     ...extra,
@@ -422,8 +425,6 @@ async function handleActivate(request: Request, env: Env): Promise<Response> {
   const body = await readJsonObject(request);
   const licenseKey = assertLicenseKey(body.licenseKey);
   const deviceId = assertDeviceId(body.deviceId);
-  const platform = assertOptionalString(body.platform, 64) || 'desktop';
-  const appVersion = assertOptionalString(body.appVersion, 32);
   const rateLimited = await enforceActionRateLimit({
     request,
     env,
@@ -434,17 +435,21 @@ async function handleActivate(request: Request, env: Env): Promise<Response> {
   });
   if (rateLimited) return rateLimited;
 
-  const instanceName = appVersion
-    ? `OwnShell ${platform} ${deviceId.slice(0, 10)} ${appVersion}`
-    : `OwnShell ${platform} ${deviceId.slice(0, 10)}`;
-
   const lemon = await postToLemon<LemonActivateResponse>(env, '/licenses/activate', {
     license_key: licenseKey,
-    instance_name: instanceName,
+    instance_name: instanceNameForDevice(deviceId),
   });
 
   if (!lemon.activated || !isLicenseKeyUsable(lemon.license_key)) {
     return errorResponse(403, lemon.error || 'License activation failed');
+  }
+  // Same binding as refresh: only sign for an instance that belongs to this device.
+  if (!lemon.instance?.id || !isInstanceBoundToDevice(lemon.instance.name, deviceId)) {
+    return errorResponse(403, 'License activation belongs to another device');
+  }
+  const updatesUntil = getUpdatesUntilSeconds(lemon.license_key);
+  if (updatesUntil === null) {
+    return errorResponse(502, 'License dates unavailable');
   }
 
   const ttlSeconds = getBoundedNumberEnv(
@@ -460,6 +465,7 @@ async function handleActivate(request: Request, env: Env): Promise<Response> {
     status: 'active',
     deviceId,
     expiresAtSeconds,
+    updatesUntil,
     licenseType: getLicenseType(lemon.meta),
     licenseKeyId: lemon.license_key?.id,
     instanceId: lemon.instance?.id,
@@ -499,6 +505,15 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
   if (!lemon.valid || !isLicenseKeyUsable(lemon.license_key) || lemon.instance?.id !== instanceId) {
     return errorResponse(403, lemon.error || 'License is no longer valid');
   }
+  // The instance must belong to the requesting device, or one activation would cover any device.
+  if (!isInstanceBoundToDevice(lemon.instance?.name, deviceId)) {
+    return errorResponse(403, 'License activation belongs to another device');
+  }
+  // Without a reliable base date, issue no new coverage; the desktop keeps its last signed license.
+  const updatesUntil = getUpdatesUntilSeconds(lemon.license_key);
+  if (updatesUntil === null) {
+    return errorResponse(502, 'License dates unavailable');
+  }
 
   const ttlSeconds = getBoundedNumberEnv(
     env.ENTITLEMENT_TTL_SECONDS,
@@ -513,6 +528,7 @@ async function handleRefresh(request: Request, env: Env): Promise<Response> {
     status: 'active',
     deviceId,
     expiresAtSeconds,
+    updatesUntil,
     licenseType: getLicenseType(lemon.meta),
     licenseKeyId: lemon.license_key?.id,
     instanceId,

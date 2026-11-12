@@ -271,6 +271,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             autoUpdateEnabled={autoUpdateEnabled}
             updateStatus={updateStatus}
             availableVersion={availableVersion}
+            updateLicenseCoverage={updateInfo?.licenseCoverage}
             downloadProgress={downloadProgress}
             updateError={updateError}
             onLanguageChange={setCurrentLang}

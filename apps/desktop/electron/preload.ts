@@ -8,7 +8,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { createLocalPtyApi } from './preload/local-pty';
 import { createNativeSshApi } from './preload/native-ssh';
-import { createCryptoApi, createHostsApi, createKeysApi, createFilePickerApi, createSettingsApi, createSnippetsApi, createBackupApi, createLicenseApi, createAppApi, createSidebarFoldersApi } from './preload/core';
+import { createCryptoApi, createHostsApi, createKeysApi, createFilePickerApi, createSettingsApi, createSnippetsApi, createBackupApi, createLicenseApi, createSidebarFoldersApi } from './preload/core';
 import { createSSHApi, createSftpApi, createTunnelApi } from './preload/ssh';
 import { createSftpStandaloneApi, createSftpTransferApi } from './preload/sftp';
 import { createDockerApi } from './preload/docker';
@@ -48,7 +48,6 @@ const api = {
   apiClient: createApiClientApi(ipcRenderer),
   releases: createReleasesApi(ipcRenderer),
   updater: createUpdaterApi(ipcRenderer),
-  app: createAppApi(ipcRenderer),
   projects: createProjectsApi(ipcRenderer),
 };
 

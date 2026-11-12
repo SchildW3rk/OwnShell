@@ -1,17 +1,16 @@
 import { createPublicKey, verify as verifySignature } from 'crypto';
 
-export type EntitlementStatus = 'active' | 'trial';
-
 export interface EntitlementPayload {
   iss: string;
   aud: string;
   sub: string;
-  status: EntitlementStatus;
+  status: 'active';
   deviceId: string;
   licenseType?: string;
   licenseKeyId?: number;
   instanceId?: string;
-  features: string[];
+  /** Unix seconds: builds released up to this moment are covered by the license. */
+  updatesUntil: number;
   iat: number;
   nbf: number;
   exp: number;
@@ -54,11 +53,11 @@ function isEntitlementPayload(value: unknown): value is EntitlementPayload {
     typeof payload.iss === 'string' &&
     typeof payload.aud === 'string' &&
     typeof payload.sub === 'string' &&
-    (payload.status === 'active' || payload.status === 'trial') &&
+    payload.status === 'active' &&
     typeof payload.deviceId === 'string' &&
     /^[a-f0-9]{64}$/i.test(payload.deviceId) &&
-    Array.isArray(payload.features) &&
-    payload.features.every((feature) => typeof feature === 'string' && feature.length > 0) &&
+    typeof payload.updatesUntil === 'number' &&
+    Number.isFinite(payload.updatesUntil) &&
     typeof payload.iat === 'number' &&
     typeof payload.nbf === 'number' &&
     typeof payload.exp === 'number'
@@ -78,10 +77,15 @@ function getPublicKey(kid: unknown) {
   return createPublicKey({ key: key.jwk, format: 'jwk' });
 }
 
+/**
+ * `allowExpired` accepts a token past its `exp`: a stored license keeps proving `updatesUntil`
+ * after the short-lived token lapses (nothing is gated on it any more).
+ */
 export function verifyEntitlementToken(
   token: string,
   expectedDeviceId: string,
-  nowMs = Date.now()
+  nowMs = Date.now(),
+  allowExpired = false
 ): EntitlementVerification {
   try {
     const parts = token.split('.');
@@ -135,7 +139,7 @@ export function verifyEntitlementToken(
       return { valid: false, reason: 'Entitlement is not active yet' };
     }
 
-    if (payload.exp <= now - CLOCK_TOLERANCE_SECONDS) {
+    if (!allowExpired && payload.exp <= now - CLOCK_TOLERANCE_SECONDS) {
       return { valid: false, reason: 'Entitlement expired' };
     }
 
@@ -156,22 +160,17 @@ export const ENTITLEMENT_REFRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const REFRESH_FAILURE_BACKOFF_MS = 10 * 60 * 1000;
 
 /**
- * Whether getStatus should ask the license API for a new entitlement.
- * A stored key with a missing/expired/invalid token is always retried, so a license that
- * expired while offline recovers on its own instead of needing a new activation.
+ * Whether getStatus should ask the license API for a new entitlement: a stored key whose
+ * token is missing, invalid or close to `exp` is refreshed so renewals extend `updatesUntil`.
  */
 export function shouldRefreshEntitlement(input: {
-  storedStatus: string | undefined;
   hasLicenseKey: boolean;
   payload?: EntitlementPayload;
   now: number;
 }): boolean {
-  if (!input.hasLicenseKey || !input.storedStatus || input.storedStatus === 'none') return false;
+  if (!input.hasLicenseKey) return false;
   if (!input.payload) return true;
-  return (
-    input.payload.status === 'active' &&
-    getEntitlementExpiresAt(input.payload) - input.now <= ENTITLEMENT_REFRESH_WINDOW_MS
-  );
+  return getEntitlementExpiresAt(input.payload) - input.now <= ENTITLEMENT_REFRESH_WINDOW_MS;
 }
 
 /** Runs one shared refresh at a time and skips new attempts for a while after a failure. */

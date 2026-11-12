@@ -10,7 +10,8 @@
     "dev": "wrangler dev",
     "deploy:check": "node scripts/deploy-check.mjs",
     "deploy": "wrangler deploy",
-    "generate:keys": "node scripts/generate-keys.mjs"
+    "generate:keys": "node scripts/generate-keys.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260617.1",

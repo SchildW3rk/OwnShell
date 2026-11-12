@@ -9,7 +9,6 @@ export const fileTransferFeature: OwnShellFeature = {
   icon: FolderOpen,
   countKey: 'fileTransfers',
   releaseState: 'enabled',
-  entitlementFeature: 'sftp',
   placement: 'primary',
   order: 30,
 };
