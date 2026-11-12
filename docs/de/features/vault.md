@@ -1,125 +1,42 @@
-# Smart Admin Vault
+# Vault & Umgebungen
 
-Der Admin Vault ist OwnShells sicherer Credential- und Umgebungsvariablen-Manager.
+<!-- v-pre: {{…}} in this page is OwnShell variable syntax, not Vue interpolation -->
+:::: v-pre
 
-**<SCREENSHOT: Vault-Übersicht>**
+Der **Tresor** hat drei Tabs: **Anmeldedaten**, **Umgebungsvariablen** und **SSH-Schlüssel** (siehe [SSH-Schlüssel](/de/features/ssh#ssh-schlussel)).
 
-## Was kann der Vault speichern?
+![Tresor mit Umgebungen und Variablen](/screenshots/vault.png)
 
-- **Passwörter & API-Schlüssel** - Verschlüsselte Zugangsdaten für jeden Dienst
-- **.env-Dateien** - Komplette Umgebungsvariablen-Sets für Projekte
-- **Globale Variablen** - Wiederverwendbare Secrets über Verbindungen hinweg
+## Anmeldedaten
 
-## Deinen ersten Vault-Eintrag erstellen
+Speichere Logins mit Titel, Benutzername, Passwort, URL, Notizen, Tags und einer Favoriten-Markierung. **Nur das Passwort wird verschlüsselt**; Titel, Benutzername, URL, Notizen und Tags liegen im Klartext in der lokalen Datenbank, also halte Secrets dort heraus. **URL öffnen** öffnet http/https-Links in deinem Browser.
 
-1. Öffne den **Vault**-Tab in der Seitenleiste
-2. Klicke auf **"Neuer Eintrag"**
-3. Wähle den Eintragstyp:
-   - **Secret** - Einzelnes Schlüssel-Wert-Paar
-   - **ENV-Gruppe** - Mehrere Variablen für ein Projekt
+## Umgebungen
 
-**<SCREENSHOT: Neuer Vault-Eintrag>**
+Eine Umgebung ist ein benannter Satz von Variablen, zum Beispiel `shop-production`. Sie hat einen Namen, optional eine Projektbezeichnung und Beschreibung, die Variablen und optional einen Host und einen Standard-Remote-Pfad für Uploads.
 
-### Beispiel: Datenbank-Passwort speichern
+- Jeder Variablenwert wird mit deinem Master-Passwort verschlüsselt.
+- Bearbeite Variablen einzeln oder wechsle in den **Bulk-Editor** und füge eine komplette `.env`-Datei ein. Der Bulk-Editor versteht `#`-Kommentare, Leerzeilen, Werte in Anführungszeichen und mehrzeilige Werte in doppelten Anführungszeichen.
+- Umgebungen stehen im [API-Client](/de/features/api-client#variablen) als Variablen zur Verfügung: Wähle pro Request eine aus und nutze `{{KEY}}`.
 
-```
-Name: Produktions-DB Passwort
-Typ: Secret
-Schlüssel: DB_PASSWORD
-Wert: ••••••••••••
-```
+### Eine .env-Datei auf einen Server hochladen
 
-Klicke auf **"Speichern"**, um das Secret zu verschlüsseln und zu speichern.
+Wähle bei einer Umgebung **Auf SFTP-Server bereitstellen**, um sie per SFTP auf einen Server zu schreiben:
 
-## ENV-Gruppen für Projekte
+1. Lege den Ziel-Host in der Umgebung fest.
+2. Gib den Remote-Pfad ein, zum Beispiel `/srv/shop/.env`.
+3. OwnShell verbindet sich (mit den gespeicherten Zugangsdaten und dem Jump Host des Hosts), legt bei Bedarf den übergeordneten Ordner an und schreibt die Datei.
 
-ENV-Gruppen ermöglichen es dir, mehrere Umgebungsvariablen zusammen zu verwalten:
+Die Datei wird mit den Berechtigungen **0600** (nur Lesen/Schreiben für den Besitzer) geschrieben, auch wenn sie eine bestehende Datei ersetzt. Der Zeitpunkt des letzten Uploads wird bei der Umgebung angezeigt.
 
-**<SCREENSHOT: ENV-Gruppen-Editor>**
-
-### Eine ENV-Gruppe erstellen
-
-1. Klicke auf **"Neuer Eintrag"** → **"ENV-Gruppe"**
-2. Benenne deine Gruppe (z.B. "Produktions-API")
-3. Füge Variablen hinzu:
-
-```env
-API_KEY=sk_live_abc123xyz
-DATABASE_URL=postgresql://user:pass@localhost:5432/db
-REDIS_HOST=redis.example.com
-STRIPE_SECRET=sk_test_def456
-```
-
-4. Klicke auf **"Speichern"**
-
-## .env-Dateien auf Server deployen
-
-Eine der mächtigsten Funktionen des Vaults: **Ein-Klick ENV-Deployment**.
-
-**<SCREENSHOT: ENV-Upload-Dialog>**
-
-1. Rechtsklick auf eine ENV-Gruppe
-2. Wähle **"Auf Server hochladen"**
-3. Wähle:
-   - **Ziel-Verbindung** (dein SSH-Server)
-   - **Remote-Pfad** (z.B. `/var/www/app/.env`)
-4. Klicke auf **"Deployen"**
-
-✅ Deine `.env`-Datei ist jetzt sicher hochgeladen!
-
-### Use Case: Deployment auf mehrere Umgebungen
-
-Erstelle separate ENV-Gruppen für jede Umgebung:
-
-- `Produktions-API` → Deploy auf `/var/www/prod/.env`
-- `Staging-API` → Deploy auf `/var/www/staging/.env`
-- `Entwicklungs-API` → Deploy auf `/home/dev/app/.env`
-
-Ein Klick deployed die korrekten Variablen in jede Umgebung.
-
-## Vault-Variablen in Verbindungen verwenden
-
-Du kannst Vault-Secrets in deinen SSH-Verbindungen referenzieren:
-
-**<SCREENSHOT: Vault-Variable in Verbindung verwenden>**
-
-Beim Erstellen einer Verbindung nutze den **"Aus Vault"**-Button, um ein Secret einzufügen statt es direkt einzutippen.
-
-## Sicherheit
-
-- Alle Vault-Daten sind mit **AES-256-GCM** verschlüsselt
-- Master-Passwort wird niemals gespeichert
-- Vault-Datenbank ist lokal gespeichert:
-  - **macOS**: `~/Library/Application Support/OwnShell/vault.db`
-  - **Windows**: `%APPDATA%/OwnShell/vault.db`
-  - **Linux**: `~/.config/OwnShell/vault.db`
-
-### Master-Passwort ändern
-
-1. Gehe zu **Einstellungen** → **Sicherheit**
-2. Klicke auf **"Master-Passwort ändern"**
-3. Gib altes und neues Passwort ein
-4. Der gesamte Vault wird mit dem neuen Passwort neu verschlüsselt
-
-## Vault sichern
-
-::: warning Wichtig
-Sichere deinen Vault immer vor wichtigen Updates!
+::: warning Format
+Die Datei wird als einfache `KEY=VALUE`-Zeilen ohne Anführungszeichen geschrieben. Werte mit Leerzeichen, `#` oder Zeilenumbrüchen werden unverändert geschrieben, prüfe also, was deine Anwendung erwartet. Eine bestehende Datei wird ersetzt, nicht gesichert.
 :::
 
-Siehe [Backup & Restore](/de/advanced/backup-restore) für detaillierte Anleitungen.
+OwnShell injiziert keine Umgebungsvariablen in Terminal-Sitzungen.
 
-## Best Practices
+## Verschlüsselung
 
-✅ **MACHE:**
+Vault-Secrets werden mit AES-256-GCM verschlüsselt, mit einem Schlüssel, der aus deinem Master-Passwort abgeleitet wird (siehe [Installation & erster Start](/de/getting-started#so-sind-deine-daten-geschutzt)). Der Vault wird zusammen mit der App gesperrt.
 
-- Nutze starke Master-Passwörter (16+ Zeichen)
-- Organisiere Secrets mit klaren Namenskonventionen
-- Sichere deinen Vault regelmäßig
-- Nutze ENV-Gruppen für zusammenhängende Variablen
-
-❌ **MACHE NICHT:**
-
-- Master-Passwort teilen
-- Master-Passwort in Klartext speichern
-- Vault-Backups in Git committen (sie sind verschlüsselt, aber dennoch sensibel)
+::::

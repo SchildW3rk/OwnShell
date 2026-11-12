@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background rect gradient -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a2332"/>
+      <stop offset="100%" stop-color="#0d1520"/>
+    </linearGradient>
+
+    <!-- Shield gradient -->
+    <linearGradient id="shieldGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#40e8f0"/>
+      <stop offset="100%" stop-color="#1ab8c4"/>
+    </linearGradient>
+
+    <!-- Inner shield fill (dark) -->
+    <linearGradient id="shieldInner" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#152535"/>
+      <stop offset="100%" stop-color="#0e1a28"/>
+    </linearGradient>
+
+    <!-- Outer glow filter -->
+    <filter id="outerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.15  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.7 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle inner shadow on shield -->
+    <filter id="innerShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.15  0 0 0 0 0.85  0 0 0 0 0.88  0 0 0 0.3 0"/>
+    </filter>
+
+    <!-- Symbol glow -->
+    <filter id="symbolGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.15  0 0 0 0 0.9  0 0 0 0 0.9  0 0 0 0.6 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background square -->
+  <rect x="8" y="8" width="496" height="496" fill="url(#bgGrad)"/>
+
+  <!-- Very subtle border on background -->
+  <rect x="8" y="8" width="496" height="496" fill="none" stroke="#26c6da" stroke-opacity="0.12" stroke-width="2"/>
+
+  <!-- Shield outer glow layer -->
+  <path d="M256 72 L408 136 C408 136 416 280 368 348 C320 416 256 448 256 448 C256 448 192 416 144 348 C96 280 104 136 104 136 Z"
+    fill="none" stroke="#26dde6" stroke-width="4" filter="url(#outerGlow)" opacity="0.6"/>
+
+  <!-- Shield outline (cyan stroke) -->
+  <path d="M256 88 L396 146 C396 146 404 276 360 338 C316 400 256 430 256 430 C256 430 196 400 152 338 C108 276 116 146 116 146 Z"
+    fill="url(#shieldInner)" stroke="url(#shieldGrad)" stroke-width="5" stroke-linejoin="miter"/>
+
+  <!-- Terminal symbol >_ -->
+  <g filter="url(#symbolGlow)">
+    <!-- > chevron -->
+    <polyline points="196,220 244,260 196,300"
+      fill="none" stroke="#26dde6" stroke-width="22" stroke-linecap="butt" stroke-linejoin="miter"/>
+
+    <!-- _ underscore/cursor -->
+    <line x1="264" y1="300" x2="324" y2="300"
+      stroke="#26dde6" stroke-width="22" stroke-linecap="butt"/>
+  </g>
+</svg>

@@ -1,125 +1,42 @@
-# Smart Admin Vault
+# Vault & environments
 
-The Admin Vault is OwnShell's secure credential and environment variable manager.
+<!-- v-pre: {{…}} in this page is OwnShell variable syntax, not Vue interpolation -->
+:::: v-pre
 
-**<SCREENSHOT: Vault overview>**
+The **Vault** has three tabs: **Credentials**, **Environments** and **SSH Keys** (see [SSH keys](/features/ssh#ssh-keys)).
 
-## What can the Vault store?
+![Vault with environments and variables](/screenshots/vault.png)
 
-- **Passwords & API Keys** - Encrypted credentials for any service
-- **.env Files** - Complete environment variable sets for projects
-- **Global Variables** - Reusable secrets across connections
+## Credentials
 
-## Creating your first Vault Entry
+Store logins with title, username, password, URL, notes, tags and a favorite flag. **Only the password is encrypted**; title, username, URL, notes and tags are stored in plain text in the local database, so keep secrets out of them. **Open URL** opens http/https links in your browser.
 
-1. Open the **Vault** tab in the sidebar
-2. Click **"New Entry"**
-3. Choose entry type:
-   - **Secret** - Single key-value pair
-   - **ENV Group** - Multiple variables for a project
+## Environments
 
-**<SCREENSHOT: New vault entry>**
+An environment is a named set of variables, for example `shop-production`. It has a name, an optional project label and description, the variables, and optionally a host and default remote path for uploads.
 
-### Example: Storing a Database Password
+- Each variable value is encrypted with your master password.
+- Edit variables one by one, or switch to the **bulk editor** and paste a complete `.env` file. The bulk editor understands `#` comments, blank lines, quoted values and multi-line values in double quotes.
+- Environments are available as variables in the [API client](/features/api-client#variables): select one per request and use `{{KEY}}`.
 
-```
-Name: Production DB Password
-Type: Secret
-Key: DB_PASSWORD
-Value: ••••••••••••
-```
+### Upload a .env file to a server
 
-Click **"Save"** to encrypt and store the secret.
+Choose **Deploy to SFTP** on an environment to write it to a server over SFTP:
 
-## ENV Groups for Projects
+1. Set the target host on the environment.
+2. Enter the remote path, for example `/srv/shop/.env`.
+3. OwnShell connects (using the host's saved credentials and jump host), creates the parent folder if needed and writes the file.
 
-ENV Groups let you manage multiple environment variables together:
+The file is written with permissions **0600** (owner read/write only), also when it replaces an existing file. The time of the last upload is shown on the environment.
 
-**<SCREENSHOT: ENV group editor>**
-
-### Creating an ENV Group
-
-1. Click **"New Entry"** → **"ENV Group"**
-2. Name your group (e.g., "Production API")
-3. Add variables:
-
-```env
-API_KEY=sk_live_abc123xyz
-DATABASE_URL=postgresql://user:pass@localhost:5432/db
-REDIS_HOST=redis.example.com
-STRIPE_SECRET=sk_test_def456
-```
-
-4. Click **"Save"**
-
-## Deploying .env Files to Servers
-
-One of Vault's most powerful features: **One-click ENV deployment**.
-
-**<SCREENSHOT: ENV upload dialog>**
-
-1. Right-click an ENV Group
-2. Select **"Upload to Server"**
-3. Choose:
-   - **Target Connection** (your SSH server)
-   - **Remote Path** (e.g., `/var/www/app/.env`)
-4. Click **"Deploy"**
-
-✅ Your `.env` file is now securely uploaded!
-
-### Use Case: Deploy to Multiple Environments
-
-Create separate ENV Groups for each environment:
-
-- `Production API` → Deploy to `/var/www/prod/.env`
-- `Staging API` → Deploy to `/var/www/staging/.env`
-- `Development API` → Deploy to `/home/dev/app/.env`
-
-One click deploys the correct variables to each environment.
-
-## Using Vault Variables in Connections
-
-You can reference Vault secrets in your SSH connections:
-
-**<SCREENSHOT: Using vault variable in connection>**
-
-When creating a connection, use the **"From Vault"** button to insert a secret instead of typing it directly.
-
-## Security
-
-- All vault data is encrypted with **AES-256-GCM**
-- Master password is never stored anywhere
-- Vault database is stored locally:
-  - **macOS**: `~/Library/Application Support/OwnShell/vault.db`
-  - **Windows**: `%APPDATA%/OwnShell/vault.db`
-  - **Linux**: `~/.config/OwnShell/vault.db`
-
-### Changing Your Master Password
-
-1. Go to **Settings** → **Security**
-2. Click **"Change Master Password"**
-3. Enter old and new passwords
-4. The entire vault is re-encrypted with the new password
-
-## Backup Your Vault
-
-::: warning Important
-Always backup your vault before major updates!
+::: warning Format
+The file is written as plain `KEY=VALUE` lines without quoting. Values with spaces, `#` or line breaks are written as they are, so check what your application expects. An existing file is replaced, not backed up.
 :::
 
-See [Backup & Restore](/advanced/backup-restore) for detailed instructions.
+OwnShell does not inject environment variables into terminal sessions.
 
-## Best Practices
+## Encryption
 
-✅ **DO:**
+Vault secrets are encrypted with AES-256-GCM using a key derived from your master password (see [Install & first launch](/getting-started#how-your-data-is-protected)). The vault locks together with the app.
 
-- Use strong master passwords (16+ characters)
-- Organize secrets with clear naming conventions
-- Regularly backup your vault
-- Use ENV Groups for related variables
-
-❌ **DON'T:**
-
-- Share your master password
-- Store master password in plain text
-- Commit vault backups to Git (they're encrypted but still sensitive)
+::::

@@ -26,6 +26,15 @@ then check the result in the database or in Docker — without copying credentia
 
 Everything is stored locally in an encrypted database. No account, no cloud sync, no telemetry.
 
+<p align="center">
+  <img src="docs/public/screenshots/terminal.png" alt="SSH terminal to a server split with a local terminal" width="900">
+</p>
+
+| | |
+|---|---|
+| <img src="docs/public/screenshots/api-client.png" alt="API client with a collection tree and a JSON response"><br>**API client**: collections, variables and timing | <img src="docs/public/screenshots/sftp.png" alt="Dual-pane SFTP browser"><br>**SFTP**: local and remote side by side |
+| <img src="docs/public/screenshots/projects-diff.png" alt="Git changes of a server repository with a diff"><br>**Projects**: Git status, code and diffs on your server | <img src="docs/public/screenshots/database.png" alt="SQL query result in the database explorer"><br>**Databases**: tables and SQL queries |
+
 ## Features
 
 **Terminals & SSH**
@@ -102,6 +111,9 @@ npm run build:vite --workspace=ownshell-desktop
 
 # Run the tests
 npm test
+
+# Regenerate the README/docs screenshots from local test fixtures (after build:vite)
+node apps/desktop/scripts/screenshots/capture.cjs
 
 # Package the macOS app into apps/desktop/release/ (signing needs your own Developer ID)
 npm run build --workspace=ownshell-desktop

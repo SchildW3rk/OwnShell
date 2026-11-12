@@ -1,46 +1,47 @@
-# OwnShell Documentation
+---
+layout: home
 
-Welcome to the official OwnShell documentation!
+hero:
+  name: OwnShell Docs
+  text: Your servers, databases and APIs. One local workspace.
+  tagline: An open-source (MIT), local-first macOS app for SSH, SFTP, S3, Docker, databases, an encrypted vault and an API client.
+  image:
+    src: /logo.svg
+    alt: OwnShell logo
+  actions:
+    - theme: brand
+      text: Get started
+      link: /getting-started
+    - theme: alt
+      text: API client guide
+      link: /features/api-client
+    - theme: alt
+      text: Download
+      link: https://ownshell.app/
 
-## What is OwnShell?
-
-OwnShell is the first **local-first DevOps platform** that combines SSH, Databases, Docker, S3, and Secrets Management in one beautiful app.
-
-**<SCREENSHOT: Hero screenshot showing dashboard>**
-
-## Quick Links
-
-- [Get Started](/quickstart) - Install and connect to your first server
-- [Admin Vault](/features/vault) - Manage credentials and .env files
-- [Database Client](/features/databases) - Connect to SQL, Redis, MongoDB
-- [FAQ](/faq) - Common questions answered
-
-## Key Features
-
-- 🔐 **Bank-Grade Encryption** - AES-256-GCM for all stored data
-- 💾 **100% Local Storage** - Your data never leaves your device
-- 🚀 **No Cloud Required** - Works fully offline after activation
-- 🔓 **No Lock-In** - Full import/export of your configuration
-
-## Popular Topics
-
-### For DevOps Engineers
-
-- [SSH Tunneling & Port Forwarding](/features/tunneling)
-- [Jump Host Configuration](/features/jump-hosts)
-- [ENV Variable Deployment](/advanced/env-injection)
-
-### For Database Admins
-
-- [Multi-Database Client](/features/databases)
-- [Redis, MySQL, PostgreSQL Support](/features/databases)
-
-### For System Administrators
-
-- [Docker Container Management](/features/docker)
-- [SFTP & S3 File Browser](/features/sftp-s3)
-- [Backup & Restore](/advanced/backup-restore)
-
-## Need Help?
-
-Check our [FAQ](/faq) or [report an issue on GitHub](https://github.com/T2rtl3/ownshell/issues).
+features:
+  - title: Terminals & SSH
+    details: Native OpenSSH terminals, local shells, panes, keys, jump hosts and tunnels.
+    link: /features/ssh
+  - title: Files
+    details: Dual-pane SFTP with a transfer queue and editor, plus an S3 / MinIO browser with a CORS editor.
+    link: /features/files
+  - title: Docker
+    details: Containers, logs, shells and compose projects on your servers.
+    link: /features/docker
+  - title: Databases
+    details: Postgres, MySQL, SQLite, Redis and MongoDB, optionally through an SSH host and in read-only mode.
+    link: /features/databases
+  - title: Vault & environments
+    details: Encrypted local secrets and .env files you can upload to a server.
+    link: /features/vault
+  - title: API client
+    details: REST, GraphQL, WebSocket and SSE requests, OAuth 2.0, a collection runner and requests sent through an SSH host.
+    link: /features/api-client
+  - title: Projects & Git
+    details: One view per project with code, diffs, history, branches and compose status.
+    link: /features/projects
+  - title: Private by design
+    details: No account, no telemetry. Workspace data stays on your Mac.
+    link: /privacy
+---

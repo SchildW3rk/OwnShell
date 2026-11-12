@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '@ownshell/ui';
 import { useSidebar } from './SidebarContext';
@@ -29,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSectionChange,
   children,
 }) => {
+  const { t } = useTranslation();
   const { mode, setMode } = useSidebar();
   const isPanelOpen = mode === 'expanded';
   const handleSectionChange = React.useCallback(
@@ -72,8 +74,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         type="button"
         onClick={() => setMode(isPanelOpen ? 'collapsed' : 'expanded')}
         className="group flex w-3 flex-shrink-0 items-center justify-center border-r border-shell-rail-border bg-shell-rail text-shell-rail-muted transition-colors hover:bg-shell-rail-hover hover:text-shell-rail-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-shell-focus-soft"
-        title={isPanelOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'}
-        aria-label={isPanelOpen ? 'Sidebar einklappen' : 'Sidebar ausklappen'}
+        title={isPanelOpen ? t('sidebar.collapse') : t('sidebar.expand')}
+        aria-label={isPanelOpen ? t('sidebar.collapse') : t('sidebar.expand')}
       >
         <ChevronLeft
           className={cn(

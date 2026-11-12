@@ -1,67 +1,39 @@
-# Docker-Verwaltung
+# Docker
 
-Verwalte Docker-Container, Images und Logs direkt aus OwnShell.
+Der Tab **Docker** funktioniert in jeder SSH-Sitzung und in lokalen Sitzungen (mit der `docker`-CLI auf deinem Mac).
 
-**<SCREENSHOT: Docker Container-Liste>**
+![Docker-Container mit Live-Auslastung und Logs](/screenshots/docker.png)
 
-## Container anzeigen
+## Voraussetzungen
 
-Nach Verbindung zu einem Server klicke auf den **Docker**-Tab:
+- Die `docker`-CLI muss auf dem Server installiert sein.
+- OwnShell verwendet nie `sudo`. Bekommst du *permission denied*, füge deinen Benutzer zur Gruppe `docker` hinzu (`sudo usermod -aG docker $USER`) und verbinde dich neu.
+- Compose-Projekte brauchen Compose v2 (`docker compose`).
 
-**<SCREENSHOT: Container-Übersicht>**
+## Container
 
-- **Laufende Container** (grüner Status)
-- **Gestoppte Container** (grauer Status)
-- **Container-Health** (falls Healthcheck konfiguriert)
+- Liste Container auf und **starte**, **stoppe**, **starte neu** oder **entferne** sie (nur gestoppte Container lassen sich entfernen). Container eines Compose-Projekts lassen sich gemeinsam steuern.
+- Container-Details:
+  - **Nutzung**: CPU und Arbeitsspeicher aus `docker stats`, alle 2 Sekunden aktualisiert.
+  - **Logs**: die letzten 100 Zeilen (bis zu 1000). Live-Verfolgung über SSH.
+  - **Konsole**: eine Shell im Container (`docker exec -it … /bin/sh`), über SSH.
+  - **Ports** (über SSH) und **Netzwerke**.
 
-## Container-Aktionen
+## Images und Netzwerke
 
-Rechtsklick auf einen Container für Schnellaktionen:
+- Images: auflisten, entfernen (optional erzwungen), aufräumen (optional alle ungenutzten Images).
+- Netzwerke: auflisten, inspizieren, erstellen, entfernen, Container verbinden und trennen.
 
-- **Start** - Gestoppten Container starten
-- **Stop** - Laufenden Container stoppen
-- **Restart** - Container neustarten
-- **Logs anzeigen** - Log-Viewer öffnen
-- **Shell-Zugriff** - Bash/sh im Container öffnen
-- **Inspect** - Volle Container-Details anzeigen
+Volumes werden in OwnShell nicht verwaltet.
 
-## Echtzeit-Logs
+## Compose-Projekte
 
-**<SCREENSHOT: Docker Logs-Viewer>**
+Der Tab **Compose-Projekte** (SSH-Sitzungen) findet `docker-compose.yml`- / `.yaml`-Dateien bis zu zwei Ordnerebenen tief unter `~/docker-compose` auf dem Server.
 
-Klicke auf **"Logs anzeigen"**:
+- **Neues Projekt** erstellt `~/docker-compose/<name>/docker-compose.yml`.
+- Bearbeite die Datei in einem YAML-Editor.
+- Führe **up**, **down**, **restart**, **pull**, **build** und **logs** aus.
 
-- **Auto-Scroll** - Folge neuen Log-Zeilen
-- **Suche** - Filter Logs nach Stichwort
-- **Zeitstempel** - Ein-/Ausblenden
-- **Löschen** - Log-Buffer leeren
-
-## Exec in Container
-
-**<SCREENSHOT: Container Shell>**
-
-Öffne eine Shell in jedem laufenden Container:
-
-1. Rechtsklick Container → **"Shell-Zugriff"**
-2. Wähle Shell: `bash` oder `sh`
-3. Interaktives Terminal öffnet sich
-
-Beispiel-Anwendungsfälle:
-
-- Dateiberechtigungen prüfen: `ls -la /app`
-- Netzwerk testen: `ping database`
-- Migrationen ausführen: `npm run migrate`
-
-## Best Practices
-
-✅ **MACHE:**
-
-- Prüfe Logs vor Container-Neustarts
-- Nutze Health Checks im Dockerfile
-- Überwache Container-Ressourcenverbrauch
-
-❌ **MACHE NICHT:**
-
-- Container als Root in Produktion laufen lassen
-- Docker Socket ungeschützten Nutzern zugänglich machen
-- Warning-Logs ignorieren
+::: danger Projekt entfernen
+Das Entfernen eines Compose-Projekts führt `docker compose down` aus (optional mit `-v`, wodurch Volumes gelöscht werden) **und löscht den Projektordner** auf dem Server.
+:::

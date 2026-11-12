@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, MessageCircle, Download, Terminal, Github, Scale } from 'lucide-react';
 import * as m from '../paraglide/messages';
-import { GITHUB_URL } from '../links';
+import { GITHUB_URL, docsUrl } from '../links';
+import { getLocale } from '../paraglide/runtime';
 
 const DISCORD_INVITE = 'https://discord.gg/Hz8M8Fq5ac';
 
@@ -53,6 +54,11 @@ export function Footer() {
               <li>
                 <a href="/#faq" className="text-[#969696] hover:text-white transition-colors">
                   {m.nav_faq()}
+                </a>
+              </li>
+              <li>
+                <a href={docsUrl(getLocale())} className="text-[#969696] hover:text-white transition-colors">
+                  {m.nav_docs()}
                 </a>
               </li>
               <li>

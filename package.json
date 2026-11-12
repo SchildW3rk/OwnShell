@@ -14,6 +14,8 @@
     "test": "turbo run test",
     "release:desktop": "npm run release:local --workspace=ownshell-desktop",
     "deploy:landing": "npm run deploy --workspace=landing",
+    "docs:dev": "npm run dev --prefix docs",
+    "docs:build": "npm run build --prefix docs",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

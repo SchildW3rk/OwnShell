@@ -1,106 +1,64 @@
-# Datenbank-Client
+# Datenbanken
 
-Verbinde dich mit MySQL, PostgreSQL, Redis, MongoDB und SQLite direkt aus OwnShell.
+Der Tab **Datenbank** verbindet sich mit **PostgreSQL**, **MySQL**, **SQLite**, **Redis** und **MongoDB**.
 
-**<SCREENSHOT: Datenbank-Explorer-Interface>**
+![Datenbank-Explorer mit Tabellenansicht und Abfragekonsole](/screenshots/database.png)
 
-## Unterstützte Datenbanken
+## Verbindungen
 
-| Datenbank  | Version | Features                          |
-| ---------- | ------- | --------------------------------- |
-| MySQL      | 5.7+    | Query-Editor, Tabellen-Browser    |
-| PostgreSQL | 10+     | Volle SQL-Unterstützung, Schemas  |
-| Redis      | 5.0+    | Schlüssel-Browser, TTL-Verwaltung |
-| MongoDB    | 4.0+    | Dokument-Browser, Aggregations    |
-| SQLite     | 3.x     | Lokaler Datei-Browser             |
+- Fülle Host, Port, Benutzer, Passwort und Datenbank aus oder füge eine Verbindungs-URI ein (`postgres://`, `postgresql://`, `mysql://`, `redis://`, `rediss://`, `mongodb://`, `mongodb+srv://`).
+- Passwörter werden mit deinem Master-Passwort verschlüsselt.
+- **SSL** ist ein einzelner Schalter. Bei PostgreSQL und MySQL verschlüsselt er die Verbindung, **prüft aber das Server-Zertifikat nicht**.
 
-## Zu einer Datenbank verbinden
+### Über einen SSH-Host
 
-### PostgreSQL Beispiel
+Wähle einen gespeicherten SSH-Host, und OwnShell leitet einen lokalen Port auf `127.0.0.1` über diesen Host zur Datenbank weiter (inklusive Jump-Hosts). Du kannst dich auch mit einer Datenbank verbinden, die in einem Docker-Container auf dem Host läuft: OwnShell ermittelt die Adresse des Containers mit `docker inspect`. Die SSH-Verbindung wird geschlossen, wenn die letzte Datenbankverbindung, die sie nutzt, getrennt wird.
 
-1. Öffne den **Datenbank**-Tab
-2. Klicke auf **"Neue Verbindung"**
-3. Fülle die Details aus:
+### Read-only-Modus
 
-**<SCREENSHOT: Neue DB-Verbindung Dialog>**
+Schalte **Read-only** pro Verbindung ein, um Produktivdaten zu schützen:
 
-```
-Typ: PostgreSQL
-Host: localhost
-Port: 5432
-Datenbank: myapp_production
-Benutzername: postgres
-Passwort: ••••••••
-```
+- **SQL**: Nur `SELECT`-, `WITH`-, `SHOW`-, `DESCRIBE`- und `EXPLAIN`-Anweisungen laufen, und nur ohne schreibende Schlüsselwörter. PostgreSQL und MySQL führen sie zusätzlich in einer Read-only-Transaktion aus; SQLite-Dateien werden schreibgeschützt geöffnet.
+- Zeilen bearbeiten, einfügen und löschen, Schemaänderungen und Importe sind blockiert.
+- **MongoDB**: Schreibvorgänge auf Dokumente und Collections sind blockiert; Aggregationen mit `$out` oder `$merge` sind blockiert.
+- **Redis**: Alle Schreiboperationen sind blockiert.
+- Exporte funktionieren weiterhin.
 
-4. Klicke auf **"Verbindung testen"**
-5. **Speichern** um zur Verbindungsliste hinzuzufügen
+## Tabellen und Abfragen
 
-## SQL-Abfragen ausführen
+- Durchsuche Tabellen in einer seitenweisen Ansicht. Doppelklicke auf eine Zelle, um sie zu bearbeiten. Zeilen lassen sich löschen, wenn die Tabelle einen Primärschlüssel hat.
+- Die Abfragekonsole hat Syntax-Highlighting und Vervollständigung von Tabellennamen. **⌘↩** führt den gesamten Editorinhalt aus.
+- Der **Abfrageverlauf** wird pro Verbindung gespeichert (bis zu 100 Einträge), inklusive fehlgeschlagener Abfragen, mit Zeit und Zeilenanzahl. Passwörter, Tokens, Schlüssel und Zugangsdaten in Verbindungs-URIs werden vor dem Speichern geschwärzt. Du kannst ihn pro Verbindung leeren.
 
-**<SCREENSHOT: SQL-Editor>**
+## Schema-Werkzeuge
 
-```sql
-SELECT * FROM users
-WHERE created_at > '2026-01-01'
-ORDER BY email;
-```
+- PostgreSQL: Datenbanken, Schemas und Tabellen erstellen und löschen. Der Dialog zum Erstellen von Tabellen umfasst Name, Typ, Länge, Nullable, Primärschlüssel, Standardwert und Unique.
+- Lege Datenbankbenutzer mit Zugriffsstufen (Login, Lesen, Lesen/Schreiben, Admin) für PostgreSQL, MySQL, MongoDB und Redis an.
+- Bestehende Tabellen lassen sich in OwnShell nicht ändern.
 
-### Editor-Features
+## Import und Export
 
-- **Syntax-Highlighting** - Farbcodiertes SQL
-- **Auto-Complete** - Tabellen- und Spalten-Vorschläge
-- **Multi-Query** - Mehrere Abfragen getrennt durch `;`
-- **Query-Historie** - Erfolgreiche und fehlgeschlagene Abfragen bei aktivierter Historie anzeigen
-- **Ausführen per Tastatur** - Cmd/Strg + Enter führt die Abfrage wie der Ausführen-Button aus
+Datenbank-Dumps nutzen die offiziellen Werkzeuge:
 
-Große Query-Ergebnisse behalten alle zurückgegebenen Zeilen in ihrer Query-Reihenfolge; gemountet werden nur sichtbare Zeilen und ein kleiner Scrollpuffer. Auch die letzte Ergebniszeile bleibt erreichbar. Eine neuere Ausführung besitzt Ergebnis-, Lade- und Fehlerzustand; ältere Antworten können sie nicht überschreiben.
+| Engine | Werkzeuge |
+| --- | --- |
+| PostgreSQL | `pg_dump`, `psql` |
+| MySQL | `mysqldump`, `mysql` |
+| MongoDB | `mongodump`, `mongorestore` |
+| Redis | `redis-cli --rdb` |
 
-## Redis Client
+- Export nach `.sql` oder `.sql.gz` (nur Schema, nur Daten, ausgewählte Tabellen und `pg_dump`-Optionen).
+- Import von `.sql` / `.sql.gz`, optional nach dem Leeren oder Löschen bestehender Tabellen.
+- Bei Verbindungen über einen SSH-Host laufen die Werkzeuge **auf dem Server** und der Dump wird zu deinem Mac gestreamt, daher müssen sie dort installiert sein. Bei direkten Verbindungen müssen sie auf deinem Mac installiert sein. OwnShell sagt dir, welches Werkzeug fehlt.
 
-**<SCREENSHOT: Redis Schlüssel-Browser>**
+## Redis
 
-- Zeige alle Schlüssel mit Pattern-Matching (`user:*`, `session:*`)
-- Gruppiere nach Prefix
-- Bearbeite verschiedene Datentypen (String, Hash, List, Set)
-- TTL-Verwaltung
+Durchsuche Keys mit einem Muster (`SCAN`) und filtere nach Typ (String, Hash, List, Set, Sorted Set). Zeige Werte an und bearbeite sie, benenne Keys um, setze oder entferne eine TTL und lösche Keys. Server-Infos und Datenbankstatistiken sind verfügbar. Der Browser nutzt Datenbank 0.
 
-Die Suche verwendet `SCAN MATCH`, den gewählten Typfilter und den Hinweis `COUNT 100`, keine neue Ergebnisgrenze. **Mehr laden** setzt das abgesendete Pattern, den Typ und den Cursor fort. Änderungen am Suchentwurf gelten erst nach erneutem Absenden. Auch eine leere Trefferseite kann einen weiteren Cursor liefern; beendet ist die Suche bei Cursor `0`.
+## MongoDB
 
-Die virtualisierte Liste behält die vollständige geladene Folge und Redis-Iterationsreihenfolge. `SCAN` ist kein Snapshot: Änderungen am Schlüsselbestand können doppelte oder veränderte Ergebnisse liefern. Beim Schlüsselwechsel können ältere Antworten weder Wert noch Lade- oder Fehlerzustand ersetzen. Vollständige Werte, Listenreihenfolge und TTL bleiben erhalten.
+Durchsuche Collections (erstellen und löschen), filtere Dokumente mit einer JSON-Abfrage, blättere durch die Ergebnisse und füge Dokumente in einem JSON-Editor ein, bearbeite oder lösche sie.
 
-## MongoDB-Dokumente
+## Externe CLI
 
-Der Browser behält Seiten mit 50 Dokumenten, Filter und vollständige Dokumentinhalte. Ein Wechsel von Collection, Filter, Seite oder Auswahl entwertet ältere UI-Antworten, ohne bereits abgesendete Datenbankänderungen abzubrechen.
-
-CodeMirror behält Dokument und Undo-Historie. Ein lokaler Worker formatiert den gewählten vollständigen JSON-Snapshot und prüft zusammengefasste inkrementelle Änderungen. Veraltete Ergebnisse ersetzen keine neuere Auswahl. Speichern liest und parst den aktuellen vollständigen Editorinhalt.
-
-Snapshot-Antworten enthalten vollständiges normalisiertes JSON, ID und sämtliche obersten Feldnamen. Beim Öffnen gibt es weder eine neue Projektion noch ein zusätzliches Limit oder eine Folgeabfrage. Während der Formatierung bleibt der Editor im Ladezustand; Datentypen, Feldreihenfolge, Kopieren/Speichern und Schreibschutz bleiben erhalten.
-
-## Verbindung über SSH-Tunnel
-
-Verbinde dich mit Datenbanken über SSH-Tunnel:
-
-**<SCREENSHOT: Datenbank via SSH-Tunnel>**
-
-1. Aktiviere **"Über SSH verbinden"**
-2. Wähle deine SSH-Verbindung
-3. Gib Datenbank-Zugangsdaten ein
-4. OwnShell erstellt den Tunnel automatisch
-
-Perfekt für Datenbanken, die nur innerhalb eines privaten Netzwerks erreichbar sind.
-
-## Best Practices
-
-✅ **MACHE:**
-
-- Nutze SSH-Tunnel für Remote-Datenbanken
-- Speichere Zugangsdaten im Vault
-- Nutze Read-Only User für Produktions-Abfragen
-- Teste Abfragen erst auf Entwicklungssystem
-
-❌ **MACHE NICHT:**
-
-- `DROP` oder `DELETE` ohne WHERE-Klauseln ausführen
-- Produktions-Passwörter in Verbindungseinstellungen speichern
-- Große Tabellen ohne LIMIT abfragen
+Bei direkten Verbindungen öffnest du `psql`, `mysql`, `mongosh`, `redis-cli` oder `sqlite3` in einem lokalen Terminal mit bereits ausgefüllten Verbindungsdaten.

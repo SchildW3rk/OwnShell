@@ -145,7 +145,19 @@ success "Local verification completed"
 step "3/7" "Building OwnShell landing locally..."
 (cd "$REPO_ROOT" && npm run build --workspace=landing)
 test -f "$SCRIPT_DIR/dist/index.html" || error "Build did not create apps/landing/dist/index.html"
-success "Local build completed"
+
+DOCS_DIR="$REPO_ROOT/docs"
+DOCS_DIST="$DOCS_DIR/.vitepress/dist"
+if [[ "$RUN_INSTALL" == "1" || ! -d "$DOCS_DIR/node_modules" ]]; then
+  (cd "$REPO_ROOT" && npm ci --prefix docs)
+fi
+(cd "$REPO_ROOT" && npm run build --prefix docs)
+test -f "$DOCS_DIST/index.html" || error "Build did not create docs/.vitepress/dist/index.html"
+# CSP hashes for VitePress' inline scripts, so the docs CSP needs no 'unsafe-inline' for scripts.
+DOCS_SCRIPT_HASHES="$(node "$DOCS_DIR/scripts/csp-hashes.mjs" "$DOCS_DIST")"
+HASH_LIST_RE="^('sha256-[A-Za-z0-9+/=]+'( |$))+$"
+[[ "$DOCS_SCRIPT_HASHES" =~ $HASH_LIST_RE ]] || error "Unexpected docs CSP hash list: ${DOCS_SCRIPT_HASHES}"
+success "Local build completed (landing + docs)"
 
 step "4/7" "Syncing static assets and container config to server..."
 ssh "$SSH_HOST" "REMOTE_PATH='$REMOTE_PATH' APP_CONTAINER='$APP_CONTAINER' APP_NETWORK='$APP_NETWORK' bash -s" <<'ENDSSH'
@@ -178,9 +190,21 @@ cat > "$REMOTE_PATH/config/Caddyfile" <<'CADDY'
 :3000 {
 	encode zstd gzip
 	root * /srv
-	try_files {path} /index.html
-	file_server
+	redir /docs /docs/ 308
+	handle /docs/* {
+		try_files {path} {path}.html {path}/index.html
+		file_server
+	}
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+	handle_errors 404 {
+		rewrite * /docs/404.html
+		file_server
+	}
 	header /assets/* Cache-Control "public, max-age=31536000, immutable"
+	header /docs/assets/* Cache-Control "public, max-age=31536000, immutable"
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin
@@ -190,7 +214,8 @@ cat > "$REMOTE_PATH/config/Caddyfile" <<'CADDY'
 CADDY
 ENDSSH
 
-rsync -az --delete "$SCRIPT_DIR/dist/" "$SSH_HOST:$REMOTE_PATH/dist/"
+rsync -az --delete --exclude '/docs/' "$SCRIPT_DIR/dist/" "$SSH_HOST:$REMOTE_PATH/dist/"
+rsync -az --delete "$DOCS_DIST/" "$SSH_HOST:$REMOTE_PATH/dist/docs/"
 success "Static assets and container config synced"
 
 step "5/7" "Starting remote OwnShell static container..."
@@ -207,7 +232,7 @@ ENDSSH
 success "Remote OwnShell static container started"
 
 step "6/7" "Installing or updating central Caddy route..."
-ssh "$SSH_HOST" "APP_DOMAINS='$APP_DOMAINS' APP_CONTAINER='$APP_CONTAINER' CADDYFILE='$CADDYFILE' CADDY_CONTAINER='$CADDY_CONTAINER' bash -s" <<'ENDSSH'
+ssh "$SSH_HOST" "APP_DOMAINS='$APP_DOMAINS' APP_CONTAINER='$APP_CONTAINER' CADDYFILE='$CADDYFILE' CADDY_CONTAINER='$CADDY_CONTAINER' DOCS_SCRIPT_HASHES=$(printf %q "$DOCS_SCRIPT_HASHES") bash -s" <<'ENDSSH'
 set -euo pipefail
 
 python3 - <<'PY'
@@ -216,6 +241,7 @@ from pathlib import Path
 
 domains = os.environ["APP_DOMAINS"]
 app_container = os.environ["APP_CONTAINER"]
+docs_script_hashes = os.environ["DOCS_SCRIPT_HASHES"]
 caddyfile = Path(os.environ["CADDYFILE"])
 caddyfile.parent.mkdir(parents=True, exist_ok=True)
 
@@ -231,9 +257,13 @@ block = f"""{start}
 \t\t\tPermissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
 \t\t\tCross-Origin-Opener-Policy same-origin
 \t\t\tStrict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-\t\t\tContent-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://ownshell.app; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 \t\t\t-Server
 \t\t}}
+\t\t# The docs CSP allows only the hashed VitePress inline scripts; everything else gets the landing CSP.
+\t\t@docs path /docs/*
+\t\theader @docs Content-Security-Policy "default-src 'self'; script-src 'self' {docs_script_hashes}; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+\t\t@site not path /docs/*
+\t\theader @site Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://ownshell.app; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 \t\thandle /releases.json {{
 \t\t\theader Cache-Control "no-store"
@@ -311,7 +341,8 @@ else
     echo "[RETRY] $RETRY_COUNT/$MAX_RETRIES waiting for ${PUBLIC_HEALTH_URL}..."
     sleep 3
   done
-  success "Public health check passed"
+  curl -fsS --max-time 15 "${PUBLIC_HEALTH_URL%/}/docs/" >/dev/null || error "Public docs check failed for ${PUBLIC_HEALTH_URL%/}/docs/"
+  success "Public health check passed (landing + docs)"
 fi
 
 echo ""
@@ -319,4 +350,5 @@ echo -e "${MAGENTA}================================================${NC}"
 echo -e "${MAGENTA}       OwnShell deployment completed            ${NC}"
 echo -e "${MAGENTA}================================================${NC}"
 echo -e "  URL: ${CYAN}${PUBLIC_HEALTH_URL}${NC}"
+echo -e "  Docs: ${CYAN}${PUBLIC_HEALTH_URL%/}/docs/${NC}"
 echo ""

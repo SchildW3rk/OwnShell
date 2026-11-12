@@ -45,6 +45,9 @@ OwnShell reduces context switches: open a project or environment, SSH into the s
 - Security: https://ownshell.app/#security
 - Pricing: https://ownshell.app/#pricing
 - FAQ: https://ownshell.app/#faq
+- Documentation (English): https://ownshell.app/docs/
+- Documentation (German): https://ownshell.app/docs/de/
+- API client guide: https://ownshell.app/docs/features/api-client
 - Source code: https://github.com/SchildW3rk/OwnShell
 - Privacy: https://ownshell.app/privacy
 - Terms: https://ownshell.app/terms

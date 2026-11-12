@@ -1,72 +1,36 @@
-# Backup & Restore
+# Backup & Wiederherstellung
 
-Exportiere deine OwnShell-Daten in eine einzelne verschlüsselte Datei und stelle sie auf demselben oder einem anderen Rechner wieder her.
+Backups findest du unter **Einstellungen → Daten & Speicher**. Ein Backup ist eine einzelne verschlüsselte Datei, die du überall ablegen kannst, zum Beispiel um OwnShell auf einen neuen Mac umzuziehen.
 
-## Was wird gesichert?
+## Was enthalten ist
 
-- SSH-Hosts inklusive Passwörtern und gespeicherter Host-Keys
-- SSH-Schlüssel (Private Keys und Passphrasen)
-- Port-Forwarding-Tunnel
-- Befehls-Snippets
-- S3-Verbindungen inklusive Access Keys
-- Sidebar-Ordner
-- Vault-Zugangsdaten (Passwörter)
-- Vault-Umgebungen inklusive aller Variablenwerte
-- Datenbank-Verbindungen inklusive Passwörtern
+- SSH-Hosts mit ihren Zugangsdaten, SSH-Schlüssel (private Schlüssel und Passphrasen)
+- Tunnel und Snippets
+- S3-Verbindungen und Datenbankverbindungen
+- Vault-Zugangsdaten und Umgebungen
 - Projekte
-- API-Client-Sammlungen und -Requests
+- API-Collections, Requests und globale API-Variablen
+- Ordner der Seitenleiste
 
-**Nicht enthalten:** dein Master-Passwort und Recovery-Key, App-Einstellungen und Lizenzdaten, Abfrage- und Transfer-Verlauf sowie lokale Dateien wie SQLite-Datenbankdateien oder zwischengespeicherte Downloads.
+**Nicht enthalten**: App-Einstellungen, dein Master-Passwort und deine Lizenz (gib den Schlüssel auf einem neuen Mac erneut ein).
 
-## Backup erstellen
+## Export
 
-1. Entsperre OwnShell.
-2. Öffne **Einstellungen** und wähle **Backup exportieren**.
-3. Gib ein Backup-Passwort ein. Es ist unabhängig von deinem Master-Passwort.
-4. Speichere die `.ownshell-vault`-Datei.
+1. Entsperre OwnShell und öffne **Einstellungen → Daten & Speicher**.
+2. Gib ein **Backup-Passwort** ein (mindestens 4 Zeichen). Es ist unabhängig von deinem Master-Passwort.
+3. Exportiere. Der Standard-Dateiname ist `ownshell-backup-YYYY-MM-DD.ownshell-vault`.
+
+Secrets werden mit deinem Master-Schlüssel entschlüsselt und mit dem Backup-Passwort neu verschlüsselt. Die Datei wird komprimiert und mit AES-256-GCM verschlüsselt, mit einem Schlüssel, der per scrypt aus dem Backup-Passwort abgeleitet wird.
 
 ::: tip
-Bewahre das Backup-Passwort in einem Passwort-Manager auf. Ohne es lässt sich das Backup nicht öffnen.
+Nutze ein starkes Backup-Passwort: Wer die Datei und das Passwort hat, kann alle deine Zugangsdaten lesen.
 :::
 
-## Backup wiederherstellen
+## Import
 
-1. Entsperre OwnShell.
-2. Öffne **Einstellungen** und wähle **Backup importieren**.
-3. Wähle die `.ownshell-vault`-Datei und gib ihr Backup-Passwort ein.
+1. Öffne **Einstellungen → Daten & Speicher** und wähle die Backup-Datei.
+2. Gib das Backup-Passwort ein.
 
-Eine Wiederherstellung **ersetzt** die gesicherten Daten in dieser Installation. Sie läuft in einer einzigen Datenbank-Transaktion: Schlägt etwas fehl, bleibt alles unverändert.
-
-Backups älterer OwnShell-Versionen enthalten nur Hosts, Schlüssel, Tunnel, Snippets, S3-Verbindungen und Sidebar-Ordner. Beim Wiederherstellen einer solchen Datei bleiben Vault-Daten, Datenbank-Verbindungen, Projekte und API-Client-Daten unverändert. Da Datenbank-Verbindungen ersetzt werden, wird ihr Abfrage-Verlauf gelöscht.
-
-## Dateiformat
-
-Eine `.ownshell-vault`-Datei ist binär:
-
-| Bytes | Inhalt |
-| --- | --- |
-| 8 | Magic `OWNVAULT` |
-| 1 | Formatversion |
-| 32 | scrypt-Salt |
-| 16 | AES-GCM-IV |
-| 16 | AES-GCM-Authentifizierungs-Tag |
-| Rest | Verschlüsseltes, gzip-komprimiertes JSON |
-
-Der Schlüssel wird mit scrypt (N=16384, r=8, p=1) aus dem Backup-Passwort abgeleitet, die Daten werden mit AES-256-GCM verschlüsselt. In der Datei liegen Geheimnisse im Klartext, geschützt nur durch das Backup-Passwort. Beim Import wird das JSON vor dem Schreiben auf das erwartete Format geprüft, und Geheimnisse werden mit dem Master-Key dieser Installation neu verschlüsselt.
-
-## Best Practices
-
-- Erstelle ein Backup vor größeren Updates und vor dem Umzug auf einen neuen Rechner.
-- Bewahre Backups an mehr als einem Ort auf, nicht auf derselben Festplatte wie OwnShell.
-- Teile keine Backup-Dateien. Wer Datei und Passwort hat, hat alle deine Zugangsdaten.
-- Teste gelegentlich eine Wiederherstellung.
-
-## Fehlerbehebung
-
-**„Wrong password“**: Das Backup-Passwort ist falsch. Es lässt sich nicht wiederherstellen.
-
-**„Invalid vault file“**: Die Datei ist kein OwnShell-Backup, beschädigt oder ihr Inhalt entspricht nicht dem erwarteten Format.
-
-**„Vault version … is newer than supported“**: Aktualisiere OwnShell und importiere erneut.
-
-Weitere Hilfe findest du in den [FAQ](/de/faq).
+::: danger Import ersetzt deine Daten
+Ein Import **ersetzt** die entsprechenden Daten in OwnShell; er führt nichts zusammen. Er läuft in einer einzigen Transaktion: Schlägt etwas fehl, wird nichts verändert. Datentypen, die das Backup nicht enthält (aus älteren Versionen), bleiben unberührt. Backups einer neueren OwnShell-Version werden abgelehnt.
+:::

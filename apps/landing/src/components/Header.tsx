@@ -1,7 +1,7 @@
 import { Github, Globe, Terminal } from 'lucide-react';
 import * as m from '../paraglide/messages';
 import { getLocale, setLocale } from '../paraglide/runtime';
-import { GITHUB_URL } from '../links';
+import { GITHUB_URL, docsUrl } from '../links';
 
 export function Header() {
   const currentLocale = getLocale();
@@ -47,6 +47,12 @@ export function Header() {
             </a>
             <a href="#faq" className="text-sm text-[#969696] hover:text-white transition-colors">
               {m.nav_faq()}
+            </a>
+            <a
+              href={docsUrl(currentLocale)}
+              className="text-sm text-[#969696] hover:text-white transition-colors"
+            >
+              {m.nav_docs()}
             </a>
           </nav>
 
