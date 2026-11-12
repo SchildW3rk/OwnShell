@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { dbConnectionManager } from '../../db-explorer/connection-manager';
 import { readOnlyFailure, shouldBlockReadOnlySql } from '../../db-explorer/read-only-guard';
+import { resolveSslMode } from '../../db-explorer/connection/tls-options';
 import { redactQueryHistoryText } from '../../db-explorer/query-redaction';
 import { cryptoManager } from '../../security/crypto';
 import { dbErrorCodes, logger } from '../../logger';
@@ -57,6 +58,10 @@ export function setupDBExplorerCoreHandlers(ctx: DBExplorerHandlerContext) {
           sshHostId: stored.ssh_host_id || undefined,
           sshTunnelEnabled: stored.ssh_tunnel_enabled === 1,
           ssl: stored.ssl_enabled === 1,
+          sslMode: resolveSslMode(stored),
+          sslCa: stored.ssl_ca_encrypted
+            ? cryptoManager.decryptData(stored.ssl_ca_encrypted)
+            : undefined,
           readOnly: stored.read_only === 1,
           executionMode: (stored.execution_mode || 'direct') as 'direct' | 'docker',
           dockerContainer: stored.docker_container || undefined,

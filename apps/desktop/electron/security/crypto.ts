@@ -265,6 +265,20 @@ class CryptoManager {
  * key is gone). Columns that must stay decryptable get `emptySecret`, the empty
  * string encrypted with the new key.
  */
+/** Drops every `<field>Encrypted` key from an API auth config (unparsable configs stay as they are). */
+export function clearAuthSecrets(json: string): string {
+  try {
+    const config = JSON.parse(json) as Record<string, unknown>;
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return json;
+    const keys = Object.keys(config).filter((key) => key.endsWith('Encrypted'));
+    if (!keys.length) return json;
+    for (const key of keys) delete config[key];
+    return JSON.stringify(config);
+  } catch {
+    return json;
+  }
+}
+
 export async function clearEncryptedData(
   db: Kysely<Database>,
   emptySecret: string
@@ -319,6 +333,17 @@ export async function clearEncryptedData(
       .set({ variables: JSON.stringify(cleared), updated_at: now })
       .where('id', '=', env.id)
       .execute();
+  }
+
+  // API auth secrets (OAuth client secret, bearer token, basic password, API key) cannot be
+  // decrypted any more: drop them, the rest of the auth config stays.
+  for (const table of ['api_requests', 'api_collections'] as const) {
+    const rows = await db.selectFrom(table).select(['id', 'auth_config']).execute();
+    for (const row of rows) {
+      const cleared = clearAuthSecrets(row.auth_config);
+      if (cleared === row.auth_config) continue;
+      await db.updateTable(table).set({ auth_config: cleared, updated_at: now }).where('id', '=', row.id).execute();
+    }
   }
 
   // API client caches: tokens can be requested again, cookies are set again by the servers.

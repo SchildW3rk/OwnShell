@@ -1,4 +1,5 @@
 import type { DBType } from '@ownshell/core';
+import type { DbSslMode } from './tls-options';
 import type { IMongoDBAdapter, IRedisAdapter, ISQLAdapter } from '../adapters';
 
 export type AnyAdapter = ISQLAdapter | IRedisAdapter | IMongoDBAdapter;
@@ -13,6 +14,8 @@ export interface ActiveConnection {
   localPort?: number;
   autoCreatedSshSession?: boolean;
   readOnly?: boolean;
+  /** Private temp dir holding a downloaded remote SQLite copy; removed on disconnect */
+  tempDir?: string;
   status: 'connecting' | 'connected' | 'error' | 'disconnected';
   error?: string;
   connectedAt?: Date;
@@ -31,7 +34,9 @@ export interface TestConnectionConfig {
   replicaSet?: string;
   directConnection?: boolean;
   readPreference?: string;
-  sslEnabled?: boolean;
+  sslMode?: DbSslMode;
+  /** Decrypted or freshly pasted CA PEM */
+  sslCa?: string;
   connectionMode?: 'local' | 'ssh';
   sshHostId?: string;
   sshTunnelEnabled?: boolean;

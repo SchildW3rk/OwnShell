@@ -1,7 +1,6 @@
-import type { DBConnectionConfig } from '@ownshell/core';
 import { logger } from '../../logger';
 import { sshSessionManager } from '../../ssh/session-manager';
-import { createTestAdapter } from './adapter-factory';
+import { createNetworkAdapter, type NetworkAdapterConfig } from './adapter-factory';
 import { formatConnectionError } from './errors';
 import { setupDatabaseTunnel, stopDatabaseTunnel } from './tunnel';
 import type { AnyAdapter, TestConnectionConfig } from './types';
@@ -26,33 +25,26 @@ export async function testDatabaseConnection(
       executionMode: config.executionMode || 'direct',
     });
 
-    const adapterConfig = { ...config };
+    const connectionId = `test-${Date.now()}`;
+    const adapterConfig: NetworkAdapterConfig = {
+      ...config,
+      id: connectionId,
+      name: config.name || 'Test connection',
+      connectionMode: shouldUseSshTunnel(config) ? 'ssh' : 'local',
+      sshTunnelEnabled: shouldUseSshTunnel(config),
+      executionMode: config.executionMode || 'direct',
+      readPreference: config.readPreference as NetworkAdapterConfig['readPreference'],
+    };
+    let host = config.host;
+    let port = config.port;
 
     if (shouldUseSshTunnel(config)) {
-      const connectionId = `test-${Date.now()}`;
-      const tunnelConfig: DBConnectionConfig = {
-        id: connectionId,
-        name: config.name || 'Test connection',
-        type: config.type,
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        username: config.username,
-        password: config.password,
-        connectionMode: 'ssh',
-        sshHostId: config.sshHostId,
-        sshTunnelEnabled: true,
-        ssl: config.sslEnabled,
-        executionMode: config.executionMode || 'direct',
-        dockerContainer: config.dockerContainer,
-      };
-
-      tunnelResult = await setupDatabaseTunnel(tunnelConfig, undefined, connectionId);
-      adapterConfig.host = '127.0.0.1';
-      adapterConfig.port = tunnelResult.localPort;
+      tunnelResult = await setupDatabaseTunnel(adapterConfig, undefined, connectionId);
+      host = '127.0.0.1';
+      port = tunnelResult.localPort;
     }
 
-    adapter = createTestAdapter(adapterConfig);
+    adapter = createNetworkAdapter(adapterConfig, host, port);
     await adapter.connect();
 
     logger.info('Database connection test successful');

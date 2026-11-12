@@ -1,23 +1,12 @@
 import type { Pool, PoolClient } from 'pg';
 import { logger } from '../../logger';
 import type { CreateDatabaseUserOptions, DatabaseUserAccessLevel } from './base-adapter';
+import { buildCreateTableSql, type CreateTableColumn } from './create-table-sql';
 
 interface PostgresDdlContext {
   getPool: () => Pool;
   escapeIdentifier: (identifier: string) => string;
   buildQualifiedTableName: (tableName: string, schema?: string) => string;
-}
-
-interface CreateTableColumn {
-  name: string;
-  type: string;
-  length?: number;
-  precision?: number;
-  scale?: number;
-  nullable?: boolean;
-  primaryKey?: boolean;
-  defaultValue?: string | null;
-  unique?: boolean;
 }
 
 export class PostgresDdl {
@@ -238,22 +227,8 @@ export class PostgresDdl {
   }
 
   async createTable(name: string, columns: CreateTableColumn[], schema = 'public'): Promise<void> {
-    this.assertNamedIdentifier(name, 'Table');
-    if (!columns || columns.length === 0) {
-      throw new Error('At least one column is required');
-    }
-
+    const sql = buildCreateTableSql('postgres', name, columns, schema);
     try {
-      const qualifiedTableName = this.ctx.buildQualifiedTableName(name, schema);
-      const columnDefs = columns.map((col) => this.buildColumnDefinition(col));
-      const pkColumns = columns
-        .filter((col) => col.primaryKey)
-        .map((col) => this.ctx.escapeIdentifier(col.name));
-      if (pkColumns.length > 0) {
-        columnDefs.push(`PRIMARY KEY (${pkColumns.join(', ')})`);
-      }
-
-      const sql = `CREATE TABLE ${qualifiedTableName} (${columnDefs.join(', ')})`;
       logger.info('Creating table', { name, schema, sql });
       await this.ctx.getPool().query(sql);
       logger.info('Table created successfully', { name, schema });
@@ -280,34 +255,6 @@ export class PostgresDdl {
         `Failed to drop table: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }
-
-  private buildColumnDefinition(col: CreateTableColumn): string {
-    let def = `${this.ctx.escapeIdentifier(col.name)} ${this.normalizeColumnType(col.type)}`;
-
-    if (col.length && ['VARCHAR', 'CHAR'].includes(col.type.toUpperCase())) {
-      def += `(${this.normalizePositiveInteger(col.length, 'length')})`;
-    } else if (col.precision && col.type.toUpperCase() === 'DECIMAL') {
-      def +=
-        col.scale !== undefined
-          ? `(${this.normalizePositiveInteger(col.precision, 'precision')}, ${this.normalizeNonNegativeInteger(col.scale, 'scale')})`
-          : `(${this.normalizePositiveInteger(col.precision, 'precision')})`;
-    }
-
-    if (!col.nullable) def += ' NOT NULL';
-    if (col.unique) def += ' UNIQUE';
-
-    if (col.defaultValue !== null && col.defaultValue !== undefined) {
-      if (col.defaultValue === 'NOW()' || col.defaultValue === 'CURRENT_TIMESTAMP') {
-        def += ` DEFAULT ${col.defaultValue}`;
-      } else if (typeof col.defaultValue === 'number' || typeof col.defaultValue === 'boolean') {
-        def += ` DEFAULT ${col.defaultValue}`;
-      } else {
-        def += ` DEFAULT ${this.escapeLiteral(col.defaultValue)}`;
-      }
-    }
-
-    return def;
   }
 
   private assertNamedIdentifier(name: string, label: string): void {
@@ -368,27 +315,5 @@ export class PostgresDdl {
 
   private escapeLiteral(value: string): string {
     return `'${value.replace(/'/g, "''")}'`;
-  }
-
-  private normalizeColumnType(type: string): string {
-    const normalized = type.trim().toUpperCase();
-    if (!/^[A-Z][A-Z0-9_ ]*$/.test(normalized)) {
-      throw new Error(`Invalid column type: ${type}`);
-    }
-    return normalized;
-  }
-
-  private normalizePositiveInteger(value: number, name: string): number {
-    if (!Number.isInteger(value) || value < 1) {
-      throw new Error(`Invalid ${name}`);
-    }
-    return value;
-  }
-
-  private normalizeNonNegativeInteger(value: number, name: string): number {
-    if (!Number.isInteger(value) || value < 0) {
-      throw new Error(`Invalid ${name}`);
-    }
-    return value;
   }
 }

@@ -15,6 +15,10 @@ export const mongoReadPreferenceSchema = z.enum([
   'secondaryPreferred',
   'nearest',
 ]);
+export const dbSslModeSchema = z.enum(['disabled', 'require', 'require-no-verify']);
+// PEM text; parsed and fingerprinted in the handler.
+export const dbSslCaSchema = z.string().min(1).max(64 * 1024);
+
 export const dbConnectionBaseSchema = z.object({
   name: z.string().min(1),
   type: dbConnectionTypeSchema,
@@ -31,6 +35,8 @@ export const dbConnectionBaseSchema = z.object({
   sshHostId: z.string().min(1).optional(),
   sshTunnelEnabled: z.boolean().optional(),
   sslEnabled: z.boolean().optional(),
+  sslMode: dbSslModeSchema.optional(),
+  sslCa: dbSslCaSchema.optional(),
   readOnly: z.boolean().optional(),
   authDatabase: z.string().min(1).max(256).optional(),
   replicaSet: z.string().min(1).max(256).optional(),
@@ -66,6 +72,9 @@ export const dbConnectionUpdateSchema = dbConnectionBaseSchema.partial().extend(
   filePath: z.string().min(1).nullable().optional(),
   remoteHostId: z.string().min(1).nullable().optional(),
   dockerContainer: z.string().min(1).nullable().optional(),
+  // null removes the stored CA certificate.
+  sslCa: dbSslCaSchema.nullable().optional(),
+  sslLegacyHint: z.literal(false).optional(),
 });
 
 export const dbConnectionUpdateArgsSchema = z.tuple([idSchema, dbConnectionUpdateSchema]);
@@ -85,7 +94,10 @@ export const dbConnectionTestSchema = z.object({
   connectionMode: z.enum(['local', 'ssh']).optional(),
   sshHostId: z.string().min(1).optional(),
   sshTunnelEnabled: z.boolean().optional(),
-  sslEnabled: z.boolean().optional(),
+  sslMode: dbSslModeSchema.optional(),
+  sslCa: dbSslCaSchema.optional(),
+  /** Saved connection whose stored CA is used when no new one is given */
+  configId: z.string().min(1).optional(),
   authDatabase: z.string().min(1).max(256).optional(),
   replicaSet: z.string().min(1).max(256).optional(),
   directConnection: z.boolean().optional(),

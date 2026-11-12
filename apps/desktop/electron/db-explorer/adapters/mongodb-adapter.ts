@@ -5,7 +5,7 @@
  * Uses the official MongoDB Node.js driver.
  */
 
-import { MongoClient, Db, Collection, ObjectId, Document, Filter } from 'mongodb';
+import { BSON, MongoClient, Db, Collection, ObjectId, Document, Filter } from 'mongodb';
 import {
   CreateDatabaseUserOptions,
   DatabaseUserAccessLevel,
@@ -74,9 +74,6 @@ export class MongoDBAdapter implements IMongoDBAdapter {
     if (this.config.readPreference) {
       params.push(`readPreference=${encodeURIComponent(this.config.readPreference)}`);
     }
-    if (this.config.tls) {
-      params.push('tls=true');
-    }
 
     if (params.length > 0) {
       uri += `?${params.join('&')}`;
@@ -142,9 +139,19 @@ export class MongoDBAdapter implements IMongoDBAdapter {
 
     try {
       const uri = this.buildConnectionUri();
+      const tls = this.config.tls;
       this.client = new MongoClient(uri, {
         serverSelectionTimeoutMS: 10000,
         connectTimeoutMS: 10000,
+        ...(tls
+          ? {
+              tls: true,
+              tlsAllowInvalidCertificates: tls.rejectUnauthorized === false,
+              ca: tls.ca,
+              servername: tls.servername,
+              checkServerIdentity: tls.checkServerIdentity,
+            }
+          : {}),
       });
 
       await this.client.connect();
@@ -407,8 +414,10 @@ export class MongoDBAdapter implements IMongoDBAdapter {
   // ============================================
 
   async aggregate(collection: string, pipeline: MongoAggregationStage[]): Promise<unknown[]> {
-    const cursor = this.getCollection(collection).aggregate(pipeline as Document[]);
-    return cursor.toArray();
+    // Extended JSON in the editor ({"$oid": ...}, {"$date": ...}) becomes real BSON values.
+    const stages = BSON.EJSON.deserialize(pipeline, { relaxed: true }) as Document[];
+    const docs = await this.getCollection(collection).aggregate(stages).toArray();
+    return docs.map((doc) => this.normalizeDocument(doc));
   }
 
   async distinct(

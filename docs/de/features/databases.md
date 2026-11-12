@@ -8,7 +8,17 @@ Der Tab **Datenbank** verbindet sich mit **PostgreSQL**, **MySQL**, **SQLite**, 
 
 - Fülle Host, Port, Benutzer, Passwort und Datenbank aus oder füge eine Verbindungs-URI ein (`postgres://`, `postgresql://`, `mysql://`, `redis://`, `rediss://`, `mongodb://`, `mongodb+srv://`).
 - Passwörter werden mit deinem Master-Passwort verschlüsselt.
-- **SSL** ist ein einzelner Schalter. Bei PostgreSQL und MySQL verschlüsselt er die Verbindung, **prüft aber das Server-Zertifikat nicht**.
+- **SSL** hat pro Verbindung drei Modi:
+  - **Aus**.
+  - **Erforderlich (Zertifikat prüfen)**: verschlüsselt und prüft Server-Zertifikat und Hostnamen. Das ist der Standard, wenn du SSL einschaltest.
+  - **Erforderlich, nicht prüfen**: verschlüsselt, akzeptiert aber jedes Zertifikat. Wird mit einer Warnung markiert, weil sich jemand zwischen dir und dem Server als dieser ausgeben könnte.
+- Optional hinterlegst du ein **CA-Zertifikat** (PEM einfügen oder Datei wählen) für Server mit privater CA. Es wird verschlüsselt gespeichert; die App zeigt nur, dass eine CA gesetzt ist, und ihren Fingerprint.
+- Über einen SSH-Host wird das Zertifikat gegen den Hostnamen der Datenbank geprüft, nicht gegen die lokale Tunnel-Adresse.
+- PostgreSQL- und MySQL-Verbindungen, die vor diesen Modi mit SSL gespeichert wurden, haben das Zertifikat nie geprüft. Sie funktionieren weiter als **Erforderlich, nicht prüfen** und zeigen einmalig einen Hinweis, damit du sie umstellen kannst.
+
+### SQLite-Dateien
+
+Wähle eine lokale Datei oder eine Datei auf einem gespeicherten SSH-Host (per SFTP durchsuchen oder Pfad eintippen). Eine entfernte Datei wird in einen privaten temporären Ordner heruntergeladen und **schreibgeschützt** geöffnet; die Kopie wird beim Trennen gelöscht. Änderungen werden nie auf den Server zurückgeschrieben.
 
 ### Über einen SSH-Host
 
@@ -32,7 +42,8 @@ Schalte **Read-only** pro Verbindung ein, um Produktivdaten zu schützen:
 
 ## Schema-Werkzeuge
 
-- PostgreSQL: Datenbanken, Schemas und Tabellen erstellen und löschen. Der Dialog zum Erstellen von Tabellen umfasst Name, Typ, Länge, Nullable, Primärschlüssel, Standardwert und Unique.
+- PostgreSQL: Datenbanken, Schemas und Tabellen erstellen und löschen.
+- PostgreSQL, MySQL und SQLite: Der Dialog zum Erstellen von Tabellen umfasst Name, Typ (je Engine), Länge, Nullable, Primärschlüssel, Standardwert und Unique. Standardwerte wie `NULL`, `CURRENT_TIMESTAMP`, `NOW()` und Zahlen werden direkt übernommen, alles andere als Text gespeichert.
 - Lege Datenbankbenutzer mit Zugriffsstufen (Login, Lesen, Lesen/Schreiben, Admin) für PostgreSQL, MySQL, MongoDB und Redis an.
 - Bestehende Tabellen lassen sich in OwnShell nicht ändern.
 
@@ -46,9 +57,12 @@ Datenbank-Dumps nutzen die offiziellen Werkzeuge:
 | MySQL | `mysqldump`, `mysql` |
 | MongoDB | `mongodump`, `mongorestore` |
 | Redis | `redis-cli --rdb` |
+| SQLite | eingebaut, kein Werkzeug nötig |
 
 - Export nach `.sql` oder `.sql.gz` (nur Schema, nur Daten, ausgewählte Tabellen und `pg_dump`-Optionen).
 - Import von `.sql` / `.sql.gz`, optional nach dem Leeren oder Löschen bestehender Tabellen.
+- SQLite exportiert einen SQL-Dump (wie `sqlite3 .dump`). Ein Import läuft in einer Transaktion, ein fehlgeschlagener Import lässt die Datenbank also unverändert.
+- Die Dump-Werkzeuge nutzen ihre eigenen SSL-Standards, nicht den SSL-Modus der Verbindung.
 - Bei Verbindungen über einen SSH-Host laufen die Werkzeuge **auf dem Server** und der Dump wird zu deinem Mac gestreamt, daher müssen sie dort installiert sein. Bei direkten Verbindungen müssen sie auf deinem Mac installiert sein. OwnShell sagt dir, welches Werkzeug fehlt.
 
 ## Redis
@@ -58,6 +72,8 @@ Durchsuche Keys mit einem Muster (`SCAN`) und filtere nach Typ (String, Hash, Li
 ## MongoDB
 
 Durchsuche Collections (erstellen und löschen), filtere Dokumente mit einer JSON-Abfrage, blättere durch die Ergebnisse und füge Dokumente in einem JSON-Editor ein, bearbeite oder lösche sie.
+
+Führe **Aggregation-Pipelines** auf einer Collection aus: ein JSON-Array aus Stages. Extended JSON wie `{"$oid": "…"}` oder `{"$date": "…"}` wird unterstützt. Bis zu 500 Ergebnisse werden angezeigt. Bei Read-only-Verbindungen sind Pipelines mit `$out` oder `$merge` blockiert.
 
 ## Externe CLI
 

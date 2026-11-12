@@ -20,7 +20,11 @@ export interface DBConnectionsTable {
   connection_mode: 'local' | 'ssh'; // Connection mode: direct or via SSH tunnel
   ssh_host_id: string | null; // Foreign key to hosts table (for SSH tunnel)
   ssh_tunnel_enabled: number; // 0 or 1 (SQLite boolean) - legacy, kept for compatibility
-  ssl_enabled: number; // 0 or 1 (SQLite boolean)
+  ssl_enabled: number; // 0 or 1 (SQLite boolean), kept in sync with ssl_mode
+  ssl_mode: 'disabled' | 'require' | 'require-no-verify' | null; // null = derive from ssl_enabled
+  ssl_ca_encrypted: string | null; // encrypted CA PEM; never sent to the renderer
+  ssl_ca_fingerprint: string | null; // SHA-256 of the CA certificate, safe to show
+  ssl_legacy_hint: number | null; // 1 = migrated SSL connection that does not verify yet (one-time hint); column is NOT NULL DEFAULT 0
   read_only: number; // 0 or 1 (SQLite boolean) - block write operations in the DB explorer
   color: string | null; // UI color badge (hex)
   // SQLite-specific fields (v1.15.0)
@@ -61,6 +65,10 @@ export interface NewDBConnection {
   ssh_host_id: string | null;
   ssh_tunnel_enabled: number;
   ssl_enabled: number;
+  ssl_mode?: 'disabled' | 'require' | 'require-no-verify' | null;
+  ssl_ca_encrypted?: string | null;
+  ssl_ca_fingerprint?: string | null;
+  ssl_legacy_hint?: number;
   read_only?: number;
   color: string | null;
   // SQLite fields
@@ -100,6 +108,10 @@ export interface DBConnectionUpdate {
   ssh_host_id?: string | null;
   ssh_tunnel_enabled?: number;
   ssl_enabled?: number;
+  ssl_mode?: 'disabled' | 'require' | 'require-no-verify' | null;
+  ssl_ca_encrypted?: string | null;
+  ssl_ca_fingerprint?: string | null;
+  ssl_legacy_hint?: number;
   read_only?: number;
   color?: string | null;
   // SQLite fields

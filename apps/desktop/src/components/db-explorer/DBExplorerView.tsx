@@ -479,7 +479,10 @@ export const DBExplorerView: React.FC<DBExplorerViewProps> = ({
   const isRedisConnection = selectedConnection?.type === 'redis';
   // Check if connection is MongoDB (document store, not SQL-based)
   const isMongoDBConnection = selectedConnection?.type === 'mongodb';
-  const isReadOnlyConnection = selectedConnection?.read_only === 1;
+  // Remote SQLite files open as a read-only local copy (no write-back to the server).
+  const isReadOnlyConnection =
+    selectedConnection?.read_only === 1 ||
+    (selectedConnection?.type === 'sqlite' && selectedConnection.is_remote === 1);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -574,6 +577,7 @@ export const DBExplorerView: React.FC<DBExplorerViewProps> = ({
         )}
         canCreateTable={!!(
           isConnected &&
+          ['postgres', 'mysql', 'sqlite'].includes(selectedConnection?.type ?? '') &&
           !isReadOnlyConnection &&
           !isConnecting &&
           !isDisconnecting

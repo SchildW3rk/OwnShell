@@ -1,3 +1,4 @@
+import type { ConnectionOptions } from 'node:tls';
 import type { CreateDatabaseUserOptions } from './database-user-types';
 
 /**
@@ -14,8 +15,8 @@ export interface MongoDBAdapterConnectionConfig {
   database: string;
   /** Auth source database (default: admin) */
   authDatabase?: string;
-  /** Enable TLS/SSL */
-  tls?: boolean;
+  /** Node TLS options from buildTlsOptions(); undefined = no TLS */
+  tls?: ConnectionOptions;
   /** Replica set name */
   replicaSet?: string;
   /** Force direct connection */

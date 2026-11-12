@@ -1,4 +1,7 @@
 import type { DBConnectionsTable } from '@ownshell/core';
+import type { DbSslMode } from '../../../../electron/db-explorer/connection/ssl-mode';
+
+export type { DbSslMode };
 
 export interface DBConnectionModalProps {
   onClose: () => void;
@@ -28,7 +31,11 @@ export interface DBConnectionFormData {
   connectionMode: 'local' | 'ssh';
   sshHostId: string;
   sshTunnelEnabled: boolean;
-  sslEnabled: boolean;
+  sslMode: DbSslMode;
+  /** Newly pasted or picked CA PEM; empty = keep the stored one */
+  sslCa: string;
+  /** Remove the stored CA on save */
+  sslCaRemoved: boolean;
   readOnly: boolean;
   authDatabase: string;
   replicaSet: string;

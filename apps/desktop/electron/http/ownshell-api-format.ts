@@ -137,14 +137,20 @@ function exportAuth(type: RequestAuthType, configJson: string): FolderDoc['auth'
   const raw = (parseJson(configJson) ?? {}) as Record<string, unknown>;
   const text = (key: string) => (typeof raw[key] === 'string' ? (raw[key] as string) : undefined);
   const config: FolderDoc['auth']['config'] = {};
-  if (type === 'bearer' && text('token')) config.token = placeholderFor(text('token')!, 'bearerToken');
+  // A secret stored encrypted (`<field>Encrypted`) is exported as its placeholder too.
+  const secret = (key: string, name: string) =>
+    text(key) || text(`${key}Encrypted`) ? placeholderFor(text(key) ?? '', name) : undefined;
+  const token = secret('token', 'bearerToken');
+  const password = secret('password', 'basicPassword');
+  const value = secret('value', 'apiKey');
+  if (type === 'bearer' && token) config.token = token;
   if (type === 'basic') {
     if (text('username') !== undefined) config.username = text('username');
-    if (text('password')) config.password = placeholderFor(text('password')!, 'basicPassword');
+    if (password) config.password = password;
   }
   if (type === 'api-key') {
     if (text('key') !== undefined) config.key = text('key');
-    if (text('value')) config.value = placeholderFor(text('value')!, 'apiKey');
+    if (value) config.value = value;
     config.addTo = raw.addTo === 'query' ? 'query' : 'header';
   }
   if (type === 'oauth2') {

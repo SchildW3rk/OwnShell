@@ -17,6 +17,7 @@ import type { IMongoDBAdapter, IRedisAdapter, ISQLAdapter } from './adapters';
 import { logger } from '../logger';
 import { createNetworkAdapter, createSQLiteAdapter } from './connection/adapter-factory';
 import { formatConnectionError } from './connection/errors';
+import { downloadRemoteSqlite, removeRemoteSqliteCopy } from './connection/remote-sqlite';
 import { testDatabaseConnection } from './connection/test-connection';
 import {
   disconnectAutoCreatedSshSessionIfUnused,
@@ -135,6 +136,10 @@ export class DBConnectionManager {
 
       if (connection.tunnelId) {
         await stopDatabaseTunnel(connection.tunnelId);
+      }
+
+      if (connection.tempDir) {
+        await removeRemoteSqliteCopy(connection.tempDir);
       }
 
       disconnectAutoCreatedSshSessionIfUnused(connectionId, connection, this.connections);
@@ -314,7 +319,16 @@ export class DBConnectionManager {
     connection: ActiveConnection
   ): Promise<AnyAdapter> {
     if (config.type === 'sqlite') {
-      return createSQLiteAdapter(config, connectionId);
+      if (!(config as { isRemote?: boolean }).isRemote) {
+        return createSQLiteAdapter(config, connectionId);
+      }
+      const copy = await downloadRemoteSqlite(config, sshSessionId, connectionId);
+      connection.tempDir = copy.tempDir;
+      connection.readOnly = true;
+      return createSQLiteAdapter(
+        { ...config, readOnly: true, localCachePath: copy.localPath } as DBConnectionConfig,
+        connectionId
+      );
     }
 
     let effectiveHost: string | null = config.host;
@@ -368,6 +382,11 @@ export class DBConnectionManager {
       } catch {
         // Ignore cleanup errors.
       }
+    }
+
+    if (connection.tempDir) {
+      await connection.adapter?.disconnect().catch(() => undefined);
+      await removeRemoteSqliteCopy(connection.tempDir);
     }
 
     disconnectAutoCreatedSshSessionIfUnused(connectionId, connection, this.connections);

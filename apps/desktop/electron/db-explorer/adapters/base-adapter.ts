@@ -17,6 +17,7 @@ import {
 import { assertKnownColumns, assertKnownTable } from '../identifier-whitelist';
 import { buildQualifiedSqlIdentifier, quoteDoubleIdentifier } from '../sql-identifiers';
 import type { CreateDatabaseUserOptions } from './database-user-types';
+import type { ConnectionOptions } from 'node:tls';
 export type { CreateDatabaseUserOptions, DatabaseUserAccessLevel } from './database-user-types';
 
 /**
@@ -29,7 +30,10 @@ export interface AdapterConnectionConfig {
   database?: string;
   username?: string;
   password?: string;
-  ssl?: boolean;
+  /** Node TLS options from buildTlsOptions(); undefined = no SSL */
+  ssl?: ConnectionOptions;
+  /** MySQL through a tunnel: the original host for SNI and the certificate name check */
+  tlsHost?: string;
   /** SQLite-specific: path to database file */
   filePath?: string;
   /** MongoDB-specific: connection URI */

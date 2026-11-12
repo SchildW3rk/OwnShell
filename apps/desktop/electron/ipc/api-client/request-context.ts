@@ -9,7 +9,7 @@ import path from 'node:path';
 import { recordHistory } from '../../http/api-history';
 import { GLOBAL_VARIABLES_SETTING, resolveVariableMap } from '../../http/api-variables';
 import { toCurlCommand } from '../../http/curl-export';
-import { revealClientSecret } from '../../http/oauth';
+import { AUTH_SECRET_FIELDS, revealAuthSecrets } from '../../http/oauth';
 import {
   ApiRequestError,
   prepareRequest,
@@ -107,20 +107,25 @@ export interface AuthOwner {
 export const ownerKey = (owner: AuthOwner) => `${owner.type}:${owner.id}`;
 
 /**
- * Puts the decrypted OAuth client secret into the auth config that a send will use
- * (the request's own, or the folder it inherits from). Main process only.
+ * Puts the decrypted auth secret (OAuth client secret, bearer token, basic password, API key)
+ * into the auth config that a send will use (the request's own, or the folder it inherits from).
+ * Main process only.
  */
-export async function revealOAuthSecret(
+export async function revealAuthSecret(
   db: Kysely<Database>,
   config: Pick<HttpRequestConfig, 'authType' | 'authConfig'>,
   chain: ChainEntry[],
-  owner: AuthOwner | null
+  owner: AuthOwner | null,
+  /** Placeholder export: no decryption, any literal becomes `{{name}}` there. */
+  placeholdersOnly = false
 ): Promise<{ authConfig: string; chain: ChainEntry[] }> {
   const auth = resolveAuth(config.authType, config.authConfig, chain);
-  if (auth.type !== 'oauth2') return { authConfig: config.authConfig, chain };
+  const field = AUTH_SECRET_FIELDS[auth.type as keyof typeof AUTH_SECRET_FIELDS];
+  if (!field) return { authConfig: config.authConfig, chain };
   const decrypt = (value: string) => {
+    if (placeholdersOnly) return 'stored-secret';
     if (!cryptoManager.isUnlocked()) {
-      throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to use the OAuth client secret', 'clientSecret');
+      throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to use the stored auth secret', field);
     }
     return cryptoManager.decryptData(value);
   };
@@ -129,7 +134,7 @@ export async function revealOAuthSecret(
       authConfig: config.authConfig,
       chain: chain.map((entry) =>
         entry.id === auth.sourceId
-          ? { ...entry, auth_config: revealClientSecret(entry.auth_config, entry.auth_config, decrypt) }
+          ? { ...entry, auth_config: revealAuthSecrets(entry.auth_config, entry.auth_config, decrypt, [field]) }
           : entry
       ),
     };
@@ -139,7 +144,7 @@ export async function revealOAuthSecret(
     : owner.type === 'request'
       ? await db.selectFrom('api_requests').select('auth_config').where('id', '=', owner.id).executeTakeFirst()
       : await db.selectFrom('api_collections').select('auth_config').where('id', '=', owner.id).executeTakeFirst();
-  return { authConfig: revealClientSecret(config.authConfig, stored?.auth_config, decrypt), chain };
+  return { authConfig: revealAuthSecrets(config.authConfig, stored?.auth_config, decrypt, [field]), chain };
 }
 
 /** Every variable scope in lookup order (see VariableScopeName for the precedence). */
@@ -173,8 +178,8 @@ export async function loadVariableScopes(
 export async function saveHistory(db: Kysely<Database>, config: HttpRequestConfig, response: HttpResponse) {
   let templateUrl = config.url;
   try {
-    const chain = await loadCollectionChain(db, config.collectionId);
-    templateUrl = (await prepareRequestWithPlaceholders(config, { authChain: chain })).url;
+    const revealed = await revealForExport(db, config, true);
+    templateUrl = (await prepareRequestWithPlaceholders(revealed.config, { authChain: revealed.chain })).url;
   } catch {
     // Keep the URL as typed; redactUrl still drops user info and hides credential-like query values.
   }
@@ -188,8 +193,16 @@ export async function saveHistory(db: Kysely<Database>, config: HttpRequestConfi
   });
 }
 
+async function revealForExport(db: Kysely<Database>, config: HttpRequestConfig, placeholdersOnly: boolean) {
+  const owner = config.requestId ? ({ type: 'request', id: config.requestId } as const) : null;
+  const chain = await loadCollectionChain(db, config.collectionId);
+  const revealed = await revealAuthSecret(db, config, chain, owner, placeholdersOnly);
+  return { config: { ...config, authConfig: revealed.authConfig }, chain: revealed.chain };
+}
+
 /**
- * Same preparation as a send; `resolveVariables` puts decrypted values into the command.
+ * Same preparation as a send; `resolveVariables` puts decrypted values (and the stored auth
+ * secret) into the command, otherwise the auth secret is `{{bearerToken}}` etc.
  * OAuth always stays `{{oauthAccessToken}}`: no cached token ever leaves through an export.
  */
 export async function exportCurl(
@@ -197,17 +210,17 @@ export async function exportCurl(
   config: HttpRequestConfig,
   resolveVariables: boolean
 ): Promise<string> {
-  const chain = await loadCollectionChain(db, config.collectionId);
+  const { config: revealed, chain } = await revealForExport(db, config, !resolveVariables);
   const options = {
     timeoutSeconds: config.timeoutSeconds,
     followRedirects: config.followRedirects,
     verifyTls: config.verifyTls,
   };
   if (!resolveVariables) {
-    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain: chain }), options);
+    return toCurlCommand(await prepareRequestWithPlaceholders(revealed, { authChain: chain }), options);
   }
   const { scopes, locked } = await loadVariableScopes(db, config, chain);
-  const prepared = await prepareRequest(config, {
+  const prepared = await prepareRequest(revealed, {
     scopes,
     variablesLocked: locked,
     authChain: chain,

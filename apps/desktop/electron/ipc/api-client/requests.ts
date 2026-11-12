@@ -12,7 +12,7 @@ import type { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import { assertSecureOAuthUrls, publicAuthConfig, storedAuthConfig } from '../../http/oauth';
 import { logger } from '../../logger';
-import { encryptSecret } from './oauth';
+import { encryptLegacyAuthSecrets, encryptSecret } from './oauth';
 import { safeHandle, safeHandleArgs } from '../safe-ipc';
 import {
   collectionIdSchema,
@@ -23,7 +23,7 @@ import {
   requestUpdateArgsSchema,
 } from './schemas';
 
-/** The renderer never gets the encrypted OAuth client secret, only whether one is set. */
+/** The renderer never gets a stored auth secret, only whether one is set. */
 function publicRequest<T extends { auth_type: RequestAuthType; auth_config: string } | undefined>(row: T): T {
   return row && { ...row, auth_config: publicAuthConfig(row.auth_type, row.auth_config) };
 }
@@ -31,6 +31,9 @@ function publicRequest<T extends { auth_type: RequestAuthType; auth_config: stri
 export function registerApiRequestHandlers(db: Kysely<Database>): void {
   safeHandle('api:requests:get-all', noPayloadSchema, async () => {
     try {
+      await encryptLegacyAuthSecrets(db).catch((error) =>
+        logger.warn('Failed to encrypt legacy API auth secrets', error)
+      );
       const rows = await db
         .selectFrom('api_requests')
         .selectAll()

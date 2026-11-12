@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { CreateMongoCollectionDialog } from './CreateMongoCollectionDialog';
+import { AggregationPanel } from './mongodb-browser/AggregationPanel';
 import { CollectionsPanel } from './mongodb-browser/CollectionsPanel';
 import { DocumentEditorPanel } from './mongodb-browser/DocumentEditorPanel';
 import { DocumentsPanel } from './mongodb-browser/DocumentsPanel';
@@ -61,6 +62,8 @@ export const MongoDBBrowser: React.FC<MongoDBBrowserProps> = ({
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
   const [showCreateCollectionDialog, setShowCreateCollectionDialog] = useState(false);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [showAggregation, setShowAggregation] = useState(false);
+  const [pipelineText, setPipelineText] = useState('[\n  {"$match": {}}\n]');
 
   const loadCollections = useCallback(async () => {
     setIsLoading(true);
@@ -321,64 +324,79 @@ export const MongoDBBrowser: React.FC<MongoDBBrowserProps> = ({
         onDropCollection={handleDropCollection}
       />
 
-      <DocumentsPanel
-        selectedCollection={selectedCollection}
-        documents={documents}
-        selectedDocument={selectedDocument}
-        documentCount={documentCount}
-        filterJson={filterJson}
-        showFilter={showFilter}
-        isLoadingDocs={isLoadingDocs}
-        skip={skip}
-        limit={PAGE_SIZE}
-        onToggleFilter={() => setShowFilter((current) => !current)}
-        onFilterChange={(value) => {
-          documentsRequest.current++;
-          setFilterJson(value);
-        }}
-        onLoadDocuments={loadDocuments}
-        onNewDocument={() => {
-          if (readOnly) return;
-          setSelectedDocument(null);
-          setSelectedDocumentId(null);
-          setIsCreatingDocument(true);
-        }}
-        onSelectDocument={(document) => {
-          setIsCreatingDocument(false);
-          setSelectedDocument(document);
-          setSelectedDocumentId(document._id);
-        }}
-        onPreviousPage={() => {
-          documentsRequest.current++;
-          setSkip(Math.max(0, skip - PAGE_SIZE));
-        }}
-        onNextPage={() => {
-          documentsRequest.current++;
-          setSkip(skip + PAGE_SIZE);
-        }}
-      />
+      {showAggregation && selectedCollection ? (
+        <AggregationPanel
+          key={selectedCollection}
+          connectionId={connectionId}
+          collection={selectedCollection}
+          readOnly={readOnly}
+          pipelineText={pipelineText}
+          onPipelineTextChange={setPipelineText}
+          onClose={() => setShowAggregation(false)}
+        />
+      ) : (
+        <>
+          <DocumentsPanel
+            selectedCollection={selectedCollection}
+            documents={documents}
+            selectedDocument={selectedDocument}
+            documentCount={documentCount}
+            filterJson={filterJson}
+            showFilter={showFilter}
+            isLoadingDocs={isLoadingDocs}
+            skip={skip}
+            limit={PAGE_SIZE}
+            onToggleFilter={() => setShowFilter((current) => !current)}
+            onOpenAggregation={() => setShowAggregation(true)}
+            onFilterChange={(value) => {
+              documentsRequest.current++;
+              setFilterJson(value);
+            }}
+            onLoadDocuments={loadDocuments}
+            onNewDocument={() => {
+              if (readOnly) return;
+              setSelectedDocument(null);
+              setSelectedDocumentId(null);
+              setIsCreatingDocument(true);
+            }}
+            onSelectDocument={(document) => {
+              setIsCreatingDocument(false);
+              setSelectedDocument(document);
+              setSelectedDocumentId(document._id);
+            }}
+            onPreviousPage={() => {
+              documentsRequest.current++;
+              setSkip(Math.max(0, skip - PAGE_SIZE));
+            }}
+            onNextPage={() => {
+              documentsRequest.current++;
+              setSkip(skip + PAGE_SIZE);
+            }}
+          />
 
-      <DocumentEditorPanel
-        connectionId={connectionId}
-        readOnly={readOnly}
-        selectedCollection={selectedCollection}
-        selectedDocument={selectedDocument}
-        isCreatingDocument={isCreatingDocument}
-        onSaved={handleDocumentSaved}
-        onDeleted={() => {
-          if (selectedDocument) {
-            handleDeleteDocument(selectedDocument._id);
-          }
-        }}
-        onClose={() => {
-          setSelectedDocument(null);
-          setSelectedDocumentId(null);
-          setIsCreatingDocument(false);
-        }}
-        onCreate={() => {
-          if (!readOnly) setIsCreatingDocument(true);
-        }}
-      />
+          <DocumentEditorPanel
+            connectionId={connectionId}
+            readOnly={readOnly}
+            selectedCollection={selectedCollection}
+            selectedDocument={selectedDocument}
+            isCreatingDocument={isCreatingDocument}
+            onSaved={handleDocumentSaved}
+            onDeleted={() => {
+              if (selectedDocument) {
+                handleDeleteDocument(selectedDocument._id);
+              }
+            }}
+            onClose={() => {
+              setSelectedDocument(null);
+              setSelectedDocumentId(null);
+              setIsCreatingDocument(false);
+            }}
+            onCreate={() => {
+              if (!readOnly) setIsCreatingDocument(true);
+            }}
+          />
+        </>
+      )}
 
       <CreateMongoCollectionDialog
         isOpen={showCreateCollectionDialog}

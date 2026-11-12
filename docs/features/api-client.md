@@ -71,7 +71,7 @@ Two grants are supported: **Client Credentials** and **Authorization Code (PKCE)
 - With *Inherit*, the token is cached on the folder and shared by its requests.
 
 ::: tip What is encrypted
-The OAuth client secret and the access and refresh tokens are encrypted with your master password and never shown. **Bearer tokens, Basic passwords and API key values are stored as typed.** To keep them encrypted, put them in a secret variable or a vault environment and use `{{name}}` in the field.
+The OAuth client secret, bearer tokens, Basic passwords, API key values and the OAuth access and refresh tokens are encrypted with your master password and never shown again: the field says the value is stored, leave it empty to keep it, type to replace it or use **Remove stored secret**. A value that only references variables, like `{{TOKEN}}`, holds no secret itself and stays visible. Values saved by older versions are encrypted the first time you open the API client after unlocking.
 :::
 
 ## Variables

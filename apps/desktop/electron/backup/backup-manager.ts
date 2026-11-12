@@ -37,8 +37,9 @@ import {
   encryptVariables,
   GLOBAL_VARIABLES_SETTING,
 } from '../http/api-variables';
-import { revealClientSecret, storedAuthConfig } from '../http/oauth';
+import { revealAuthSecrets, storedAuthConfig } from '../http/oauth';
 import { cryptoManager } from '../security/crypto';
+import { caCertificateFingerprint } from '../db-explorer/connection/tls-options';
 import { logger } from '../logger';
 import {
   VaultData,
@@ -100,9 +101,6 @@ const SCRYPT_P = 1; // Parallelization
  * BackupManager class
  * Handles export and import of encrypted vault files
  */
-function oauthSecretInPlain(authType: string, authConfig: string, decrypt: (value: string) => string): string {
-  return authType === 'oauth2' ? revealClientSecret(authConfig, authConfig, decrypt) : authConfig;
-}
 
 export class BackupManager {
   constructor(private db: Kysely<Database>) {}
@@ -450,12 +448,14 @@ export class BackupManager {
       if (dbConnections) {
         logger.info('Restoring database connections', { count: dbConnections.length });
         await trx.deleteFrom('db_connections').execute();
-        for (const { password, ...connection } of dbConnections) {
+        for (const { password, ssl_ca, ...connection } of dbConnections) {
           await trx
             .insertInto('db_connections')
             .values({
               ...connection,
               password_encrypted: password ? cryptoManager.encryptData(password) : null,
+              ssl_ca_encrypted: ssl_ca ? cryptoManager.encryptData(ssl_ca) : null,
+              ssl_ca_fingerprint: ssl_ca ? caCertificateFingerprint(ssl_ca) : null,
             })
             .execute();
         }
@@ -584,9 +584,10 @@ export class BackupManager {
     }));
 
     const dbConnections = (await this.db.selectFrom('db_connections').selectAll().execute()).map(
-      ({ password_encrypted, ...connection }) => ({
+      ({ password_encrypted, ssl_ca_encrypted, ssl_ca_fingerprint: _fingerprint, ...connection }) => ({
         ...connection,
         password: password_encrypted ? decrypt(password_encrypted) : null,
+        ssl_ca: ssl_ca_encrypted ? decrypt(ssl_ca_encrypted) : null,
       })
     );
 
@@ -604,18 +605,18 @@ export class BackupManager {
       vaultEnvironments,
       dbConnections,
       projects: await this.db.selectFrom('projects').selectAll().execute(),
-      // OAuth client secrets are decrypted into the (encrypted) backup; cached OAuth tokens
+      // Auth secrets are decrypted into the (encrypted) backup; cached OAuth tokens
       // and the cookie jar are deliberately not backed up.
       apiCollections: (await this.db.selectFrom('api_collections').selectAll().execute()).map(
         (collection) => ({
           ...collection,
-          auth_config: oauthSecretInPlain(collection.auth_type, collection.auth_config, decrypt),
+          auth_config: revealAuthSecrets(collection.auth_config, collection.auth_config, decrypt),
           variables: decryptVariables(collection.variables, decrypt),
         })
       ),
       apiRequests: (await this.db.selectFrom('api_requests').selectAll().execute()).map((request) => ({
         ...request,
-        auth_config: oauthSecretInPlain(request.auth_type, request.auth_config, decrypt),
+        auth_config: revealAuthSecrets(request.auth_config, request.auth_config, decrypt),
       })),
       apiGlobalVariables: decryptVariables(
         (

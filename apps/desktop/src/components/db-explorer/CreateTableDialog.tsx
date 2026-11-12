@@ -1,7 +1,7 @@
 /**
  * Create Table Dialog
  *
- * Visual table designer for PostgreSQL/MySQL.
+ * Visual table designer for PostgreSQL, MySQL and SQLite.
  * Allows users to define table structure with columns, types, constraints.
  */
 
@@ -29,37 +29,60 @@ interface CreateTableDialogProps {
   onClose: () => void;
   onConfirm: (name: string, columns: Omit<TableColumn, 'id'>[]) => void;
   isLoading?: boolean;
-  dbType: 'postgres' | 'mysql';
+  dbType: 'postgres' | 'mysql' | 'sqlite';
 }
 
-// PostgreSQL data types
-const POSTGRES_TYPES = [
-  'VARCHAR',
-  'TEXT',
-  'INTEGER',
-  'BIGINT',
-  'SMALLINT',
-  'DECIMAL',
-  'NUMERIC',
-  'BOOLEAN',
-  'DATE',
-  'TIMESTAMP',
-  'TIMESTAMPTZ',
-  'TIME',
-  'JSON',
-  'JSONB',
-  'UUID',
-  'BYTEA',
-];
+const COLUMN_TYPES: Record<CreateTableDialogProps['dbType'], string[]> = {
+  postgres: [
+    'VARCHAR',
+    'TEXT',
+    'INTEGER',
+    'BIGINT',
+    'SMALLINT',
+    'DECIMAL',
+    'NUMERIC',
+    'BOOLEAN',
+    'DATE',
+    'TIMESTAMP',
+    'TIMESTAMPTZ',
+    'TIME',
+    'JSON',
+    'JSONB',
+    'UUID',
+    'BYTEA',
+  ],
+  mysql: [
+    'VARCHAR',
+    'CHAR',
+    'TEXT',
+    'INTEGER',
+    'BIGINT',
+    'SMALLINT',
+    'TINYINT',
+    'DECIMAL',
+    'DOUBLE',
+    'BOOLEAN',
+    'DATE',
+    'DATETIME',
+    'TIMESTAMP',
+    'TIME',
+    'JSON',
+    'BLOB',
+  ],
+  // Storage classes; other type names only change column affinity in SQLite.
+  sqlite: ['INTEGER', 'TEXT', 'REAL', 'NUMERIC', 'BLOB'],
+};
 
 export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
   isLoading = false,
-  dbType: _dbType, // Reserved for future use (MySQL, etc.)
+  dbType,
 }) => {
   const { t } = useTranslation();
+  const columnTypes = COLUMN_TYPES[dbType];
+  const newColumnType = dbType === 'sqlite' ? 'TEXT' : 'VARCHAR';
 
   const [tableName, setTableName] = useState('');
   const [columns, setColumns] = useState<TableColumn[]>([
@@ -134,8 +157,8 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
       {
         id: Date.now().toString(),
         name: '',
-        type: 'VARCHAR',
-        length: 255,
+        type: newColumnType,
+        length: newColumnType === 'VARCHAR' ? 255 : undefined,
         nullable: true,
         primaryKey: false,
         unique: false,
@@ -262,7 +285,7 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
                         onChange={(e) => updateColumn(col.id, 'type', e.target.value)}
                         className="w-full px-2 py-1.5 bg-background border border-border rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
                       >
-                        {POSTGRES_TYPES.map((type) => (
+                        {columnTypes.map((type) => (
                           <option key={type} value={type}>
                             {type}
                           </option>

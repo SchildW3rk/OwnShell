@@ -34,6 +34,8 @@ export function useCreateDBConnection() {
       sshHostId?: string;
       sshTunnelEnabled?: boolean;
       sslEnabled?: boolean;
+      sslMode?: 'disabled' | 'require' | 'require-no-verify';
+      sslCa?: string;
       readOnly?: boolean;
       authDatabase?: string;
       replicaSet?: string;
@@ -87,6 +89,9 @@ export function useUpdateDBConnection() {
         sshHostId?: string | null;
         sshTunnelEnabled?: boolean;
         sslEnabled?: boolean;
+        sslMode?: 'disabled' | 'require' | 'require-no-verify';
+        sslCa?: string | null;
+        sslLegacyHint?: false;
         readOnly?: boolean;
         authDatabase?: string | null;
         replicaSet?: string | null;

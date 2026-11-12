@@ -5,6 +5,7 @@
  * Uses the 'mysql2' library for database connections.
  */
 
+import { connect as netConnect } from 'node:net';
 import { Pool, PoolConnection, RowDataPacket, ResultSetHeader, createPool } from 'mysql2/promise';
 import {
   BaseSQLAdapter,
@@ -19,6 +20,7 @@ import { DBType, ColumnSchema, IndexInfo } from '@ownshell/core';
 import { dbErrorCodes, logger } from '../../logger';
 import { assertKnownColumns, assertKnownTable } from '../identifier-whitelist';
 import { quoteBacktickIdentifier } from '../sql-identifiers';
+import { buildCreateTableSql, type CreateTableColumn } from './create-table-sql';
 
 /**
  * MySQL Adapter
@@ -47,13 +49,25 @@ export class MySQLAdapter extends BaseSQLAdapter {
         database: this.config.database,
       });
 
+      const { ssl, tlsHost } = this.config;
       this.pool = createPool({
-        host: this.config.host,
+        // Through a tunnel mysql2 must see the original host: it derives SNI and the
+        // certificate name check from `host`, while the socket goes to the tunnel.
+        host: ssl && tlsHost ? tlsHost : this.config.host,
         port: this.config.port,
+        ...(ssl && tlsHost
+          ? { stream: () => netConnect(this.config.port, this.config.host) }
+          : {}),
         database: this.config.database || undefined,
         user: this.config.username || '',
         password: this.config.password || '', // mysql2 requires string, not undefined
-        ssl: this.config.ssl ? { rejectUnauthorized: false } : undefined,
+        ssl: ssl
+          ? {
+              ca: ssl.ca as string | undefined,
+              rejectUnauthorized: ssl.rejectUnauthorized !== false,
+              verifyIdentity: ssl.rejectUnauthorized !== false,
+            }
+          : undefined,
         connectionLimit: 5,
         connectTimeout: 10000,
         waitForConnections: true,
@@ -554,6 +568,10 @@ export class MySQLAdapter extends BaseSQLAdapter {
   /**
    * Get row count (MySQL specific)
    */
+  async createTable(name: string, columns: CreateTableColumn[]): Promise<void> {
+    await this.executeQuery(buildCreateTableSql('mysql', name, columns));
+  }
+
   async getRowCount(tableName: string): Promise<number> {
     const tableSchema = await this.getTableSchema(tableName);
     assertKnownTable(tableSchema, tableName);

@@ -20,6 +20,8 @@ export interface DbTransferProgress {
   percentage?: number;
   stage: 'preparing' | 'exporting' | 'importing' | 'completed' | 'error';
   message?: string;
+  i18nKey?: string;
+  i18nParams?: Record<string, string | number>;
 }
 
 export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
@@ -40,6 +42,8 @@ export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
       sshHostId?: string;
       sshTunnelEnabled?: boolean;
       sslEnabled?: boolean;
+      sslMode?: 'disabled' | 'require' | 'require-no-verify';
+      sslCa?: string;
       readOnly?: boolean;
       authDatabase?: string;
       replicaSet?: string;
@@ -72,6 +76,10 @@ export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
         sshHostId?: string | null;
         sshTunnelEnabled?: boolean;
         sslEnabled?: boolean;
+        sslMode?: 'disabled' | 'require' | 'require-no-verify';
+        /** PEM; null removes the stored CA */
+        sslCa?: string | null;
+        sslLegacyHint?: false;
         readOnly?: boolean;
         authDatabase?: string | null;
         replicaSet?: string | null;
@@ -112,7 +120,9 @@ export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
       connectionMode?: 'local' | 'ssh';
       sshHostId?: string;
       sshTunnelEnabled?: boolean;
-      sslEnabled?: boolean;
+      sslMode?: 'disabled' | 'require' | 'require-no-verify';
+      sslCa?: string;
+      configId?: string;
       authDatabase?: string;
       replicaSet?: string;
       directConnection?: boolean;
@@ -120,6 +130,14 @@ export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
       executionMode?: 'direct' | 'docker';
       dockerContainer?: string;
     }) => ipcRenderer.invoke('db:dbconnections:test', data),
+    /** Opens a file dialog in the main process and returns the validated PEM. */
+    pickCaCertificate: () =>
+      ipcRenderer.invoke('db:dbconnections:pick-ca-file') as Promise<{
+        success: boolean;
+        pem?: string;
+        fingerprint?: string;
+        error?: string;
+      }>,
   };
 }
 

@@ -13,10 +13,11 @@ import { findSessionByHostId } from '../ipc/ssh';
 import { logger } from '../logger';
 import { clearDatabase } from './dump/clear-database';
 import { exportLocal, importLocal } from './dump/local-runner';
-import { exportSQLite, importSQLite } from './dump/sqlite-runner';
+import { exportSQLite, importSQLite, SqlImportError } from './dump/sqlite-runner';
 import { exportViaSSH, importViaSSH } from './dump/ssh-runner';
 import { checkLocalTools } from './dump/tool-checker';
 import type { ExportOptions, ImportOptions, ProgressCallback } from './dump/types';
+import type { SQLiteAdapter } from './adapters/sqlite-adapter';
 
 export type { ExportOptions, ImportOptions, ProgressCallback } from './dump/types';
 
@@ -71,7 +72,12 @@ class DatabaseDumpService {
       });
 
       if (config.type === 'sqlite') {
-        return await exportSQLite(config, outputPath, onProgress);
+        return await exportSQLite(
+          this.sqliteFilePath(connectionId),
+          outputPath,
+          { tables, schemaOnly, dataOnly, compress },
+          onProgress
+        );
       }
 
       const effectiveSshSessionId = this.resolveSSHSessionId(sshSessionId, config);
@@ -152,7 +158,12 @@ class DatabaseDumpService {
       });
 
       if (config.type === 'sqlite') {
-        return await importSQLite(config, inputPath, onProgress);
+        return await importSQLite(
+          this.sqliteFilePath(connectionId),
+          inputPath,
+          { compressed, clearMode },
+          onProgress
+        );
       }
 
       const effectiveSshSessionId = this.resolveSSHSessionId(sshSessionId, config);
@@ -199,6 +210,7 @@ class DatabaseDumpService {
         bytesProcessed: 0,
         stage: 'error',
         message,
+        ...(error instanceof SqlImportError ? { i18nKey: error.i18nKey, i18nParams: error.i18nParams } : {}),
       });
 
       return { success: false, error: message };
@@ -218,6 +230,11 @@ class DatabaseDumpService {
     installHint?: string;
   }> {
     return checkLocalTools(dbType, executionMode);
+  }
+
+  /** The file the open connection uses (the local copy for remote SQLite files). */
+  private sqliteFilePath(connectionId: string): string {
+    return (dbConnectionManager.getAdapter(connectionId) as SQLiteAdapter).filePath;
   }
 
   private resolveSSHSessionId(

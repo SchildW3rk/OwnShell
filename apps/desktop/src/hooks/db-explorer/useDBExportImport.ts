@@ -90,7 +90,9 @@ export function useDBExportImport() {
         }
         importOperationIdRef.current = null;
       } else if (prog.stage === 'error') {
-        toast.error(prog.message || i18n.t('db.importFailed'));
+        toast.error(
+          prog.i18nKey ? i18n.t(prog.i18nKey, prog.i18nParams) : prog.message || i18n.t('db.importFailed')
+        );
         setIsImporting(false);
         setProgress(null);
         importOperationIdRef.current = null;

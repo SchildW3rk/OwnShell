@@ -151,6 +151,10 @@ const vaultDBConnectionSchema = z.object({
   ssh_host_id: nullableId,
   ssh_tunnel_enabled: flag,
   ssl_enabled: flag,
+  // CA certificate (public, PEM) travels decrypted inside the encrypted backup and is
+  // re-encrypted on restore; the fingerprint is recomputed.
+  ssl_ca: nullableString.default(null),
+  ssl_mode: z.enum(['disabled', 'require', 'require-no-verify']).nullable().default(null),
   read_only: flag.default(0),
   color: nullableString,
   file_path: nullableString.default(null),

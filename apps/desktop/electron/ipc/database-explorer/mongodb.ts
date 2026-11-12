@@ -1,5 +1,6 @@
 import { dbConnectionManager } from '../../db-explorer/connection-manager';
 import type { MongoDocument, MongoDocumentSnapshot } from '../../db-explorer/adapters/mongodb-adapter-types';
+import { MAX_AGGREGATION_RESULTS, withResultLimit } from '../../db-explorer/mongo-pipeline';
 import { mongoPipelineWrites, readOnlyFailure } from '../../db-explorer/read-only-guard';
 import { logger } from '../../logger';
 import { safeHandle } from '../safe-ipc';
@@ -317,8 +318,15 @@ export function setupMongoDBHandlers() {
         }
 
         const adapter = dbConnectionManager.getMongoDBAdapter(params.connectionId);
-        const results = await adapter.aggregate(params.collection, params.pipeline);
-        return { success: true, results };
+        const results = await adapter.aggregate(
+          params.collection,
+          withResultLimit(params.pipeline, MAX_AGGREGATION_RESULTS + 1)
+        );
+        return {
+          success: true,
+          results: results.slice(0, MAX_AGGREGATION_RESULTS),
+          truncated: results.length > MAX_AGGREGATION_RESULTS,
+        };
       } catch (error) {
         logger.error('Failed to run MongoDB aggregation', params, error);
         return {

@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppCheckbox, Input, Modal } from '@ownshell/ui';
+import { resolveSslMode } from '../../../electron/db-explorer/connection/ssl-mode';
 import { useCreateDBConnection, useUpdateDBConnection } from '../../hooks/db-explorer';
 import { useHostStore } from '../../stores/useHostStore';
 import { SQLiteFilePicker } from './SQLiteFilePicker';
@@ -19,6 +20,7 @@ import { ConnectionModeFields } from './db-connection-modal/ConnectionModeFields
 import { DatabaseTypeSelector } from './db-connection-modal/DatabaseTypeSelector';
 import { ExecutionModeFields } from './db-connection-modal/ExecutionModeFields';
 import { NetworkConnectionFields } from './db-connection-modal/NetworkConnectionFields';
+import { SslFields } from './db-connection-modal/SslFields';
 import { normalizeFormDataFromConnectionUri } from './db-connection-modal/connection-uri';
 import type {
   DBConnectionFormData,
@@ -41,7 +43,9 @@ const createInitialFormData = (
   connectionMode: (editConnection?.connection_mode || 'local') as 'local' | 'ssh',
   sshHostId: editConnection?.ssh_host_id || '',
   sshTunnelEnabled: editConnection?.ssh_tunnel_enabled === 1,
-  sslEnabled: editConnection?.ssl_enabled === 1,
+  sslMode: editConnection ? resolveSslMode(editConnection) : 'disabled',
+  sslCa: '',
+  sslCaRemoved: false,
   readOnly: editConnection?.read_only === 1,
   authDatabase: editConnection?.auth_database || '',
   replicaSet: editConnection?.replica_set || '',
@@ -134,7 +138,12 @@ export const DBConnectionModal: React.FC<DBConnectionModalProps> = ({
       !normalizedIsSQLite && !normalizedIsRedis && !normalizedIsMongoDB;
 
     if (!normalizedFormData.name) return false;
-    if (normalizedIsSQLite) return !!normalizedFormData.filePath;
+    if (normalizedIsSQLite) {
+      return (
+        !!normalizedFormData.filePath.trim() &&
+        (!normalizedFormData.isRemote || !!normalizedFormData.remoteHostId)
+      );
+    }
     if (normalizedFormData.connectionMode === 'ssh' && !normalizedFormData.sshHostId) return false;
     if (
       normalizedSupportsDockerTarget &&
@@ -188,7 +197,10 @@ export const DBConnectionModal: React.FC<DBConnectionModalProps> = ({
             ? normalizedFormData.sshHostId || undefined
             : undefined;
         connectionData.sshTunnelEnabled = normalizedFormData.connectionMode === 'ssh';
-        connectionData.sslEnabled = normalizedFormData.sslEnabled;
+        connectionData.sslMode = normalizedFormData.sslMode;
+        const sslCa = normalizedFormData.sslCa.trim();
+        if (sslCa) connectionData.sslCa = sslCa;
+        else if (isEditMode && normalizedFormData.sslCaRemoved) connectionData.sslCa = null;
         connectionData.connectionUri =
           normalizedFormData.connectionUri || (isEditMode ? null : undefined);
 
@@ -266,7 +278,10 @@ export const DBConnectionModal: React.FC<DBConnectionModalProps> = ({
             ? normalizedFormData.sshHostId || undefined
             : undefined,
         sshTunnelEnabled: normalizedFormData.connectionMode === 'ssh',
-        sslEnabled: normalizedFormData.sslEnabled,
+        sslMode: normalizedFormData.sslMode,
+        sslCa: normalizedFormData.sslCa.trim() || undefined,
+        configId:
+          isEditMode && !normalizedFormData.sslCaRemoved ? editConnection?.id : undefined,
         connectionUri: normalizedFormData.connectionUri || undefined,
         authDatabase: normalizedIsMongoDB ? normalizedFormData.authDatabase || undefined : undefined,
         replicaSet: normalizedIsMongoDB ? normalizedFormData.replicaSet || undefined : undefined,
@@ -358,11 +373,11 @@ export const DBConnectionModal: React.FC<DBConnectionModalProps> = ({
         )}
 
         {!isSQLite && (
-          <AppCheckbox
-            id="ssl"
-            checked={formData.sslEnabled}
-            onCheckedChange={(sslEnabled) => setFormData((prev) => ({ ...prev, sslEnabled }))}
-            label={t('database.useSSL', 'Use SSL/TLS')}
+          <SslFields
+            formData={formData}
+            storedCaFingerprint={editConnection?.ssl_ca_fingerprint}
+            showLegacyHint={editConnection?.ssl_legacy_hint === 1}
+            onChange={setFormData}
           />
         )}
 

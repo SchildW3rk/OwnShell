@@ -17,6 +17,7 @@ type UpdateConnectionMutation = AsyncMutation<{
   id: string;
   update: {
     database?: string | null;
+    sslLegacyHint?: false;
   };
   silent?: boolean;
 }>;
@@ -148,6 +149,17 @@ export function useDBExplorerActions(ctx: DBExplorerActionsContext) {
       setActiveConnectionId((connectionId as string) || null);
       setSelectedTable(null);
       setPage(0);
+      if (selectedConnection?.ssl_legacy_hint === 1) {
+        // One-time hint for connections migrated from the old SSL switch that never verified.
+        toast(t('database.ssl.legacyHint'), { icon: '⚠️', duration: 10000 });
+        void updateConnectionMutation
+          .mutateAsync({
+            id: selectedConfigId,
+            update: { sslLegacyHint: false },
+            silent: true,
+          })
+          .catch(() => undefined);
+      }
     } catch (error) {
       // Error handled by mutation
     }

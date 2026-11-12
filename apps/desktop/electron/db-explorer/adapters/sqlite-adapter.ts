@@ -18,6 +18,7 @@ import { DBType, ColumnSchema, IndexInfo, PrimaryKeyValue } from '@ownshell/core
 import { dbErrorCodes, logger } from '../../logger';
 import { assertKnownColumns, assertKnownTable } from '../identifier-whitelist';
 import { quoteDoubleIdentifier } from '../sql-identifiers';
+import { buildCreateTableSql, type CreateTableColumn } from './create-table-sql';
 
 /**
  * SQLite-specific connection configuration
@@ -41,6 +42,11 @@ export class SQLiteAdapter implements ISQLAdapter {
 
   constructor(config: SQLiteAdapterConfig) {
     this.config = config;
+  }
+
+  /** File opened by this adapter (a local copy for remote SQLite files). */
+  get filePath(): string {
+    return this.config.filePath;
   }
 
   /**
@@ -95,6 +101,11 @@ export class SQLiteAdapter implements ISQLAdapter {
 
   isConnected(): boolean {
     return this.connected && this.db !== null;
+  }
+
+  async createTable(name: string, columns: CreateTableColumn[]): Promise<void> {
+    if (!this.db) throw new Error('Database not connected');
+    this.db.exec(buildCreateTableSql('sqlite', name, columns));
   }
 
   /**

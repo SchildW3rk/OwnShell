@@ -18,7 +18,7 @@ import { assertSecureOAuthUrls, publicAuthConfig, storedAuthConfig } from '../..
 import { logger } from '../../logger';
 import { cryptoManager } from '../../security/crypto';
 import { safeHandle, safeHandleArgs } from '../safe-ipc';
-import { encryptSecret } from './oauth';
+import { encryptLegacyAuthSecrets, encryptSecret } from './oauth';
 import {
   collectionSchema,
   collectionUpdateArgsSchema,
@@ -76,6 +76,9 @@ export async function saveVariables(
 export function registerApiCollectionHandlers(db: Kysely<Database>): void {
   safeHandle('api:collections:get-all', noPayloadSchema, async () => {
     try {
+      await encryptLegacyAuthSecrets(db).catch((error) =>
+        logger.warn('Failed to encrypt legacy API auth secrets', error)
+      );
       const rows = await db
         .selectFrom('api_collections')
         .selectAll()

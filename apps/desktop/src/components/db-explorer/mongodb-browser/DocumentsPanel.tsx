@@ -1,6 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Input, cn } from '@ownshell/ui';
-import { ChevronRight, FileJson, Filter, FolderOpen, Loader2, Play, Plus, RefreshCw } from 'lucide-react';
+import { ChevronRight, FileJson, Filter, FolderOpen, Layers, Loader2, Play, Plus, RefreshCw } from 'lucide-react';
 import type { MongoDocumentSnapshot } from '../../../../electron/db-explorer/adapters/mongodb-adapter-types';
 
 interface DocumentsPanelProps {
@@ -14,6 +15,7 @@ interface DocumentsPanelProps {
   skip: number;
   limit: number;
   onToggleFilter: () => void;
+  onOpenAggregation: () => void;
   onFilterChange: (value: string) => void;
   onLoadDocuments: () => void;
   onNewDocument: () => void;
@@ -33,6 +35,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({
   skip,
   limit,
   onToggleFilter,
+  onOpenAggregation,
   onFilterChange,
   onLoadDocuments,
   onNewDocument,
@@ -50,6 +53,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({
               <Button variant="ghost" size="sm" onClick={onToggleFilter} title="Filter">
                 <Filter className="w-4 h-4" />
               </Button>
+              <AggregationButton onClick={onOpenAggregation} />
               <Button variant="ghost" size="sm" onClick={onNewDocument} title="New document">
                 <Plus className="w-4 h-4" />
               </Button>
@@ -153,3 +157,18 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({
     )}
   </div>
 );
+
+const AggregationButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
+  const { t } = useTranslation();
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      title={t('db.mongoAggregation.open')}
+      aria-label={t('db.mongoAggregation.open')}
+    >
+      <Layers className="w-4 h-4" />
+    </Button>
+  );
+};

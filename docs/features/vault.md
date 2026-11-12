@@ -30,7 +30,13 @@ Choose **Deploy to SFTP** on an environment to write it to a server over SFTP:
 The file is written with permissions **0600** (owner read/write only), also when it replaces an existing file. The time of the last upload is shown on the environment.
 
 ::: warning Format
-The file is written as plain `KEY=VALUE` lines without quoting. Values with spaces, `#` or line breaks are written as they are, so check what your application expects. An existing file is replaced, not backed up.
+The file has one `KEY=VALUE` line per variable, in the format Docker Compose reads (`.env` and `env_file`):
+
+- Names must start with a letter or `_` and contain only letters, digits and `_`. Otherwise the upload is refused.
+- Values made only of letters, digits and `_ . / : @ , + -` are written unquoted.
+- All other values are written in double quotes with `\\`, `\"` and `\$` escaped and line breaks as `\n`, so `#`, spaces, quotes and `$` reach your application unchanged (no variable interpolation).
+
+An existing file is replaced, not backed up.
 :::
 
 OwnShell does not inject environment variables into terminal sessions.

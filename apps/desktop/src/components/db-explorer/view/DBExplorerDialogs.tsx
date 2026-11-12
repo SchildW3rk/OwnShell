@@ -245,7 +245,7 @@ export function DBExplorerDialogs(props: DBExplorerDialogsProps) {
           onConfirm={handleCreateTable}
           isLoading={createTablePending}
           dbType={
-            selectedConnection.type === 'postgres' || selectedConnection.type === 'mysql'
+            selectedConnection.type === 'mysql' || selectedConnection.type === 'sqlite'
               ? selectedConnection.type
               : 'postgres'
           }

@@ -34,7 +34,7 @@ import {
   exportCurl,
   loadCollectionChain,
   loadVariableScopes,
-  revealOAuthSecret,
+  revealAuthSecret,
   saveHistory,
 } from './request-context';
 import {
@@ -162,7 +162,7 @@ export async function prepareForSend(
   options: ExecuteOptions & { webSocket?: boolean } = {}
 ): Promise<PreparedRequest> {
   const owner = config.requestId ? ({ type: 'request', id: config.requestId } as const) : null;
-  const revealed = await revealOAuthSecret(db, config, await loadCollectionChain(db, config.collectionId), owner);
+  const revealed = await revealAuthSecret(db, config, await loadCollectionChain(db, config.collectionId), owner);
   const { scopes, locked } = await loadVariableScopes(db, config, revealed.chain);
   if (options.runtimeVariables) scopes.unshift({ scope: 'runtime', variables: options.runtimeVariables });
   return prepareRequest(

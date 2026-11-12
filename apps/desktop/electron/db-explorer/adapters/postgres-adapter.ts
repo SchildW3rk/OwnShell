@@ -64,7 +64,7 @@ export class PostgresAdapter extends BaseSQLAdapter {
         database: this.config.database || 'postgres',
         user: this.config.username || '',
         password: this.config.password || '', // pg requires string, not undefined
-        ssl: this.config.ssl ? { rejectUnauthorized: false } : false,
+        ssl: this.config.ssl ?? false,
         max: 5, // Maximum pool size
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,

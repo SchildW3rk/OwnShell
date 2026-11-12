@@ -1,4 +1,5 @@
 import type { RedisDataType, RedisKeyInfo, RedisScanResult, RedisValue } from '@ownshell/core';
+import type { ConnectionOptions } from 'node:tls';
 import type { CreateDatabaseUserOptions } from './database-user-types';
 
 /**
@@ -9,7 +10,8 @@ export interface RedisAdapterConnectionConfig {
   port: number;
   password?: string;
   database?: number; // Redis DB index (0-15)
-  tls?: boolean;
+  /** Node TLS options from buildTlsOptions(); undefined = no TLS */
+  tls?: ConnectionOptions;
 }
 
 /**

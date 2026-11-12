@@ -43,7 +43,7 @@ export class RedisAdapter implements IRedisAdapter {
         port: this.config.port,
         password: this.config.password || undefined,
         db: this.config.database || 0,
-        tls: this.config.tls ? {} : undefined,
+        tls: this.config.tls,
         lazyConnect: true,
         connectTimeout: 10000,
         maxRetriesPerRequest: 3,

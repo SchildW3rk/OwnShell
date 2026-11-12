@@ -14,6 +14,7 @@ import type {
 import type { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import { encryptVariables, type PlainVariable } from './api-variables';
+import { storedAuthConfig } from './oauth';
 
 export interface ImportRequest {
   name: string;
@@ -83,7 +84,7 @@ export async function insertImportTree(
           description: folder.description,
           sort_order: sortOrder,
           auth_type: folder.auth_type,
-          auth_config: folder.auth_config,
+          auth_config: storedAuthConfig(folder.auth_type, folder.auth_config, undefined, encrypt),
           variables: encryptVariables(folder.variables, encrypt, uuidv4),
           created_at: now,
           updated_at: now,
@@ -97,6 +98,7 @@ export async function insertImportTree(
           .insertInto('api_requests')
           .values({
             ...request,
+            auth_config: storedAuthConfig(request.auth_type, request.auth_config, undefined, encrypt),
             kind: request.kind ?? 'http',
             assertions: request.assertions ?? '[]',
             captures: request.captures ?? '[]',

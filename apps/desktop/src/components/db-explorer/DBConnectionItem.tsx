@@ -8,7 +8,8 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Database, Home, Globe } from 'lucide-react';
+import { Database, Home, Globe, ShieldAlert } from 'lucide-react';
+import { resolveSslMode } from '../../../electron/db-explorer/connection/ssl-mode';
 import { cn } from '@ownshell/ui';
 import type { DropdownMenuItem } from '@ownshell/ui';
 import { DBConnectionsTable } from '@ownshell/core';
@@ -128,6 +129,12 @@ export const DBConnectionItem: React.FC<DBConnectionItemProps> = ({
       <p className="flex-1 text-sm font-medium text-shell-panel-foreground truncate">
         {connection.name}
       </p>
+
+      {resolveSslMode(connection) === 'require-no-verify' && (
+        <span className="flex-shrink-0 text-warning" title={t('database.ssl.noVerifyBadge')}>
+          <ShieldAlert className="w-3.5 h-3.5" aria-label={t('database.ssl.noVerifyBadge')} />
+        </span>
+      )}
 
       {/* Connection Mode Badge (right side) */}
       <span

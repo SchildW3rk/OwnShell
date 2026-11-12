@@ -230,7 +230,7 @@ export function disconnectAutoCreatedSshSessionIfUnused(
   sshSessionManager.disconnect(connection.sshSessionId, 'db-disconnect');
 }
 
-async function resolveSshSession(
+export async function resolveSshSession(
   config: DBConnectionConfig,
   requestedSshSessionId: string | undefined,
   connectionId: string

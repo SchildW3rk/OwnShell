@@ -17,7 +17,7 @@ import {
   pkceChallenge,
   publicAuthConfig,
   requestToken,
-  revealClientSecret,
+  revealAuthSecrets,
   startLoopbackServer,
   storedAuthConfig,
   tokenFingerprint,
@@ -39,7 +39,7 @@ import { createTokenStore, oauthTokenProvider, registerApiOAuthHandlers } from '
 import {
   loadCollectionChain,
   loadVariableScopes,
-  revealOAuthSecret,
+  revealAuthSecret,
   saveHistory,
 } from '../electron/ipc/api-client/request-context';
 import { registerApiRequestHandlers } from '../electron/ipc/api-client/requests';
@@ -348,11 +348,11 @@ test('stored config: secret encrypted, kept when omitted, cleared with "", never
   // The renderer saves its public config back: the secret is kept.
   const kept = storedAuthConfig('oauth2', pub, stored, encrypt);
   assert.equal(JSON.parse(kept).clientSecretEncrypted, 'enc(x)');
-  assert.equal(JSON.parse(revealClientSecret(pub, kept, decrypt)).clientSecret, 'x');
+  assert.equal(JSON.parse(revealAuthSecrets(pub, kept, decrypt)).clientSecret, 'x');
   const cleared = storedAuthConfig('oauth2', JSON.stringify({ clientId: 'a', clientSecret: '' }), stored, encrypt);
   assert.equal(JSON.parse(cleared).clientSecretEncrypted, undefined);
-  // Other auth types are untouched.
-  assert.equal(storedAuthConfig('bearer', '{"token":"t"}', stored, encrypt), '{"token":"t"}');
+  // Other auth types' secrets are encrypted too (see api-auth-secrets.test.ts).
+  assert.deepEqual(JSON.parse(storedAuthConfig('bearer', '{"token":"t"}', undefined, encrypt)), { tokenEncrypted: 'enc(t)' });
 });
 
 // ---------------------------------------------------------------------------
@@ -515,7 +515,7 @@ test('send end to end: secret and token stay in the main process, encrypted at r
     // The execute handler's steps (it pulls in the SSH stack, so it is not registered here).
     const send = async () => {
       const owner = { type: 'request' as const, id: request.id };
-      const revealed = await revealOAuthSecret(db, config, await loadCollectionChain(db, config.collectionId), owner);
+      const revealed = await revealAuthSecret(db, config, await loadCollectionChain(db, config.collectionId), owner);
       const { scopes } = await loadVariableScopes(db, config, revealed.chain);
       const prepared = await prepareRequest(
         { ...config, authConfig: revealed.authConfig },

@@ -153,7 +153,14 @@ export function createMongodbApi(ipcRenderer: IpcRenderer) {
       connectionId: string,
       collection: string,
       pipeline: Array<Record<string, unknown>>
-    ) => ipcRenderer.invoke('mongodb:aggregate', { connectionId, collection, pipeline }),
+    ) =>
+      ipcRenderer.invoke('mongodb:aggregate', { connectionId, collection, pipeline }) as Promise<{
+        success: boolean;
+        results?: unknown[];
+        truncated?: boolean;
+        error?: string;
+        reason?: 'read-only';
+      }>,
 
     // Index operations
     listIndexes: (connectionId: string, collection: string) =>

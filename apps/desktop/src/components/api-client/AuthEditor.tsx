@@ -39,21 +39,25 @@ type OAuthOwner = { type: 'request' | 'collection'; id: string };
 type OAuthRequestConfig = Parameters<typeof window.electronAPI.apiClient.oauth.getToken>[0];
 
 interface AuthConfig {
+  // Secrets (token, password, value, clientSecret) are only set when typed or when they only
+  // reference variables; a stored secret never reaches the renderer, only its has* flag.
   // Bearer
   token?: string;
+  hasToken?: boolean;
   // Basic
   username?: string;
   password?: string;
+  hasPassword?: boolean;
   // API Key
   key?: string;
   value?: string;
+  hasValue?: boolean;
   addTo?: 'header' | 'query';
   // OAuth 2.0
   grantType?: 'client_credentials' | 'authorization_code';
   tokenUrl?: string;
   authUrl?: string;
   clientId?: string;
-  /** Only set when typed; the stored secret never reaches the renderer. */
   clientSecret?: string;
   hasClientSecret?: boolean;
   scopes?: string;
@@ -161,6 +165,56 @@ const PasswordInput: React.FC<{
 };
 
 // ============================================
+// Stored Secret Input
+// ============================================
+
+type SecretField = 'token' | 'password' | 'value' | 'clientSecret';
+const storedFlag = (field: SecretField) =>
+  `has${field[0].toUpperCase()}${field.slice(1)}` as 'hasToken' | 'hasPassword' | 'hasValue' | 'hasClientSecret';
+
+/**
+ * A secret stored encrypted in the main process: empty keeps it, typing replaces it,
+ * removing it is an explicit action (sent as '').
+ */
+const StoredSecretInput: React.FC<{
+  id: string;
+  field: SecretField;
+  config: AuthConfig;
+  onChange: (config: AuthConfig) => void;
+  placeholder: string;
+  label?: string;
+}> = ({ id, field, config, onChange, placeholder, label }) => {
+  const { t } = useTranslation();
+  const flag = storedFlag(field);
+  const stored = Boolean(config[flag]) && config[field] === undefined;
+  return (
+    <div className="space-y-1 flex-1">
+      <PasswordInput
+        id={id}
+        value={config[field] ?? ''}
+        onChange={(value) => {
+          const next: AuthConfig = { ...config, [field]: value };
+          // With a stored secret, empty means "keep it"; otherwise '' clears the field.
+          if (!value && config[flag]) delete next[field];
+          onChange(next);
+        }}
+        placeholder={stored ? t('api.auth.oauth2.clientSecretStored') : placeholder}
+        label={label}
+      />
+      {stored && (
+        <button
+          type="button"
+          onClick={() => onChange({ ...config, [field]: '', [flag]: false })}
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+        >
+          {t('api.auth.oauth2.removeClientSecret')}
+        </button>
+      )}
+    </div>
+  );
+};
+
+// ============================================
 // Bearer Token Editor
 // ============================================
 
@@ -176,20 +230,14 @@ const BearerTokenEditor: React.FC<{
         <label htmlFor="auth-bearer-token" className="text-xs text-muted-foreground">
           {t('api.auth.bearer.token', 'Token')}
         </label>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground px-2">Bearer</span>
-          <VariableInput
+        <div className="flex items-start gap-2">
+          <span className="text-sm text-muted-foreground px-2 py-2">Bearer</span>
+          <StoredSecretInput
             id="auth-bearer-token"
-            type="text"
-            value={config.token || ''}
-            onValueChange={(token) => onChange({ ...config, token })}
+            field="token"
+            config={config}
+            onChange={onChange}
             placeholder={t('api.auth.bearer.tokenPlaceholder', 'Enter token or {{variable}}')}
-            className={cn(
-              'flex-1 px-3 py-2 bg-secondary border border-border rounded-md text-sm',
-              'text-foreground placeholder:text-muted-foreground font-mono',
-              'focus:outline-none focus:ring-1 focus:ring-primary focus:border-transparent',
-              config.token?.includes('{{') && 'text-primary'
-            )}
           />
         </div>
       </div>
@@ -232,10 +280,11 @@ const BasicAuthEditor: React.FC<{
         />
       </div>
 
-      <PasswordInput
+      <StoredSecretInput
         id="auth-basic-password"
-        value={config.password || ''}
-        onChange={(password) => onChange({ ...config, password })}
+        field="password"
+        config={config}
+        onChange={onChange}
         placeholder={t('api.auth.basic.passwordPlaceholder', 'Enter password or {{variable}}')}
         label={t('api.auth.basic.password', 'Password')}
       />
@@ -280,10 +329,11 @@ const ApiKeyEditor: React.FC<{
         />
       </div>
 
-      <PasswordInput
+      <StoredSecretInput
         id="auth-apikey-value"
-        value={config.value || ''}
-        onChange={(value) => onChange({ ...config, value })}
+        field="value"
+        config={config}
+        onChange={onChange}
         placeholder={t('api.auth.apiKey.valuePlaceholder', 'Enter API key or {{variable}}')}
         label={t('api.auth.apiKey.value', 'Value')}
       />
@@ -451,33 +501,14 @@ const OAuth2Editor: React.FC<{
       {field('auth-oauth2-token-url', 'tokenUrl', 'https://')}
       {field('auth-oauth2-client-id', 'clientId')}
 
-      <div className="space-y-1">
-        <PasswordInput
-          id="auth-oauth2-client-secret"
-          value={config.clientSecret ?? ''}
-          onChange={(value) => {
-            // Empty keeps the stored secret; removing it is an explicit action below.
-            const next: AuthConfig = { ...config, clientSecret: value };
-            if (!value) delete next.clientSecret;
-            onChange(next);
-          }}
-          placeholder={t(
-            config.hasClientSecret && config.clientSecret === undefined
-              ? 'api.auth.oauth2.clientSecretStored'
-              : 'api.auth.oauth2.clientSecretPlaceholder'
-          )}
-          label={t('api.auth.oauth2.clientSecret')}
-        />
-        {config.hasClientSecret && config.clientSecret === undefined && (
-          <button
-            type="button"
-            onClick={() => onChange({ ...config, clientSecret: '', hasClientSecret: false })}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >
-            {t('api.auth.oauth2.removeClientSecret')}
-          </button>
-        )}
-      </div>
+      <StoredSecretInput
+        id="auth-oauth2-client-secret"
+        field="clientSecret"
+        config={config}
+        onChange={onChange}
+        placeholder={t('api.auth.oauth2.clientSecretPlaceholder')}
+        label={t('api.auth.oauth2.clientSecret')}
+      />
 
       {field('auth-oauth2-scopes', 'scopes', t('api.auth.oauth2.scopesPlaceholder'))}
       {field('auth-oauth2-audience', 'audience', t('api.auth.oauth2.optional'))}

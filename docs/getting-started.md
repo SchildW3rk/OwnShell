@@ -12,7 +12,7 @@ Release builds are signed and notarized by Apple, so macOS opens them without ex
 
 ## Create your master password
 
-On first launch OwnShell asks for a **master password**. It encrypts the secrets OwnShell stores: host passwords, SSH keys, database and S3 credentials, vault entries, API-client variables marked as secret, OAuth client secrets and tokens, cookies and your license key. Tokens, passwords and API keys typed directly into a request's **Auth** fields are stored as entered — put sensitive values into a secret variable and reference it as <code v-pre>{{name}}</code> instead.
+On first launch OwnShell asks for a **master password**. It encrypts the secrets OwnShell stores: host passwords, SSH keys, database and S3 credentials, vault entries, API-client variables marked as secret, tokens, passwords, API keys and OAuth client secrets in a request's **Auth** fields, OAuth tokens, cookies and your license key.
 
 The password needs at least 8 characters with one uppercase letter, one lowercase letter and one digit.
 

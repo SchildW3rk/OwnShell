@@ -1,7 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { DBConnectionsTable } from '@ownshell/core';
+import { promises as fs } from 'node:fs';
+import { dialog } from 'electron';
 import { z } from 'zod';
 import { dbConnectionManager } from '../../db-explorer/connection-manager';
+import {
+  caCertificateFingerprint,
+  MAX_CA_PEM_LENGTH,
+  type DbSslMode,
+} from '../../db-explorer/connection/tls-options';
 import { localPtyManager } from '../../pty/local-pty-manager';
 import { cryptoManager } from '../../security/crypto';
 import { logger } from '../../logger';
@@ -15,6 +22,22 @@ const createDbShellPtySchema = z.object({
   cols: z.number().finite().positive().optional(),
   rows: z.number().finite().positive().optional(),
 });
+
+/** The encrypted CA stays in the main process; the renderer sees only its fingerprint. */
+function toRendererConnection<T extends Partial<DBConnectionsTable>>(
+  connection: T
+): Omit<T, 'ssl_ca_encrypted'> {
+  const rest = { ...connection };
+  delete rest.ssl_ca_encrypted;
+  return rest;
+}
+
+/** Validated CA columns for a create/update; null clears them. */
+function caColumns(pem: string | null) {
+  if (pem === null) return { ssl_ca_encrypted: null, ssl_ca_fingerprint: null };
+  const fingerprint = caCertificateFingerprint(pem);
+  return { ssl_ca_encrypted: cryptoManager.encryptData(pem), ssl_ca_fingerprint: fingerprint };
+}
 
 function appendArg(args: string[], flag: string, value?: string | number | null): void {
   if (value === undefined || value === null || value === '') return;
@@ -230,7 +253,7 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
   safeHandle('db:dbconnections:get-all', noPayloadSchema, async () => {
     try {
       const connections = await dbConnectionQueries.getAll();
-      return { success: true, connections };
+      return { success: true, connections: connections.map(toRendererConnection) };
     } catch (error) {
       logger.error('Failed to get database connections', error);
       return {
@@ -246,7 +269,7 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
   safeHandle('db:dbconnections:get-by-id', idSchema, async (_event, id) => {
     try {
       const connection = await dbConnectionQueries.getById(id);
-      return { success: true, connection };
+      return { success: true, connection: connection && toRendererConnection(connection) };
     } catch (error) {
       logger.error('Failed to get database connection', { id, error });
       return {
@@ -326,6 +349,8 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
         sshHostId?: string;
         sshTunnelEnabled?: boolean;
         sslEnabled?: boolean;
+        sslMode?: DbSslMode;
+        sslCa?: string;
         readOnly?: boolean;
         authDatabase?: string;
         replicaSet?: string;
@@ -350,6 +375,7 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
 
         // Encrypt password if provided
         const passwordEncrypted = data.password ? cryptoManager.encryptData(data.password) : null;
+        const sslMode: DbSslMode = data.sslMode ?? (data.sslEnabled ? 'require' : 'disabled');
 
         const newConnection: Record<string, unknown> = {
           id,
@@ -364,7 +390,9 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
           connection_mode: data.connectionMode || (data.type === 'sqlite' ? 'local' : 'ssh'),
           ssh_host_id: data.sshHostId || null,
           ssh_tunnel_enabled: data.sshTunnelEnabled ? 1 : 0,
-          ssl_enabled: data.sslEnabled ? 1 : 0,
+          ssl_enabled: sslMode === 'disabled' ? 0 : 1,
+          ssl_mode: sslMode,
+          ...(data.sslCa ? caColumns(data.sslCa) : {}),
           read_only: data.readOnly ? 1 : 0,
           auth_database: data.authDatabase || null,
           replica_set: data.replicaSet || null,
@@ -395,7 +423,7 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
 
         logger.info('Database connection created', { id, name: data.name, type: data.type });
 
-        return { success: true, connection: { ...newConnection, id } };
+        return { success: true, connection: toRendererConnection({ ...newConnection, id }) };
       } catch (error) {
         logger.error('Failed to create database connection', error);
         return {
@@ -431,7 +459,16 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
         if (update.sshHostId !== undefined) dbUpdate.ssh_host_id = update.sshHostId;
         if (update.sshTunnelEnabled !== undefined)
           dbUpdate.ssh_tunnel_enabled = update.sshTunnelEnabled ? 1 : 0;
-        if (update.sslEnabled !== undefined) dbUpdate.ssl_enabled = update.sslEnabled ? 1 : 0;
+        const sslMode =
+          update.sslMode ??
+          (update.sslEnabled === undefined ? undefined : update.sslEnabled ? 'require' : 'disabled');
+        if (sslMode !== undefined) {
+          dbUpdate.ssl_mode = sslMode;
+          dbUpdate.ssl_enabled = sslMode === 'disabled' ? 0 : 1;
+          dbUpdate.ssl_legacy_hint = 0;
+        }
+        if (update.sslLegacyHint === false) dbUpdate.ssl_legacy_hint = 0;
+        if (update.sslCa !== undefined) Object.assign(dbUpdate, caColumns(update.sslCa));
         if (update.readOnly !== undefined) dbUpdate.read_only = update.readOnly ? 1 : 0;
         if (update.authDatabase !== undefined) dbUpdate.auth_database = update.authDatabase;
         if (update.replicaSet !== undefined) dbUpdate.replica_set = update.replicaSet;
@@ -507,6 +544,13 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
     'db:dbconnections:test',
     dbConnectionTestSchema,
     async (_event, data) => {
+      let sslCa = data.sslCa;
+      if (!sslCa && data.configId) {
+        const stored = await dbConnectionQueries.getById(data.configId);
+        sslCa = stored?.ssl_ca_encrypted
+          ? cryptoManager.decryptData(stored.ssl_ca_encrypted)
+          : undefined;
+      }
       // testConnection() handles its own error catching and logging internally
       return dbConnectionManager.testConnection({
         type: data.type,
@@ -520,7 +564,8 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
         connectionMode: data.connectionMode,
         sshHostId: data.sshHostId,
         sshTunnelEnabled: data.sshTunnelEnabled,
-        sslEnabled: data.sslEnabled || false,
+        sslMode: data.sslMode ?? 'disabled',
+        sslCa,
         authDatabase: data.authDatabase,
         replicaSet: data.replicaSet,
         directConnection: data.directConnection,
@@ -530,6 +575,34 @@ export function setupDBConnectionHandlers(ctx: DBExplorerHandlerContext) {
       });
     }
   );
+
+  /**
+   * Pick a CA certificate file. The main process reads and validates it, so the renderer
+   * never gets file system access; the PEM goes back only to be saved with the connection.
+   */
+  safeHandle('db:dbconnections:pick-ca-file', noPayloadSchema, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'PEM', extensions: ['pem', 'crt', 'cer'] },
+        { name: '*', extensions: ['*'] },
+      ],
+    });
+    if (result.canceled || result.filePaths.length === 0) return { success: false };
+    try {
+      const filePath = result.filePaths[0];
+      if ((await fs.stat(filePath)).size > MAX_CA_PEM_LENGTH) {
+        throw new Error('CA certificate must be a PEM certificate');
+      }
+      const pem = await fs.readFile(filePath, 'utf8');
+      return { success: true, pem, fingerprint: caCertificateFingerprint(pem) };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Invalid CA certificate',
+      };
+    }
+  });
 
 
 }

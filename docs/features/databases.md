@@ -8,7 +8,17 @@ The **Database** tab connects to **PostgreSQL**, **MySQL**, **SQLite**, **Redis*
 
 - Fill in host, port, user, password and database, or paste a connection URI (`postgres://`, `postgresql://`, `mysql://`, `redis://`, `rediss://`, `mongodb://`, `mongodb+srv://`).
 - Passwords are encrypted with your master password.
-- **SSL** is a single switch. For PostgreSQL and MySQL it encrypts the connection but **does not verify the server certificate**.
+- **SSL** has three modes per connection:
+  - **Disabled**.
+  - **Require (verify certificate)**: encrypts and checks the server certificate and host name. This is the default when you turn SSL on.
+  - **Require, don't verify**: encrypts but accepts any certificate. Marked with a warning, because anyone between you and the server could impersonate it.
+- Optionally add a **CA certificate** (paste the PEM or choose a file) for servers signed by a private CA. It is stored encrypted; the app shows only that a CA is set and its fingerprint.
+- Through an SSH host, the certificate is checked against the database host name, not the local tunnel address.
+- PostgreSQL and MySQL connections saved with SSL on before these modes existed never verified the certificate. They keep working as **Require, don't verify** and show a one-time hint so you can switch them.
+
+### SQLite files
+
+Pick a local file, or a file on a saved SSH host (browse it over SFTP or type the path). A remote file is downloaded into a private temporary folder and opened **read-only**; the copy is deleted when you disconnect. Changes are never written back to the server.
 
 ### Through an SSH host
 
@@ -32,7 +42,8 @@ Turn on **read-only** per connection to protect production data:
 
 ## Schema tools
 
-- PostgreSQL: create and drop databases, schemas and tables. The create-table dialog covers name, type, length, nullable, primary key, default and unique.
+- PostgreSQL: create and drop databases, schemas and tables.
+- PostgreSQL, MySQL and SQLite: the create-table dialog covers name, type (per engine), length, nullable, primary key, default and unique. Defaults like `NULL`, `CURRENT_TIMESTAMP`, `NOW()` and numbers are used as-is; anything else is saved as text.
 - Create database users with access levels (login, read, read/write, admin) for PostgreSQL, MySQL, MongoDB and Redis.
 - Existing tables cannot be altered in OwnShell.
 
@@ -46,9 +57,12 @@ Database dumps use the official tools:
 | MySQL | `mysqldump`, `mysql` |
 | MongoDB | `mongodump`, `mongorestore` |
 | Redis | `redis-cli --rdb` |
+| SQLite | built in, no tool needed |
 
 - Export to `.sql` or `.sql.gz` (schema only, data only, selected tables and `pg_dump` options).
 - Import `.sql` / `.sql.gz`, optionally after truncating or dropping existing tables.
+- SQLite exports a SQL dump (like `sqlite3 .dump`). An import runs in one transaction, so a failing import leaves the database unchanged.
+- The dump tools use their own SSL defaults, not the connection's SSL mode.
 - For connections through an SSH host, the tools run **on the server** and the dump is streamed to your Mac, so they must be installed there. For direct connections they must be installed on your Mac. OwnShell tells you which tool is missing.
 
 ## Redis
@@ -58,6 +72,8 @@ Browse keys with a pattern (`SCAN`) and filter by type (string, hash, list, set,
 ## MongoDB
 
 Browse collections (create and drop), filter documents with a JSON query, page through results, and insert, edit or delete documents in a JSON editor.
+
+Run **aggregation pipelines** on a collection: a JSON array of stages. Extended JSON such as `{"$oid": "…"}` or `{"$date": "…"}` is supported. Up to 500 results are shown. On read-only connections, pipelines with `$out` or `$merge` are blocked.
 
 ## External CLI
 

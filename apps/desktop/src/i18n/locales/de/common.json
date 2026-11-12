@@ -1007,7 +1007,26 @@
     "noFileSelected": "Keine Datei ausgewählt",
     "remoteFile": "Entfernte Datei (SFTP)",
     "remoteFileHint": "SQLite-Datei per SFTP auf dem Server auswählen. Die Datei wird für den Zugriff lokal heruntergeladen.",
-    "sshConnectionRequired": "Verbinde dich zuerst mit dem SSH-Host, um entfernte Dateien zu durchsuchen"
+    "sshConnectionRequired": "Verbinde dich zuerst mit dem SSH-Host, um entfernte Dateien zu durchsuchen",
+    "ssl": {
+      "label": "SSL / TLS",
+      "modeDisabled": "Aus",
+      "modeRequire": "Erforderlich (Zertifikat prüfen)",
+      "modeRequireNoVerify": "Erforderlich, nicht prüfen",
+      "noVerifyBadge": "Zertifikat ungeprüft",
+      "noVerifyHint": "Die Verbindung ist verschlüsselt, aber jemand dazwischen könnte sich als Server ausgeben.",
+      "legacyHint": "Diese Verbindung nutzt SSL, ohne das Server-Zertifikat zu prüfen. Bearbeite sie und wähle „Erforderlich (Zertifikat prüfen)“, um die Prüfung einzuschalten.",
+      "caLabel": "CA-Zertifikat (optional)",
+      "caSet": "CA gesetzt",
+      "caRemove": "CA-Zertifikat entfernen",
+      "caHint": "Füge ein PEM-Zertifikat für Server mit privater CA ein. Wird verschlüsselt gespeichert.",
+      "caChooseFile": "Datei wählen…",
+      "caInvalid": "Diese Datei ist kein PEM-Zertifikat."
+    },
+    "remoteFilePath": "Pfad der entfernten Datei",
+    "listDirectoryFailed": "Ordner konnte nicht gelesen werden",
+    "sqliteExtensionConfirm": "„{{name}}“ hat keine typische SQLite-Endung. Trotzdem auswählen?",
+    "remoteFileReadOnlyHint": "Die Datei wird per SFTP heruntergeladen und schreibgeschützt geöffnet. Änderungen werden nicht auf den Server zurückgeschrieben."
   },
   "transfers": {
     "title": "Übertragungen",
@@ -1289,7 +1308,27 @@
       "filter": "Tabellen filtern...",
       "noMatch": "Keine Tabellen passen zur Suche",
       "noTables": "Keine Tabellen gefunden"
-    }
+    },
+    "mongoAggregation": {
+      "open": "Aggregation-Pipeline",
+      "title": "{{collection}} aggregieren",
+      "pipeline": "Pipeline (JSON-Array aus Stages)",
+      "hint": "Extended JSON wie {\"$oid\": …} funktioniert. Zeigt bis zu {{limit}} Ergebnisse. ⌘↩ führt aus.",
+      "run": "Ausführen",
+      "failed": "Aggregation fehlgeschlagen",
+      "readOnlyWrite": "Diese Verbindung ist schreibgeschützt: Pipelines mit $out oder $merge sind blockiert.",
+      "resultCount_one": "{{count}} Ergebnis",
+      "resultCount_other": "{{count}} Ergebnisse",
+      "truncated": "nur die ersten {{limit}} werden angezeigt",
+      "error": {
+        "json": "Die Pipeline ist kein gültiges JSON.",
+        "empty": "Die Pipeline hat keine Stages.",
+        "tooLong": "Die Pipeline hat mehr als 100 Stages.",
+        "stage": "Stage {{stage}} muss ein Objekt mit genau einem $-Operator sein, z. B. {\"$match\": {}}."
+      }
+    },
+    "importTooLarge": "Die Importdatei ist zu groß (max. {{fileMb}} MB Datei, {{sqlMb}} MB SQL).",
+    "importStatementRejected": "Import abgelehnt: {{statement}}-Anweisungen sind in einem SQL-Import nicht erlaubt."
   },
   "backup": {
     "passwordLength": "Passwort muss mindestens 4 Zeichen haben",

@@ -1007,7 +1007,26 @@
     "noFileSelected": "No file selected",
     "remoteFile": "Remote File (SFTP)",
     "remoteFileHint": "Browse and select a SQLite file from the remote server via SFTP. The file will be downloaded locally for access.",
-    "sshConnectionRequired": "Connect to the SSH host first to browse remote files"
+    "sshConnectionRequired": "Connect to the SSH host first to browse remote files",
+    "ssl": {
+      "label": "SSL / TLS",
+      "modeDisabled": "Disabled",
+      "modeRequire": "Require (verify certificate)",
+      "modeRequireNoVerify": "Require, don't verify",
+      "noVerifyBadge": "Certificate not verified",
+      "noVerifyHint": "The connection is encrypted, but anyone in between could pose as the server.",
+      "legacyHint": "This connection uses SSL without checking the server certificate. Edit it and choose “Require (verify certificate)” to turn the check on.",
+      "caLabel": "CA certificate (optional)",
+      "caSet": "CA set",
+      "caRemove": "Remove CA certificate",
+      "caHint": "Paste a PEM certificate for servers signed by a private CA. Stored encrypted.",
+      "caChooseFile": "Choose file…",
+      "caInvalid": "This file is not a PEM certificate."
+    },
+    "remoteFilePath": "Remote file path",
+    "listDirectoryFailed": "Failed to list directory",
+    "sqliteExtensionConfirm": "“{{name}}” doesn't have a typical SQLite extension. Select it anyway?",
+    "remoteFileReadOnlyHint": "The file is downloaded over SFTP and opened read-only. Changes are not written back to the server."
   },
   "transfers": {
     "title": "Transfers",
@@ -1289,7 +1308,27 @@
       "filter": "Filter tables...",
       "noMatch": "No tables match your search",
       "noTables": "No tables found"
-    }
+    },
+    "mongoAggregation": {
+      "open": "Aggregation pipeline",
+      "title": "Aggregate {{collection}}",
+      "pipeline": "Pipeline (JSON array of stages)",
+      "hint": "Extended JSON like {\"$oid\": …} works. Shows up to {{limit}} results. ⌘↩ runs.",
+      "run": "Run",
+      "failed": "Aggregation failed",
+      "readOnlyWrite": "This connection is read-only: pipelines with $out or $merge are blocked.",
+      "resultCount_one": "{{count}} result",
+      "resultCount_other": "{{count}} results",
+      "truncated": "only the first {{limit}} are shown",
+      "error": {
+        "json": "The pipeline is not valid JSON.",
+        "empty": "The pipeline has no stages.",
+        "tooLong": "The pipeline has more than 100 stages.",
+        "stage": "Stage {{stage}} must be an object with exactly one $operator, e.g. {\"$match\": {}}."
+      }
+    },
+    "importTooLarge": "The import file is too large (max. {{fileMb}} MB file, {{sqlMb}} MB SQL).",
+    "importStatementRejected": "Import rejected: {{statement}} statements are not allowed in a SQL import."
   },
   "backup": {
     "passwordLength": "Password must be at least 4 characters",

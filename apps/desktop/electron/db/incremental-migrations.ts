@@ -591,4 +591,35 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
   } catch (error) {
     logger.warn('Migration 019 skipped or failed', error);
   }
+
+  try {
+    const columns = sqlite.prepare('PRAGMA table_info(db_connections)').all() as Array<{ name: string }>;
+    if (columns.length > 0 && !columns.some((col) => col.name === 'ssl_mode')) {
+      // SSL used to skip certificate checks for PostgreSQL/MySQL. Those connections keep working
+      // as 'require-no-verify' and get a one-time hint; Redis/MongoDB always verified.
+      sqlite.exec(`
+        BEGIN;
+        ALTER TABLE db_connections ADD COLUMN ssl_mode TEXT;
+        ALTER TABLE db_connections ADD COLUMN ssl_ca_encrypted TEXT;
+        ALTER TABLE db_connections ADD COLUMN ssl_ca_fingerprint TEXT;
+        ALTER TABLE db_connections ADD COLUMN ssl_legacy_hint INTEGER NOT NULL DEFAULT 0;
+        UPDATE db_connections SET
+          ssl_mode = CASE
+            WHEN ssl_enabled != 1 THEN 'disabled'
+            WHEN type IN ('postgres', 'mysql') THEN 'require-no-verify'
+            ELSE 'require'
+          END,
+          ssl_legacy_hint = CASE WHEN ssl_enabled = 1 AND type IN ('postgres', 'mysql') THEN 1 ELSE 0 END;
+        COMMIT;
+      `);
+      logger.info('Migration 020 completed: database SSL modes and CA certificates');
+    }
+  } catch (error) {
+    try {
+      sqlite.exec('ROLLBACK;');
+    } catch {
+      // No open transaction.
+    }
+    logger.warn('Migration 020 skipped or failed', error);
+  }
 }

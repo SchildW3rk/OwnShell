@@ -105,8 +105,24 @@ test('backup round-trip restores every table and its secrets', async () => {
   await seed();
   const manager = new BackupManager(db);
 
+  // Public self-signed test certificate (same as scripts/db-tls-options.test.ts).
+  const caPem = `-----BEGIN CERTIFICATE-----
+MIIBizCCATGgAwIBAgIUMOWDyufnLsLhh/7Pb6Et3xGbJEQwCgYIKoZIzj0EAwIw
+GjEYMBYGA1UEAwwPZGIuZXhhbXBsZS50ZXN0MCAXDTI2MTExMjIxMjY0MloYDzIx
+MjYxMDE5MjEyNjQyWjAaMRgwFgYDVQQDDA9kYi5leGFtcGxlLnRlc3QwWTATBgcq
+hkjOPQIBBggqhkjOPQMBBwNCAAQWXTw/9ih0IMAHCuTXy02NF1acaA8/j7y25WGA
+8a74cuVRI7Gmvvi8mVRTptS93gJnxO9SwDIjkAYB1obLa3e1o1MwUTAdBgNVHQ4E
+FgQU6qKH24vppvG1PLyh7HIQKf4QXJUwHwYDVR0jBBgwFoAU6qKH24vppvG1PLyh
+7HIQKf4QXJUwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiAi3dBM
+Xiw0z70Xgspbr8miFLtqvrxegVhsO/JhzXeAWAIhAK9nHsj4oLdLRv2vsUTaMLmT
+/H0JtX2esHR1bO8jhM6B
+-----END CERTIFICATE-----
+`;
+  await db.updateTable('db_connections').set({ ssl_ca_encrypted: enc(caPem), ssl_ca_fingerprint: 'stale' }).execute();
   const vault = await manager.exportVault('backup-pw');
   const exported = await manager.decryptVault(vault, 'backup-pw');
+  assert.equal(exported.dbConnections?.[0]?.ssl_ca, caPem, 'CA travels decrypted inside the encrypted backup');
+  assert.equal(JSON.stringify(exported).includes('ssl_ca_encrypted'), false);
   assert.equal(exported.vaultEnvironments?.[0]?.variables[0]?.value, 'sëcret-€');
   assert.equal(exported.dbConnections?.[0]?.password, 'db-secret');
   assert.equal(exported.vaultCredentials?.[0]?.password, 'gh-pass');
@@ -122,6 +138,9 @@ test('backup round-trip restores every table and its secrets', async () => {
   }).execute();
 
   await manager.restoreVault(exported);
+  const restoredConn = await db.selectFrom('db_connections').select(['ssl_ca_encrypted', 'ssl_ca_fingerprint']).executeTakeFirstOrThrow();
+  assert.equal(cryptoManager.decryptData(restoredConn.ssl_ca_encrypted!), caPem);
+  assert.notEqual(restoredConn.ssl_ca_fingerprint, 'stale', 'fingerprint recomputed on restore');
   const reExported = await manager.decryptVault(await manager.exportVault('backup-pw'), 'backup-pw');
   assert.deepEqual(withoutTimestamp(reExported), withoutTimestamp(exported));
 

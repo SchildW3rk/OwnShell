@@ -13,6 +13,7 @@ import { cryptoManager } from '../security/crypto';
 import { AutoLockManager } from '../security/auto-lock';
 import { logger } from '../logger';
 import { safeHandle, safeHandleArgs } from './safe-ipc';
+import { encryptLegacyAuthSecrets } from './api-client/oauth';
 
 let autoLockManager: AutoLockManager | null = null;
 
@@ -124,6 +125,10 @@ export function setupCryptoHandlers(mainWindow: BrowserWindow, db: Kysely<Databa
       if (success) {
         // Start auto-lock timer
         startAutoLock(mainWindow);
+        // Encrypt API auth secrets saved in plaintext by older versions; needs the unlocked key.
+        void encryptLegacyAuthSecrets(db).catch((error) =>
+          logger.warn('Could not encrypt legacy API auth secrets', error)
+        );
 
         logger.info('App unlocked successfully');
         return { success: true };

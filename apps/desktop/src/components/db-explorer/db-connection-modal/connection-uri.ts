@@ -1,5 +1,5 @@
 import { DEFAULT_PORTS } from './constants';
-import type { DBConnectionFormData, DBType } from './types';
+import type { DBConnectionFormData, DBType, DbSslMode } from './types';
 
 const SUPPORTED_PROTOCOLS: Record<string, DBType> = {
   postgres: 'postgres',
@@ -27,7 +27,7 @@ interface ParsedConnectionUri {
   username: string;
   password: string;
   connectionUri: string;
-  sslEnabled?: boolean;
+  sslMode?: DbSslMode;
   authDatabase?: string;
   replicaSet?: string;
   directConnection?: boolean;
@@ -64,18 +64,19 @@ function getBooleanSearchParam(url: URL, key: string): boolean | undefined {
   return undefined;
 }
 
-function getSslEnabled(type: DBType, protocol: string, url: URL): boolean | undefined {
-  if (protocol === 'rediss') return true;
-
-  const tls = getBooleanSearchParam(url, 'tls') ?? getBooleanSearchParam(url, 'ssl');
-  if (tls !== undefined) return tls;
+function getSslMode(type: DBType, protocol: string, url: URL): DbSslMode | undefined {
+  if (protocol === 'rediss') return 'require';
 
   if (type === 'postgres') {
+    // libpq: only verify-ca/verify-full check the certificate.
     const sslMode = url.searchParams.get('sslmode');
-    if (!sslMode || sslMode === 'disable') return undefined;
-    return true;
+    if (sslMode === 'disable') return 'disabled';
+    if (sslMode === 'verify-ca' || sslMode === 'verify-full') return 'require';
+    if (sslMode) return 'require-no-verify';
   }
 
+  const tls = getBooleanSearchParam(url, 'tls') ?? getBooleanSearchParam(url, 'ssl');
+  if (tls !== undefined) return tls ? 'require' : 'disabled';
   return undefined;
 }
 
@@ -107,7 +108,7 @@ export function parseDatabaseConnectionUri(value: string): ParsedConnectionUri |
     username: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
     connectionUri: sanitizeConnectionUri(unwrapped),
-    sslEnabled: getSslEnabled(type, protocol, url),
+    sslMode: getSslMode(type, protocol, url),
     authDatabase,
     replicaSet: url.searchParams.get('replicaSet') || undefined,
     directConnection: getBooleanSearchParam(url, 'directConnection'),
@@ -129,7 +130,7 @@ export function applyParsedConnectionUri(
     database: parsed.database || formData.database,
     username: parsed.username || formData.username,
     password: parsed.password || formData.password,
-    sslEnabled: parsed.sslEnabled ?? formData.sslEnabled,
+    sslMode: parsed.sslMode ?? formData.sslMode,
     connectionUri: parsed.connectionUri,
     authDatabase: parsed.authDatabase || '',
     replicaSet: parsed.replicaSet || '',

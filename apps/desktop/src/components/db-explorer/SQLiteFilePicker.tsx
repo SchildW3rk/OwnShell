@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppSelect, Button, SegmentedChoice, cn, formatBytes } from '@ownshell/ui';
+import { AppSelect, Button, Input, SegmentedChoice, cn, formatBytes } from '@ownshell/ui';
 import {
   Database,
   HardDrive,
@@ -22,6 +22,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useHostStore } from '../../stores/useHostStore';
+import { useTerminalStore } from '../../stores/useTerminalStore';
 
 interface SQLiteFilePickerProps {
   /** Current file path */
@@ -30,7 +31,7 @@ interface SQLiteFilePickerProps {
   isRemote?: boolean;
   /** SSH host ID for remote files */
   remoteHostId?: string;
-  /** SSH session ID (if already connected) */
+  /** SSH session ID of the explorer; used only when it belongs to the selected host */
   sshSessionId?: string;
   /** Callback when file is selected */
   onChange: (data: {
@@ -58,7 +59,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
   value,
   isRemote = false,
   remoteHostId,
-  sshSessionId,
+  sshSessionId: explorerSessionId,
   onChange,
   error,
 }) => {
@@ -68,6 +69,17 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
   // Local vs Remote mode
   const [mode, setMode] = useState<'local' | 'remote'>(isRemote ? 'remote' : 'local');
   const [selectedHostId, setSelectedHostId] = useState<string>(remoteHostId || '');
+  // Browsing needs an open SSH session to the host picked here, not the explorer's host.
+  const sshSessionId = useTerminalStore((state) => {
+    if (!selectedHostId) return undefined;
+    const active = state.sessions.find(
+      (session) => session.kind === 'ssh' && session.host?.id === selectedHostId && session.sessionId
+    );
+    if (active?.sessionId) return active.sessionId;
+    const background = state.backgroundSessions.get(selectedHostId)?.sshSessionId;
+    if (background) return background;
+    return explorerSessionId && remoteHostId === selectedHostId ? explorerSessionId : undefined;
+  });
 
   // Remote browser state
   const [currentPath, setCurrentPath] = useState('/');
@@ -103,7 +115,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
    */
   const listRemoteDirectory = async (path: string) => {
     if (!sshSessionId) {
-      setBrowserError('SSH session required to browse remote files');
+      setBrowserError(t('database.sshConnectionRequired'));
       return;
     }
 
@@ -122,10 +134,10 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
         setFiles(sorted);
         setCurrentPath(path);
       } else {
-        setBrowserError(result.error?.message || 'Failed to list directory');
+        setBrowserError(result.error?.message || t('database.listDirectoryFailed'));
       }
     } catch (err) {
-      setBrowserError(err instanceof Error ? err.message : 'Failed to list directory');
+      setBrowserError(err instanceof Error ? err.message : t('database.listDirectoryFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -147,9 +159,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
 
       if (!ext || !sqliteExtensions.includes(ext)) {
         // Allow selecting anyway but warn
-        const confirm = window.confirm(
-          `"${file.name}" doesn't have a typical SQLite extension. Select anyway?`
-        );
+        const confirm = window.confirm(t('database.sqliteExtensionConfirm', { name: file.name }));
         if (!confirm) return;
       }
 
@@ -177,7 +187,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
    */
   const openBrowser = () => {
     if (!sshSessionId) {
-      setBrowserError('Please connect to the SSH host first');
+      setBrowserError(t('database.sshConnectionRequired'));
       return;
     }
     setShowBrowser(true);
@@ -194,7 +204,15 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
         <SegmentedChoice
           name="sqlite-file-location"
           value={mode}
-          onChange={setMode}
+          onChange={(next) => {
+            setMode(next);
+            setShowBrowser(false);
+            onChange({
+              filePath: '',
+              isRemote: next === 'remote',
+              remoteHostId: next === 'remote' ? selectedHostId : undefined,
+            });
+          }}
           fullWidth
           itemClassName="h-11"
           options={[
@@ -250,7 +268,11 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
             <AppSelect
               id="sqlite-ssh-host"
               value={selectedHostId}
-              onChange={setSelectedHostId}
+              onChange={(hostId) => {
+                setSelectedHostId(hostId);
+                setShowBrowser(false);
+                onChange({ filePath: value || '', isRemote: true, remoteHostId: hostId });
+              }}
               options={[
                 { value: '', label: t('database.selectSSHHost', 'Select SSH host...') },
                 ...(hosts || []).map((host: { id: string; label: string; hostname?: string }) => ({
@@ -262,17 +284,22 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
             />
           </div>
 
-          {/* Remote File Path */}
-          <div
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 bg-surface border rounded transition-colors',
-              value ? 'border-border' : 'border-border'
-            )}
-          >
-            <Database className="w-4 h-4 text-muted-foreground" />
-            <span className={cn('flex-1 text-sm', value ? 'text-foreground' : 'text-muted-foreground')}>
-              {value || t('database.noFileSelected', 'No file selected')}
-            </span>
+          {/* Remote File Path: typed, or picked in the browser below */}
+          <div className="flex items-center gap-2">
+            <Input
+              id="sqlite-remote-path"
+              value={value || ''}
+              onChange={(event) =>
+                onChange({
+                  filePath: event.target.value,
+                  isRemote: true,
+                  remoteHostId: selectedHostId,
+                })
+              }
+              placeholder="/var/lib/app/data.sqlite"
+              aria-label={t('database.remoteFilePath')}
+              className="flex-1 font-mono text-sm"
+            />
             <Button
               type="button"
               variant="ghost"
@@ -332,7 +359,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Loading...
+                    {t('common.loading')}
                   </div>
                 ) : browserError ? (
                   <div className="flex items-center justify-center py-8 text-destructive">
@@ -373,10 +400,7 @@ export const SQLiteFilePicker: React.FC<SQLiteFilePickerProps> = ({
           )}
 
           <p className="text-xs text-muted-foreground">
-            {t(
-              'database.remoteFileHint',
-              'Browse and select a SQLite file from the remote server via SFTP. The file will be downloaded locally for access.'
-            )}
+            {t('database.remoteFileReadOnlyHint')}
           </p>
         </div>
       )}

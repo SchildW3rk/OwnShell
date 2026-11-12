@@ -7,7 +7,13 @@ import type { Database } from '@ownshell/core';
 import { shell } from 'electron';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
-import { obtainAccessToken, type ResolvedOAuth, type TokenStore } from '../../http/oauth';
+import {
+  hasPlainAuthSecret,
+  obtainAccessToken,
+  storedAuthConfig,
+  type ResolvedOAuth,
+  type TokenStore,
+} from '../../http/oauth';
 import { ApiRequestError, prepareRequest } from '../../http/prepare-request';
 import type { HttpRequestConfig } from '../../http/types';
 import { logger } from '../../logger';
@@ -17,15 +23,47 @@ import {
   loadCollectionChain,
   loadVariableScopes,
   ownerKey,
-  revealOAuthSecret,
+  revealAuthSecret,
   type AuthOwner,
 } from './request-context';
 import { executeRequestSchema, idSchema } from './schemas';
 
-/** Encrypts an OAuth client secret on save (refused while the app is locked). */
+/** Encrypts an auth secret on save (refused while the app is locked). */
 export function encryptSecret(value: string): string {
-  if (!cryptoManager.isUnlocked()) throw new Error('App is locked - cannot encrypt the client secret');
+  if (!cryptoManager.isUnlocked()) throw new Error('App is locked - cannot encrypt the auth secret');
   return cryptoManager.encryptData(value);
+}
+
+const legacySecretsEncrypted = new WeakSet<Kysely<Database>>();
+
+/**
+ * One-time, idempotent: bearer tokens, basic passwords and API keys saved before they were
+ * encrypted get encrypted in place. Schema migrations run before unlock, so this runs on the
+ * first API client read after unlock instead. Until then nothing leaks: publicAuthConfig hides
+ * legacy plain values and sends/backups read them as they are.
+ */
+export async function encryptLegacyAuthSecrets(db: Kysely<Database>): Promise<void> {
+  if (legacySecretsEncrypted.has(db) || !cryptoManager.isUnlocked()) return;
+  await db.transaction().execute(async (trx) => {
+    const encrypt = (json: string, authType: string) => storedAuthConfig(authType, json, json, encryptSecret);
+    for (const row of await trx.selectFrom('api_requests').select(['id', 'auth_type', 'auth_config']).execute()) {
+      if (!hasPlainAuthSecret(row.auth_config)) continue;
+      await trx
+        .updateTable('api_requests')
+        .set({ auth_config: encrypt(row.auth_config, row.auth_type) })
+        .where('id', '=', row.id)
+        .execute();
+    }
+    for (const row of await trx.selectFrom('api_collections').select(['id', 'auth_type', 'auth_config']).execute()) {
+      if (!hasPlainAuthSecret(row.auth_config)) continue;
+      await trx
+        .updateTable('api_collections')
+        .set({ auth_config: encrypt(row.auth_config, row.auth_type) })
+        .where('id', '=', row.id)
+        .execute();
+    }
+  });
+  legacySecretsEncrypted.add(db);
 }
 
 export const authOwnerSchema = z.object({ type: z.enum(['request', 'collection']), id: idSchema });
@@ -95,7 +133,7 @@ async function openInBrowser(url: string): Promise<void> {
 /** "Get new token": prepares like a send (variables, inheritance) with a forced token request. */
 async function fetchNewToken(db: Kysely<Database>, store: TokenStore, config: HttpRequestConfig, owner: AuthOwner) {
   const chain = await loadCollectionChain(db, config.collectionId);
-  const revealed = await revealOAuthSecret(db, config, chain, owner);
+  const revealed = await revealAuthSecret(db, config, chain, owner);
   const { scopes, locked } = await loadVariableScopes(db, config, chain);
   let obtained = false;
   const provider = oauthTokenProvider(store, owner, { force: true, openUrl: openInBrowser });

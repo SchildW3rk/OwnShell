@@ -16,6 +16,7 @@ import {
   projectSchema,
 } from '../schemas/vault';
 import { sftpConnectionManager } from '../../sftp/sftp-connection-manager';
+import { serializeDotenv } from './dotenv';
 
 let db: Kysely<Database>;
 
@@ -268,7 +269,7 @@ async function handleDeployToSFTP(
     }));
 
     // 3. Generate .env file content
-    const envFileContent = decryptedVars.map((v) => `${v.key}=${v.value}`).join('\n');
+    const envFileContent = serializeDotenv(decryptedVars);
 
     // 4. Write to SFTP server (delegate to sftp-connection-manager)
     let sftp = sftpConnectionManager.getSFTPClient(params.connectionId);

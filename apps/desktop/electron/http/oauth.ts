@@ -373,7 +373,8 @@ async function acquireToken(config: ResolvedOAuth, options: ObtainOptions, signa
 }
 
 // ---------------------------------------------------------------------------
-// Stored auth config: the client secret only ever lives encrypted in the DB.
+// Stored auth config: secrets (OAuth client secret, bearer token, basic password,
+// API key value) only ever live encrypted in the DB as `<field>Encrypted`.
 // ---------------------------------------------------------------------------
 
 type Json = Record<string, unknown>;
@@ -387,14 +388,45 @@ function parseObject(json: string | null | undefined): Json {
   }
 }
 
-/** What the renderer sees: never the (encrypted) client secret, only whether one is set. */
-export function publicAuthConfig(authType: string, json: string): string {
-  if (authType !== 'oauth2') return json;
+/** The secret field each auth type uses. One config may hold several (the editor keeps all fields). */
+export const AUTH_SECRET_FIELDS = {
+  bearer: 'token',
+  basic: 'password',
+  'api-key': 'value',
+  oauth2: 'clientSecret',
+} as const;
+type SecretField = (typeof AUTH_SECRET_FIELDS)[keyof typeof AUTH_SECRET_FIELDS];
+const SECRET_FIELDS = Object.values(AUTH_SECRET_FIELDS);
+
+const encryptedKey = (field: SecretField) => `${field}Encrypted`;
+/** Renderer flag: hasToken, hasPassword, hasValue, hasClientSecret. */
+const storedFlag = (field: SecretField) => `has${field[0].toUpperCase()}${field.slice(1)}`;
+
+/**
+ * A value that only references variables (`{{TOKEN}}`) holds no secret itself: it stays plain
+ * so the editor can show which variable is used. Any literal text around it is encrypted.
+ */
+export function isVariableReference(value: string): boolean {
+  return /^\s*(\{\{[^{}]+\}\}\s*)+$/.test(value);
+}
+
+const isPlainSecret = (value: unknown): value is string =>
+  typeof value === 'string' && value !== '' && !isVariableReference(value);
+
+/** What the renderer sees: never a stored secret (encrypted or legacy plain), only whether one is set. */
+export function publicAuthConfig(_authType: string, json: string): string {
   const config = parseObject(json);
-  const hasClientSecret = typeof config.clientSecretEncrypted === 'string';
-  delete config.clientSecret;
-  delete config.clientSecretEncrypted;
-  return JSON.stringify({ ...config, hasClientSecret });
+  let changed = false;
+  for (const field of SECRET_FIELDS) {
+    const encrypted = config[encryptedKey(field)];
+    const plain = config[field];
+    if (encrypted === undefined && !isPlainSecret(plain)) continue;
+    delete config[encryptedKey(field)];
+    if (isPlainSecret(plain)) delete config[field];
+    config[storedFlag(field)] = typeof encrypted === 'string' || isPlainSecret(plain);
+    changed = true;
+  }
+  return changed ? JSON.stringify(config) : json;
 }
 
 /**
@@ -421,46 +453,61 @@ export function assertSecureOAuthUrls(authType: string, json: string): void {
 }
 
 /**
- * Config to store from renderer input. `clientSecret` set: encrypt it; '' clears it;
- * absent: keep the stored one. Other auth types are stored as given.
+ * Config to store from renderer input, per secret field: a string encrypts it (a pure
+ * `{{variable}}` reference stays plain), '' clears it, absent keeps the stored one (a legacy
+ * plain value is encrypted on the way). `encrypt` is only called when there is something to encrypt.
  */
 export function storedAuthConfig(
-  authType: string,
+  _authType: string,
   json: string,
   existingJson: string | null | undefined,
   encrypt: (value: string) => string
 ): string {
-  if (authType !== 'oauth2') return json;
   const rest = parseObject(json);
-  const { clientSecret } = rest;
-  delete rest.clientSecret;
-  delete rest.hasClientSecret;
-  delete rest.clientSecretEncrypted;
-  const existing = parseObject(existingJson).clientSecretEncrypted;
-  const encrypted =
-    typeof clientSecret === 'string'
-      ? clientSecret
-        ? encrypt(clientSecret)
-        : undefined
-      : typeof existing === 'string'
-        ? existing
-        : undefined;
-  return JSON.stringify({ ...rest, ...(encrypted && { clientSecretEncrypted: encrypted }) });
+  const existing = parseObject(existingJson);
+  const stored: Json = {};
+  for (const field of SECRET_FIELDS) {
+    const input = rest[field];
+    delete rest[field];
+    delete rest[storedFlag(field)];
+    delete rest[encryptedKey(field)];
+    const value = typeof input === 'string' ? input : existing[field];
+    if (typeof input !== 'string' && typeof existing[encryptedKey(field)] === 'string') {
+      stored[encryptedKey(field)] = existing[encryptedKey(field)];
+    } else if (typeof value === 'string' && value) {
+      if (isVariableReference(value)) stored[field] = value;
+      else stored[encryptedKey(field)] = encrypt(value);
+    }
+  }
+  return JSON.stringify({ ...rest, ...stored });
+}
+
+/** True when a stored config still holds a literal secret in plain text (pre-encryption data). */
+export function hasPlainAuthSecret(json: string): boolean {
+  const config = parseObject(json);
+  return SECRET_FIELDS.some((field) => isPlainSecret(config[field]));
 }
 
 /**
- * Config for preparation: `clientSecret` in plain text (from the input, else decrypted
- * from the stored config). Never returned to the renderer.
+ * Config for preparation: the secret fields in plain text (from the input, else decrypted
+ * from the stored config). Main process only, never returned to the renderer.
+ * `fields` limits decryption to what a send needs; default: every secret (backups).
  */
-export function revealClientSecret(
+export function revealAuthSecrets(
   json: string,
   storedJson: string | null | undefined,
-  decrypt: (value: string) => string
+  decrypt: (value: string) => string,
+  fields: readonly SecretField[] = SECRET_FIELDS
 ): string {
   const config = parseObject(json);
-  if (typeof config.clientSecret === 'string') return json;
-  const encrypted = parseObject(storedJson).clientSecretEncrypted;
-  delete config.clientSecretEncrypted;
-  delete config.hasClientSecret;
-  return JSON.stringify({ ...config, clientSecret: typeof encrypted === 'string' ? decrypt(encrypted) : '' });
+  const stored = parseObject(storedJson);
+  for (const field of SECRET_FIELDS) {
+    const encrypted = stored[encryptedKey(field)];
+    delete config[encryptedKey(field)];
+    delete config[storedFlag(field)];
+    if (typeof config[field] === 'string' || !fields.includes(field)) continue;
+    if (typeof encrypted === 'string') config[field] = decrypt(encrypted);
+    else if (typeof stored[field] === 'string') config[field] = stored[field];
+  }
+  return JSON.stringify(config);
 }

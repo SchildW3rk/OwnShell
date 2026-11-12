@@ -30,7 +30,13 @@ Wähle bei einer Umgebung **Auf SFTP-Server bereitstellen**, um sie per SFTP auf
 Die Datei wird mit den Berechtigungen **0600** (nur Lesen/Schreiben für den Besitzer) geschrieben, auch wenn sie eine bestehende Datei ersetzt. Der Zeitpunkt des letzten Uploads wird bei der Umgebung angezeigt.
 
 ::: warning Format
-Die Datei wird als einfache `KEY=VALUE`-Zeilen ohne Anführungszeichen geschrieben. Werte mit Leerzeichen, `#` oder Zeilenumbrüchen werden unverändert geschrieben, prüfe also, was deine Anwendung erwartet. Eine bestehende Datei wird ersetzt, nicht gesichert.
+Die Datei enthält eine `KEY=VALUE`-Zeile pro Variable, im Format, das Docker Compose liest (`.env` und `env_file`):
+
+- Namen müssen mit einem Buchstaben oder `_` beginnen und dürfen nur Buchstaben, Ziffern und `_` enthalten. Sonst wird der Upload abgelehnt.
+- Werte, die nur aus Buchstaben, Ziffern und `_ . / : @ , + -` bestehen, werden ohne Anführungszeichen geschrieben.
+- Alle anderen Werte werden in doppelten Anführungszeichen geschrieben, mit `\\`, `\"` und `\$` maskiert und Zeilenumbrüchen als `\n`. So kommen `#`, Leerzeichen, Anführungszeichen und `$` unverändert bei deiner Anwendung an (keine Variablen-Interpolation).
+
+Eine bestehende Datei wird ersetzt, nicht gesichert.
 :::
 
 OwnShell injiziert keine Umgebungsvariablen in Terminal-Sitzungen.

@@ -71,7 +71,7 @@ Zwei Grants werden unterstützt: **Client Credentials** und **Authorization Code
 - Mit *Erben* wird das Token am Ordner zwischengespeichert und von seinen Requests geteilt.
 
 ::: tip Was verschlüsselt wird
-Das OAuth-Client-Secret sowie Access- und Refresh-Tokens werden mit deinem Master-Passwort verschlüsselt und nie angezeigt. **Bearer-Tokens, Basic-Passwörter und API-Key-Werte werden so gespeichert, wie du sie eintippst.** Damit sie verschlüsselt bleiben, lege sie in einer geheimen Variable oder einer Vault-Umgebung ab und nutze `{{name}}` im Feld.
+Das OAuth-Client-Secret, Bearer-Tokens, Basic-Passwörter, API-Key-Werte sowie OAuth-Access- und Refresh-Tokens werden mit deinem Master-Passwort verschlüsselt und nie wieder angezeigt: Das Feld zeigt, dass ein Wert gespeichert ist. Lass es leer, um ihn zu behalten, tippe einen neuen Wert ein, um ihn zu ersetzen, oder nutze **Gespeichertes Secret entfernen**. Ein Wert, der nur auf Variablen verweist, etwa `{{TOKEN}}`, enthält selbst kein Secret und bleibt sichtbar. Von älteren Versionen gespeicherte Werte werden verschlüsselt, sobald du den API-Client nach dem Entsperren zum ersten Mal öffnest.
 :::
 
 ## Variablen

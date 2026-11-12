@@ -9,7 +9,8 @@ import {
   SQLiteAdapter,
 } from '../adapters';
 import { logger } from '../../logger';
-import type { AnyAdapter, TestConnectionConfig } from './types';
+import { buildTlsOptions, type DbSslMode } from './tls-options';
+import type { AnyAdapter } from './types';
 
 export function createSQLiteAdapter(config: DBConnectionConfig, connectionId: string): SQLiteAdapter {
   const filePath = (config as any).filePath;
@@ -31,18 +32,27 @@ export function createSQLiteAdapter(config: DBConnectionConfig, connectionId: st
   });
 }
 
+/** Stored connection config plus the decrypted SSL settings (see tls-options.ts). */
+export type NetworkAdapterConfig = DBConnectionConfig & { sslMode?: DbSslMode; sslCa?: string };
+
 export function createNetworkAdapter(
-  config: DBConnectionConfig,
+  config: NetworkAdapterConfig,
   effectiveHost: string,
   effectivePort: number
 ): AnyAdapter {
+  const tunneled = effectiveHost !== config.host;
+  const tls = buildTlsOptions(config.sslMode, {
+    ca: config.sslCa,
+    verifyHost: tunneled && config.host ? config.host : undefined,
+  });
+
   if (config.type === 'redis') {
     return new RedisAdapter({
       host: effectiveHost,
       port: effectivePort,
       password: config.password,
       database: 0,
-      tls: config.ssl,
+      tls,
     });
   }
 
@@ -62,7 +72,7 @@ export function createNetworkAdapter(
       replicaSet: (config as any).replicaSet,
       directConnection: (config as any).directConnection,
       readPreference: (config as any).readPreference,
-      tls: config.ssl,
+      tls,
     });
   }
 
@@ -72,7 +82,8 @@ export function createNetworkAdapter(
     database: config.database,
     username: config.username,
     password: config.password,
-    ssl: config.ssl,
+    ssl: tls,
+    tlsHost: tunneled && config.host ? config.host : undefined,
   });
 }
 
@@ -111,58 +122,5 @@ export function createSQLAdapter(type: DBType, config: AdapterConnectionConfig):
       );
     default:
       throw new DBConnectionError(`Unsupported database type: ${type}`, 'UNSUPPORTED_DB_TYPE');
-  }
-}
-
-export function createTestAdapter(config: TestConnectionConfig): AnyAdapter {
-  const username = config.username || '';
-  const password = config.password || '';
-
-  switch (config.type) {
-    case 'postgres':
-      return new PostgresAdapter({
-        host: config.host,
-        port: config.port,
-        database: config.database || 'postgres',
-        username,
-        password,
-        ssl: config.sslEnabled || false,
-      });
-    case 'mysql':
-      return new MySQLAdapter({
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        username,
-        password,
-        ssl: config.sslEnabled || false,
-      });
-    case 'redis':
-      return new RedisAdapter({
-        host: config.host,
-        port: config.port,
-        password: password || undefined,
-        database: 0,
-        tls: config.sslEnabled || false,
-      });
-    case 'mongodb':
-      if (!config.database) {
-        throw new DBConnectionError('Database name is required for MongoDB', 'INVALID_CONFIG');
-      }
-      return new MongoDBAdapter({
-        connectionUri: config.connectionMode === 'local' ? config.connectionUri : undefined,
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        username,
-        password,
-        authDatabase: config.authDatabase || 'admin',
-        replicaSet: config.replicaSet,
-        directConnection: config.directConnection,
-        readPreference: config.readPreference,
-        tls: config.sslEnabled || false,
-      });
-    default:
-      throw new DBConnectionError(`Unsupported database type: ${config.type}`, 'UNSUPPORTED_DB_TYPE');
   }
 }

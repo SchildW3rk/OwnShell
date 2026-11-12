@@ -12,7 +12,7 @@ Release-Builds sind von Apple signiert und notarisiert, macOS öffnet sie ohne Z
 
 ## Master-Passwort anlegen
 
-Beim ersten Start fragt OwnShell nach einem **Master-Passwort**. Damit werden die Secrets verschlüsselt, die OwnShell speichert: Host-Passwörter, SSH-Schlüssel, Datenbank- und S3-Zugangsdaten, Vault-Einträge, als Secret markierte Variablen im API-Client, OAuth-Client-Secrets und -Tokens, Cookies und dein Lizenzschlüssel. Tokens, Passwörter und API-Keys, die du direkt in die **Auth**-Felder eines Requests tippst, werden so gespeichert, wie du sie eingibst – lege solche Werte lieber als Secret-Variable an und verwende sie als <code v-pre>{{name}}</code>.
+Beim ersten Start fragt OwnShell nach einem **Master-Passwort**. Damit werden die Secrets verschlüsselt, die OwnShell speichert: Host-Passwörter, SSH-Schlüssel, Datenbank- und S3-Zugangsdaten, Vault-Einträge, als Secret markierte Variablen im API-Client, Tokens, Passwörter, API-Keys und OAuth-Client-Secrets in den **Auth**-Feldern eines Requests, OAuth-Tokens, Cookies und dein Lizenzschlüssel.
 
 Das Passwort braucht mindestens 8 Zeichen mit einem Großbuchstaben, einem Kleinbuchstaben und einer Ziffer.
 
