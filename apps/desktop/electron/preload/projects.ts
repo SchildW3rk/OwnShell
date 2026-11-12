@@ -5,10 +5,13 @@ import type {
   GitBranchesResult,
   GitCommitDetailsRequest,
   GitCommitDetailsResult,
+  GitCommitHistoryRequest,
   GitCommitHistoryResult,
+  GitComposeStatusResult,
   GitCreateCommitRequest,
   GitCodeDirectoryRequest,
   GitCodeDirectoryResult,
+  GitCodeFileListResult,
   GitCodeFileRequest,
   GitCodeFileResult,
   GitDiffRequest,
@@ -17,6 +20,7 @@ import type {
   GitInitRepositoryResult,
   GitRepositoryStatusResult,
   GitWorkingTreeActionResult,
+  GitWorkingTreeNumstatResult,
   ProjectDiscoveryResult,
   ProjectsTable,
   ProjectUpdate,
@@ -42,8 +46,10 @@ export function createProjectsApi(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke('db:projects:delete', id) as Promise<{ success: boolean }>,
     gitStatus: (id: string) =>
       ipcRenderer.invoke('ssh:git:status', id) as Promise<GitRepositoryStatusResult>,
-    gitHistory: (id: string) =>
-      ipcRenderer.invoke('ssh:git:history', id) as Promise<GitCommitHistoryResult>,
+    gitHistory: (request: GitCommitHistoryRequest) =>
+      ipcRenderer.invoke('ssh:git:history', request) as Promise<GitCommitHistoryResult>,
+    gitWorkingTreeNumstat: (id: string) =>
+      ipcRenderer.invoke('ssh:git:numstat', id) as Promise<GitWorkingTreeNumstatResult>,
     gitCommitDetails: (request: GitCommitDetailsRequest) =>
       ipcRenderer.invoke('ssh:git:commit-details', request) as Promise<GitCommitDetailsResult>,
     gitDiff: (request: GitDiffRequest) =>
@@ -64,10 +70,19 @@ export function createProjectsApi(ipcRenderer: IpcRenderer) {
       ipcRenderer.invoke('ssh:git:switch-branch', request) as Promise<GitBranchActionResult>,
     deleteGitBranch: (request: GitBranchActionRequest) =>
       ipcRenderer.invoke('ssh:git:delete-branch', request) as Promise<GitBranchActionResult>,
+    checkoutRemoteGitBranch: (request: GitBranchActionRequest) =>
+      ipcRenderer.invoke(
+        'ssh:git:checkout-remote-branch',
+        request
+      ) as Promise<GitBranchActionResult>,
     gitCodeDirectory: (request: GitCodeDirectoryRequest) =>
       ipcRenderer.invoke('ssh:git:code-directory', request) as Promise<GitCodeDirectoryResult>,
     gitCodeFile: (request: GitCodeFileRequest) =>
       ipcRenderer.invoke('ssh:git:code-file', request) as Promise<GitCodeFileResult>,
+    gitCodeFiles: (id: string) =>
+      ipcRenderer.invoke('ssh:git:code-files', id) as Promise<GitCodeFileListResult>,
+    composeStatus: (id: string) =>
+      ipcRenderer.invoke('ssh:git:compose-status', id) as Promise<GitComposeStatusResult>,
     discover: (hostId: string) =>
       ipcRenderer.invoke('ssh:docker:discover-projects', {
         hostId,

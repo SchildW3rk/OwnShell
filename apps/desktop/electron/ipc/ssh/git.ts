@@ -11,31 +11,39 @@ import type {
   GitRepositoryStatus,
   GitRepositoryStatusResult,
   GitWorkingTreeActionResult,
+  GitWorkingTreeNumstatResult,
   ProjectQueries,
 } from '@ownshell/core';
 import { logger } from '../../logger';
 import {
   buildGitBranchListCommand,
   buildGitBranchNameValidationCommand,
+  buildGitCheckoutRemoteBranchCommand,
+  buildGitRemoteBranchExistsCommand,
   buildGitCreateBranchCommand,
   buildGitDeleteBranchCommand,
   buildGitSwitchBranchCommand,
   isSafeBranchName,
+  localNameForRemoteBranch,
   parseGitBranches,
 } from '../../projects/git-branches';
 import {
   buildGitDiffCommand,
   buildGitStatusForPathCommand,
+  buildGitWorkingTreeNumstatCommand,
   isSafeRepositoryRelativePath,
   truncateGitDiff,
 } from '../../projects/git-diff';
 import {
   buildGitCommitDiffCommand,
   buildGitCommitHistoryCommand,
+  buildGitCommitNumstatCommand,
   buildGitCommitSummaryCommand,
   buildGitCommitValidationCommand,
   MAX_GIT_HISTORY_BYTES,
+  MAX_GIT_NUMSTAT_BYTES,
   parseGitCommitHistory,
+  parseGitNumstat,
   parseGitCommitSummary,
   truncateGitCommitDiff,
 } from '../../projects/git-history';
@@ -61,6 +69,7 @@ import {
   sshGitCreateCommitSchema,
   sshGitDiffSchema,
   sshGitFileActionSchema,
+  sshGitHistorySchema,
   sshProjectIdSchema,
 } from '../schemas/ssh';
 import type { SSHIPCContext } from './context';
@@ -236,8 +245,9 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
 
   safeHandle(
     'ssh:git:history',
-    sshProjectIdSchema,
-    async (_event, projectId): Promise<GitCommitHistoryResult> => {
+    sshGitHistorySchema,
+    async (_event, request): Promise<GitCommitHistoryResult> => {
+      const { projectId } = request;
       const project = await projectQueries.getById(projectId);
       if (!project) return { success: false, error: 'Project not found' };
       if (!project.host_id) return { success: false, error: 'Project has no SSH host' };
@@ -266,7 +276,7 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
 
         const historyResult = await ctx.execCommand(
           session,
-          buildGitCommitHistoryCommand(project.repository_path)
+          buildGitCommitHistoryCommand(project.repository_path, request)
         );
         if (historyResult.exitCode !== 0 || historyResult.stderr.trim()) {
           return {
@@ -317,7 +327,7 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
           };
         }
 
-        const [summaryResult, diffResult] = await Promise.all([
+        const [summaryResult, diffResult, numstatResult] = await Promise.all([
           ctx.execCommand(
             session,
             buildGitCommitSummaryCommand(project.repository_path, request.commitHash)
@@ -325,6 +335,10 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
           ctx.execCommand(
             session,
             buildGitCommitDiffCommand(project.repository_path, request.commitHash)
+          ),
+          ctx.execCommand(
+            session,
+            buildGitCommitNumstatCommand(project.repository_path, request.commitHash)
           ),
         ]);
         if (summaryResult.stderr.trim() || diffResult.stderr.trim()) {
@@ -341,12 +355,19 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
         if (!commit) return { success: false, error: 'Could not parse commit details' };
 
         const diff = truncateGitCommitDiff(diffResult.stdout);
+        const numstat = parseGitNumstat(
+          numstatResult.exitCode === 0 ? numstatResult.stdout : '',
+          numstatResult.exitCode !== 0 ||
+            Buffer.byteLength(numstatResult.stdout, 'utf8') > MAX_GIT_NUMSTAT_BYTES
+        );
         return {
           success: true,
           details: {
             commit,
             diff: diff.content,
             truncated: diff.truncated,
+            files: numstat.files,
+            filesTruncated: numstat.truncated,
           },
         };
       } catch (error) {
@@ -440,6 +461,56 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
           path: request.path,
           scope: request.scope,
         });
+        return { success: false, error: message };
+      }
+    }
+  );
+
+  safeHandle(
+    'ssh:git:numstat',
+    sshProjectIdSchema,
+    async (_event, projectId): Promise<GitWorkingTreeNumstatResult> => {
+      const project = await projectQueries.getById(projectId);
+      if (!project) return { success: false, error: 'Project not found' };
+      if (!project.host_id) return { success: false, error: 'Project has no SSH host' };
+
+      try {
+        const sessionId = await ctx.getOrCreateBackgroundSession(project.host_id);
+        const session = ctx.activeSessions.get(sessionId);
+        if (!session) return { success: false, error: 'SSH session is not available' };
+
+        const workingTreeError = await requireWorkingTree(ctx, session, project.repository_path);
+        if (workingTreeError) return { success: false, error: workingTreeError };
+
+        const [stagedResult, unstagedResult] = await Promise.all(
+          (['staged', 'unstaged'] as const).map((scope) =>
+            ctx.execCommand(
+              session,
+              buildGitWorkingTreeNumstatCommand(
+                project.repository_path,
+                scope,
+                MAX_GIT_NUMSTAT_BYTES
+              )
+            )
+          )
+        );
+        // Unborn HEAD makes `diff --cached` fail; staged counts are then simply unavailable.
+        const parse = (result: typeof stagedResult) =>
+          parseGitNumstat(
+            result.exitCode === 0 ? result.stdout : '',
+            Buffer.byteLength(result.stdout, 'utf8') > MAX_GIT_NUMSTAT_BYTES
+          );
+        const staged = parse(stagedResult);
+        const unstaged = parse(unstagedResult);
+        return {
+          success: true,
+          staged: staged.files,
+          unstaged: unstaged.files,
+          truncated: staged.truncated || unstaged.truncated,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not read Git numstat';
+        logger.error('Failed to read project Git numstat', error, { projectId });
         return { success: false, error: message };
       }
     }
@@ -671,7 +742,7 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
 
   const runBranchAction = async (
     request: GitBranchActionRequest,
-    action: 'create' | 'switch' | 'delete'
+    action: 'create' | 'switch' | 'delete' | 'checkout-remote'
   ): Promise<GitBranchActionResult> => {
     const project = await projectQueries.getById(request.projectId);
     if (!project) return { success: false, error: 'Project not found' };
@@ -696,7 +767,20 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
         };
       }
 
-      if (action === 'switch') {
+      const localBranch =
+        action === 'checkout-remote' ? localNameForRemoteBranch(request.branch) : null;
+      if (action === 'checkout-remote') {
+        if (!localBranch) return { success: false, error: 'Invalid branch name' };
+        const remoteResult = await ctx.execCommand(
+          session,
+          buildGitRemoteBranchExistsCommand(project.repository_path, request.branch)
+        );
+        if (remoteResult.exitCode !== 0) {
+          return { success: false, error: 'Remote branch does not exist' };
+        }
+      }
+
+      if (action === 'switch' || action === 'checkout-remote') {
         const workingTreeError = await requireWorkingTree(
           ctx,
           session,
@@ -728,7 +812,13 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
           ? buildGitCreateBranchCommand(project.repository_path, request.branch)
           : action === 'switch'
             ? buildGitSwitchBranchCommand(project.repository_path, request.branch)
-            : buildGitDeleteBranchCommand(project.repository_path, request.branch);
+            : action === 'checkout-remote' && localBranch
+              ? buildGitCheckoutRemoteBranchCommand(
+                  project.repository_path,
+                  request.branch,
+                  localBranch
+                )
+              : buildGitDeleteBranchCommand(project.repository_path, request.branch);
       const result = await ctx.execCommand(session, command);
       if (result.exitCode !== 0) {
         return {
@@ -757,5 +847,8 @@ export function setupSSHGitHandlers(ctx: SSHIPCContext, projectQueries: ProjectQ
   );
   safeHandle('ssh:git:delete-branch', sshGitBranchActionSchema, (_event, request) =>
     runBranchAction(request, 'delete')
+  );
+  safeHandle('ssh:git:checkout-remote-branch', sshGitBranchActionSchema, (_event, request) =>
+    runBranchAction(request, 'checkout-remote')
   );
 }

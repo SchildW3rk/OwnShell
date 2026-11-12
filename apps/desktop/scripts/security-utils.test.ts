@@ -423,21 +423,25 @@ function testGitBranchCommandsAndParsing() {
   assert.equal(isSafeBranchName('feature/with\nnewline'), false);
 
   const parsed = parseGitBranches(
-    ['*\tmain\torigin/main', ' \tfeature/one\t', ' \tfeature/two\torigin/feature/two', ''].join(
-      '\n'
-    )
+    [
+      '*\trefs/heads/main\torigin/main\t\t2026-07-13T10:00:00+02:00\tinit',
+      ' \trefs/heads/feature/one\t\t\t\t',
+      ' \trefs/heads/feature/two\torigin/feature/two\tahead 2\t\t',
+      '',
+    ].join('\n')
   );
-  assert.deepEqual(parsed, {
-    branches: [
-      { name: 'main', current: true, upstream: 'origin/main' },
-      { name: 'feature/one', current: false, upstream: null },
-      { name: 'feature/two', current: false, upstream: 'origin/feature/two' },
-    ],
-    truncated: false,
-  });
+  assert.deepEqual(
+    parsed.branches.map(({ name, current, upstream, ahead }) => ({ name, current, upstream, ahead })),
+    [
+      { name: 'main', current: true, upstream: 'origin/main', ahead: 0 },
+      { name: 'feature/one', current: false, upstream: null, ahead: 0 },
+      { name: 'feature/two', current: false, upstream: 'origin/feature/two', ahead: 2 },
+    ]
+  );
+  assert.equal(parsed.truncated, false);
 
   const bounded = parseGitBranches(
-    Array.from({ length: MAX_BRANCHES + 1 }, (_, index) => ` \tbranch-${index}\t`).join('\n')
+    Array.from({ length: MAX_BRANCHES + 1 }, (_, index) => ` \trefs/heads/branch-${index}\t`).join('\n')
   );
   assert.equal(bounded.branches.length, MAX_BRANCHES);
   assert.equal(bounded.truncated, true);

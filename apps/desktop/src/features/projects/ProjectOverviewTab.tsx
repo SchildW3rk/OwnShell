@@ -1,6 +1,24 @@
 import React from 'react';
-import type { GitCommitSummary, GitRepositoryStatus } from '@ownshell/core';
-import { ArrowDown, ArrowUp, Check, ChevronRight, Copy, GitBranch, History } from 'lucide-react';
+import type {
+  GitChangedFile,
+  GitCommitSummary,
+  GitComposeStatus,
+  GitRepositoryStatus,
+} from '@ownshell/core';
+import {
+  AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronRight,
+  Container,
+  Copy,
+  Files,
+  GitBranch,
+  History,
+  Loader2,
+} from 'lucide-react';
+import { cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 
 interface RepositoryAccessPanelProps {
@@ -19,7 +37,7 @@ export const RepositoryAccessPanel: React.FC<RepositoryAccessPanelProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="border-t border-border bg-secondary/10 px-5 py-5">
+    <div className="px-4 py-4">
       <div className="mb-3">
         <h3 className="text-sm font-medium text-foreground">{t('projects.repositoryAccess')}</h3>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -90,27 +108,63 @@ const RepositoryCommand: React.FC<RepositoryCommandProps> = ({
   );
 };
 
+type ChangeKind = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted';
+
+const CHANGE_KINDS: ChangeKind[] = ['modified', 'added', 'deleted', 'renamed', 'untracked', 'conflicted'];
+
+function changeKind(file: GitChangedFile): ChangeKind {
+  if (file.untracked) return 'untracked';
+  const codes = `${file.indexStatus}${file.worktreeStatus}`;
+  if (codes.includes('U') || codes === 'AA' || codes === 'DD') return 'conflicted';
+  if (codes.includes('R') || codes.includes('C')) return 'renamed';
+  if (codes.includes('D')) return 'deleted';
+  if (codes.includes('A')) return 'added';
+  return 'modified';
+}
+
+interface ComposeStatusState {
+  isLoading: boolean;
+  error: Error | null;
+  data: GitComposeStatus | null | undefined;
+}
+
 interface RepositoryOverviewProps {
   gitStatus: GitRepositoryStatus;
   formattedAuthoredAt: string | null;
+  composeProject: string | null;
+  composeStatus: ComposeStatusState;
   onOpenCommit: (commit: GitCommitSummary) => void;
+  onOpenChanges: () => void;
+  onOpenDocker: (() => void) | null;
 }
 
 export const RepositoryOverview: React.FC<RepositoryOverviewProps> = ({
   gitStatus,
   formattedAuthoredAt,
+  composeProject,
+  composeStatus,
   onOpenCommit,
+  onOpenChanges,
+  onOpenDocker,
 }) => {
   const { t } = useTranslation();
+  const changeCounts = gitStatus.changedFiles.reduce<Partial<Record<ChangeKind, number>>>(
+    (counts, file) => {
+      const kind = changeKind(file);
+      counts[kind] = (counts[kind] ?? 0) + 1;
+      return counts;
+    },
+    {}
+  );
 
   return (
     <div
       id="repository-panel-overview"
       role="region"
       aria-labelledby="repository-tab-overview"
-      className="divide-y divide-border"
+      className="divide-y divide-border border-b border-border"
     >
-      <div className="grid gap-5 px-5 py-5 md:grid-cols-2">
+      <div className="grid gap-5 px-4 py-4 md:grid-cols-2">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             {t(gitStatus.bare ? 'projects.defaultBranch' : 'projects.branch')}
@@ -163,7 +217,93 @@ export const RepositoryOverview: React.FC<RepositoryOverviewProps> = ({
         </div>
       </div>
 
-      <div className="px-5 py-5">
+      <div className="grid gap-5 px-4 py-4 md:grid-cols-2">
+        {!gitStatus.bare && (
+          <div className="min-w-0">
+            <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+              <Files aria-hidden className="h-4 w-4" />
+              {t('projects.repositoryChanges')}
+            </p>
+            {gitStatus.changedFiles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('projects.noChanges')}</p>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenChanges}
+                className="group flex w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-secondary/50 p-3 text-left text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {CHANGE_KINDS.filter((kind) => changeCounts[kind]).map((kind) => (
+                  <span key={kind} className="text-foreground">
+                    <span className="font-medium tabular-nums">{changeCounts[kind]}</span>{' '}
+                    <span className="text-muted-foreground">{t(`projects.changeKind.${kind}`)}</span>
+                  </span>
+                ))}
+                {gitStatus.changedFilesTruncated && <span className="text-warning">+</span>}
+                <ChevronRight
+                  aria-hidden
+                  className="ml-auto h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                />
+              </button>
+            )}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+            <Container aria-hidden className="h-4 w-4" />
+            {t('projects.composeProject')}
+          </p>
+          {!composeProject ? (
+            <p className="text-sm text-muted-foreground">{t('projects.notLinked')}</p>
+          ) : composeStatus.isLoading ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+              {t('projects.composeStatusLoading')}
+            </p>
+          ) : composeStatus.error ? (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground" title={composeStatus.error.message}>
+              <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              {t('projects.composeStatusFailed')}
+            </p>
+          ) : (
+            <button
+              type="button"
+              disabled={!onOpenDocker}
+              onClick={() => onOpenDocker?.()}
+              className="group flex w-full items-center gap-3 rounded-md bg-secondary/50 p-3 text-left text-sm transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:hover:bg-secondary/50"
+            >
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  !composeStatus.data?.total
+                    ? 'bg-muted-foreground'
+                    : composeStatus.data.running === composeStatus.data.total
+                      ? 'bg-success'
+                      : 'bg-warning'
+                )}
+              />
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-mono text-foreground" translate="no">
+                  {composeProject}
+                </span>{' '}
+                <span className="text-muted-foreground">
+                  {t(composeStatus.data?.truncated ? 'projects.composeRunningTruncated' : 'projects.composeRunning', {
+                    running: composeStatus.data?.running ?? 0,
+                    total: composeStatus.data?.total ?? 0,
+                  })}
+                </span>
+              </span>
+              {onOpenDocker && (
+                <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                  {t('projects.openDocker')}
+                  <ChevronRight aria-hidden className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 py-4">
         <div className="mb-3 flex items-center gap-2">
           <History aria-hidden className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-medium text-foreground">{t('projects.latestCommit')}</h3>

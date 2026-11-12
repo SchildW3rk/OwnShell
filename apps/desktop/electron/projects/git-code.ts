@@ -1,9 +1,11 @@
 import type { GitCodeEntry } from '@ownshell/core';
-import { shellQuotePath } from '../utils/shell-quote';
+import { shellQuote, shellQuotePath } from '../utils/shell-quote';
 
 export const MAX_GIT_TREE_BYTES = 1024 * 1024;
 export const MAX_GIT_TREE_ENTRIES = 1000;
-export const MAX_GIT_CODE_FILE_BYTES = 512 * 1024;
+export const MAX_GIT_CODE_FILE_BYTES = 1024 * 1024;
+export const MAX_GIT_FILE_LIST_ENTRIES = 20_000;
+export const MAX_GIT_FILE_LIST_BYTES = 4 * 1024 * 1024;
 
 export function isSafeGitCodePath(path: string, allowRoot = true): boolean {
   if (path === '') return allowRoot;
@@ -90,4 +92,45 @@ export function buildGitFileMetadataCommand(repositoryPath: string, path: string
 export function buildGitFileContentCommand(repositoryPath: string, path: string): string {
   if (!isSafeGitCodePath(path, false)) throw new Error('Invalid Git file path');
   return `git -C ${shellQuotePath(repositoryPath)} cat-file blob ${shellQuotePath(`HEAD:${path}`)}`;
+}
+
+export function buildGitFileListCommand(repositoryPath: string): string {
+  return `git -C ${shellQuotePath(repositoryPath)} ls-tree -r -z --name-only HEAD | head -c ${MAX_GIT_FILE_LIST_BYTES + 1}`;
+}
+
+export function parseGitFileList(
+  output: string,
+  outputTruncated = false
+): { paths: string[]; truncated: boolean } {
+  const records = output.split('\0');
+  const complete = output.length === 0 || output.endsWith('\0');
+  records.pop(); // trailing empty record, or a cut-off one
+  const paths = records.filter((path) => isSafeGitCodePath(path, false));
+  return {
+    paths: paths.slice(0, MAX_GIT_FILE_LIST_ENTRIES),
+    truncated: outputTruncated || !complete || paths.length > MAX_GIT_FILE_LIST_ENTRIES,
+  };
+}
+
+export const MAX_COMPOSE_CONTAINERS = 500;
+
+export function isSafeComposeProjectName(name: string): boolean {
+  // Compose project names: lowercase letters, digits, dashes and underscores.
+  return /^[a-z0-9][a-z0-9_-]{0,254}$/.test(name);
+}
+
+export function buildComposeStatusCommand(composeProject: string): string {
+  if (!isSafeComposeProjectName(composeProject)) throw new Error('Invalid compose project name');
+  return `docker ps -a --filter ${shellQuote(`label=com.docker.compose.project=${composeProject}`)} --format '{{.State}}' | head -n ${MAX_COMPOSE_CONTAINERS + 1}`;
+}
+
+export function parseComposeStatus(output: string): { running: number; total: number; truncated: boolean } {
+  const all = output.split('\n').map((line) => line.trim()).filter(Boolean);
+  // One extra line is read so a cut-off list is reported instead of looking complete.
+  const states = all.slice(0, MAX_COMPOSE_CONTAINERS);
+  return {
+    running: states.filter((state) => state === 'running').length,
+    total: states.length,
+    truncated: all.length > MAX_COMPOSE_CONTAINERS,
+  };
 }

@@ -1,72 +1,18 @@
 import React from 'react';
-import type { GitChangedFile, GitRepositoryStatus } from '@ownshell/core';
+import type { GitChangedFile, GitDiffFileStat, GitRepositoryStatus } from '@ownshell/core';
 import { AlertCircle, CheckCircle2, FileCode2, GitCommitHorizontal, Loader2 } from 'lucide-react';
 import { Button, FormInput, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 import {
   type GitDiffSelection,
   useProjectGitDiff,
+  useProjectGitNumstat,
   useProjectGitWorkingTreeActions,
 } from './useProjectQueries';
-
-const MAX_HIGHLIGHTED_DIFF_LINES = 5000;
-
-export const DiffViewer: React.FC<{ content: string }> = ({ content }) => {
-  const parsed = React.useMemo(() => {
-    const lines = content.split('\n');
-    return {
-      highlightedLines: lines.slice(0, MAX_HIGHLIGHTED_DIFF_LINES),
-      remainingContent:
-        lines.length > MAX_HIGHLIGHTED_DIFF_LINES
-          ? lines.slice(MAX_HIGHLIGHTED_DIFF_LINES).join('\n')
-          : null,
-    };
-  }, [content]);
-
-  return (
-    <pre
-      className="h-full w-full overflow-auto whitespace-pre py-3 font-mono text-xs leading-5"
-      translate="no"
-    >
-      <code className="block w-max min-w-full">
-        {parsed.highlightedLines.map((line, index) => (
-          <span
-            key={index}
-            className={cn('block min-h-5 min-w-full px-4', getDiffLineClassName(line))}
-          >
-            {line}
-          </span>
-        ))}
-        {parsed.remainingContent !== null && (
-          <span className="block min-w-full px-4 text-foreground">{parsed.remainingContent}</span>
-        )}
-      </code>
-    </pre>
-  );
-};
-
-function getDiffLineClassName(line: string): string {
-  if (line.startsWith('diff --git ')) return 'bg-secondary/60 font-semibold text-foreground';
-  if (line.startsWith('@@')) return 'bg-primary/10 text-primary';
-  if (line.startsWith('+++ ')) return 'text-success';
-  if (line.startsWith('--- ')) return 'text-destructive';
-  if (line.startsWith('+')) return 'bg-success/10 text-success';
-  if (line.startsWith('-')) return 'bg-destructive/10 text-destructive';
-  if (
-    line.startsWith('index ') ||
-    line.startsWith('new file mode ') ||
-    line.startsWith('deleted file mode ') ||
-    line.startsWith('similarity index ') ||
-    line.startsWith('rename from ') ||
-    line.startsWith('rename to ') ||
-    line.startsWith('\\ No newline at end of file')
-  ) {
-    return 'text-muted-foreground';
-  }
-  return 'text-foreground';
-}
+import { DiffCounts, ProjectDiffView } from './ProjectDiffView';
 
 interface RepositoryChangesProps {
+  projectId: string;
   gitStatus: GitRepositoryStatus;
   selection: GitDiffSelection | null;
   selectedFile?: GitChangedFile;
@@ -83,6 +29,7 @@ interface RepositoryChangesProps {
 }
 
 export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
+  projectId,
   gitStatus,
   selection,
   selectedFile,
@@ -99,6 +46,21 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
 }) => {
   const { t } = useTranslation();
   const stagedFileCount = gitStatus.changedFiles.filter((file) => file.staged).length;
+  const numstatQuery = useProjectGitNumstat(projectId, gitStatus.changedFiles.length > 0);
+  const statsFor = (file: GitChangedFile): GitDiffFileStat | undefined => {
+    const find = (stats?: GitDiffFileStat[]) => stats?.find((stat) => stat.path === file.path);
+    const staged = find(numstatQuery.data?.staged);
+    const unstaged = find(numstatQuery.data?.unstaged);
+    if (!staged || !unstaged) return staged ?? unstaged;
+    if (staged.additions === null || unstaged.additions === null) {
+      return { path: file.path, additions: null, deletions: null };
+    }
+    return {
+      path: file.path,
+      additions: staged.additions + unstaged.additions,
+      deletions: (staged.deletions ?? 0) + (unstaged.deletions ?? 0),
+    };
+  };
 
   if (gitStatus.changedFiles.length === 0) {
     return (
@@ -106,7 +68,7 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
         id="repository-panel-changes"
         role="region"
         aria-labelledby="repository-tab-changes"
-        className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center"
+        className="flex h-full flex-col items-center justify-center px-6 py-12 text-center"
       >
         <CheckCircle2 aria-hidden className="mb-3 h-8 w-8 text-success" />
         <p className="text-sm font-medium text-foreground">{t('projects.noChanges')}</p>
@@ -119,20 +81,21 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
       id="repository-panel-changes"
       role="region"
       aria-labelledby="repository-tab-changes"
-      className="grid min-h-[32rem] overflow-hidden lg:h-[36rem] lg:grid-cols-[23rem_minmax(0,1fr)]"
+      className="grid h-full min-h-0 grid-cols-[minmax(14rem,22rem)_minmax(0,1fr)] overflow-hidden"
     >
-      <section className="flex min-h-0 flex-col overflow-hidden border-b border-border lg:border-b-0 lg:border-r">
+      <section className="flex min-h-0 flex-col overflow-hidden border-r border-border">
         <div className="shrink-0 border-b border-border px-4 py-3">
           <h3 className="text-sm font-medium text-foreground">
             {t('projects.changedFiles', { count: gitStatus.changedFiles.length })}
             {gitStatus.changedFilesTruncated ? '+' : ''}
           </h3>
         </div>
-        <div className="max-h-72 min-h-0 flex-1 space-y-1 overflow-y-auto p-2 font-mono text-xs lg:max-h-none">
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 font-mono text-xs">
           {gitStatus.changedFiles.map((file, index) => (
             <ChangedFileButton
               key={`${file.status}-${file.path}-${index}`}
               file={file}
+              stat={statsFor(file)}
               selected={selection?.path === file.path}
               disabled={actionPending}
               stagePending={
@@ -206,10 +169,10 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
         </form>
       </section>
 
-      <section className="min-h-0 min-w-0 overflow-hidden bg-background/30 p-4">
+      <section className="min-h-0 min-w-0 overflow-hidden">
         {selection && selectedFile ? (
           <div className="flex h-full min-h-0 flex-col">
-            <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2">
               <div className="min-w-0">
                 <h3 className="text-sm font-medium text-foreground">{t('projects.fileDiff')}</h3>
                 <p
@@ -240,14 +203,14 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
               </div>
             </div>
 
-            <div className="min-h-72 flex-1 overflow-hidden rounded-md border border-border bg-background lg:min-h-0">
+            <div className="min-h-0 flex-1 overflow-hidden">
               {diffQuery.isLoading || diffQuery.isFetching ? (
-                <div className="flex h-full min-h-72 items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
+                <div className="flex h-full items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
                   <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
                   {t('projects.loadingDiff')}
                 </div>
               ) : diffQuery.isError ? (
-                <div className="flex h-full min-h-72 flex-col items-center justify-center p-5 text-center">
+                <div className="flex h-full flex-col items-center justify-center p-5 text-center">
                   <AlertCircle aria-hidden className="mb-2 h-6 w-6 text-destructive" />
                   <p className="text-sm font-medium text-foreground">
                     {t('projects.diffLoadFailed')}
@@ -264,18 +227,17 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
                     {t('projects.retry')}
                   </Button>
                 </div>
-              ) : diffQuery.data?.content ? (
-                <DiffViewer content={diffQuery.data.content} />
               ) : (
-                <p className="p-5 text-sm text-muted-foreground">{t('projects.noTextDiff')}</p>
+                <ProjectDiffView
+                  content={diffQuery.data?.content ?? ''}
+                  truncated={diffQuery.data?.truncated ?? false}
+                  emptyLabel={t('projects.noTextDiff')}
+                />
               )}
             </div>
-            {diffQuery.data?.truncated && (
-              <p className="mt-2 shrink-0 text-xs text-warning">{t('projects.diffTruncated')}</p>
-            )}
           </div>
         ) : (
-          <div className="flex h-full min-h-72 flex-col items-center justify-center text-center">
+          <div className="flex h-full flex-col items-center justify-center p-4 text-center">
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-secondary/40">
               <FileCode2 aria-hidden className="h-5 w-5 text-muted-foreground" />
             </div>
@@ -292,6 +254,7 @@ export const RepositoryChanges: React.FC<RepositoryChangesProps> = ({
 
 interface ChangedFileButtonProps {
   file: GitChangedFile;
+  stat?: GitDiffFileStat;
   selected: boolean;
   disabled: boolean;
   stagePending: boolean;
@@ -303,6 +266,7 @@ interface ChangedFileButtonProps {
 
 const ChangedFileButton = React.memo<ChangedFileButtonProps>(function ChangedFileButton({
   file,
+  stat,
   selected,
   disabled,
   stagePending,
@@ -334,7 +298,7 @@ const ChangedFileButton = React.memo<ChangedFileButtonProps>(function ChangedFil
           <span className="block truncate text-foreground" translate="no">
             {file.originalPath ? `${file.originalPath} → ${file.path}` : file.path}
           </span>
-          <span className="mt-1 flex gap-1 font-sans">
+          <span className="mt-1 flex items-center gap-1 font-sans">
             {file.unstaged && (
               <span className="rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning">
                 {t('projects.unstaged')}
@@ -343,6 +307,11 @@ const ChangedFileButton = React.memo<ChangedFileButtonProps>(function ChangedFil
             {file.staged && (
               <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                 {t('projects.staged')}
+              </span>
+            )}
+            {stat && (
+              <span className="ml-auto">
+                <DiffCounts additions={stat.additions} deletions={stat.deletions} />
               </span>
             )}
           </span>

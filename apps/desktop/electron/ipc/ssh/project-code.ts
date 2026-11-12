@@ -1,15 +1,31 @@
-import type { GitCodeDirectoryResult, GitCodeFileResult, ProjectQueries } from '@ownshell/core';
+import type {
+  GitCodeDirectoryResult,
+  GitCodeFileListResult,
+  GitCodeFileResult,
+  GitComposeStatusResult,
+  ProjectQueries,
+} from '@ownshell/core';
 import { logger } from '../../logger';
 import {
   MAX_GIT_CODE_FILE_BYTES,
+  MAX_GIT_FILE_LIST_BYTES,
   MAX_GIT_TREE_BYTES,
+  buildComposeStatusCommand,
   buildGitFileContentCommand,
+  buildGitFileListCommand,
   buildGitFileMetadataCommand,
   buildGitTreeCommand,
+  isSafeComposeProjectName,
+  parseComposeStatus,
+  parseGitFileList,
   parseGitTreeEntries,
 } from '../../projects/git-code';
 import { safeHandle } from '../safe-ipc';
-import { sshGitCodeDirectorySchema, sshGitCodeFileSchema } from '../schemas/ssh';
+import {
+  sshGitCodeDirectorySchema,
+  sshGitCodeFileSchema,
+  sshProjectIdSchema,
+} from '../schemas/ssh';
 import type { SSHIPCContext } from './context';
 
 async function projectSession(
@@ -84,7 +100,7 @@ export function setupSSHProjectCodeHandlers(
           return { success: false, error: metadataError || 'Git object is not a file', errorCode: metadataError ? undefined : 'NOT_A_FILE' };
         }
         if (byteLength > MAX_GIT_CODE_FILE_BYTES) {
-          return { success: false, error: 'File exceeds the 512 KiB preview limit', errorCode: 'FILE_TOO_LARGE' };
+          return { success: false, error: 'File exceeds the 1 MiB preview limit', errorCode: 'FILE_TOO_LARGE' };
         }
         const content = await ctx.execCommand(
           session,
@@ -109,6 +125,68 @@ export function setupSSHProjectCodeHandlers(
           success: false,
           error: error instanceof Error ? error.message : 'Could not load Git file',
           errorCode: error instanceof Error ? undefined : 'FILE_READ_FAILED',
+        };
+      }
+    }
+  );
+
+  safeHandle(
+    'ssh:git:code-files',
+    sshProjectIdSchema,
+    async (_event, projectId): Promise<GitCodeFileListResult> => {
+      try {
+        const { project, session } = await projectSession(ctx, projectQueries, projectId);
+        const result = await ctx.execCommand(
+          session,
+          buildGitFileListCommand(project.repository_path)
+        );
+        const error = result.stderr.trim();
+        if (result.exitCode !== 0 || error) {
+          return { success: false, error: error || 'Could not list Git files' };
+        }
+        return {
+          success: true,
+          ...parseGitFileList(
+            result.stdout,
+            Buffer.byteLength(result.stdout, 'utf8') > MAX_GIT_FILE_LIST_BYTES
+          ),
+        };
+      } catch (error) {
+        logger.error('Failed to list project Git files', error, { projectId });
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Could not list Git files',
+        };
+      }
+    }
+  );
+
+  safeHandle(
+    'ssh:git:compose-status',
+    sshProjectIdSchema,
+    async (_event, projectId): Promise<GitComposeStatusResult> => {
+      try {
+        const project = await projectQueries.getById(projectId);
+        if (!project) return { success: false, error: 'Project not found' };
+        if (!project.compose_project) return { success: true, status: null };
+        if (!isSafeComposeProjectName(project.compose_project)) {
+          return { success: false, error: 'Invalid compose project name' };
+        }
+        const { session } = await projectSession(ctx, projectQueries, projectId);
+        const result = await ctx.execCommand(
+          session,
+          buildComposeStatusCommand(project.compose_project)
+        );
+        // `head` hides docker's exit code; stderr without output means docker failed.
+        if (result.exitCode !== 0 || (result.stderr.trim() && !result.stdout.trim())) {
+          return { success: false, error: result.stderr.trim() || 'Could not read Docker status' };
+        }
+        return { success: true, status: parseComposeStatus(result.stdout) };
+      } catch (error) {
+        logger.error('Failed to read project compose status', error, { projectId });
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Could not read Docker status',
         };
       }
     }

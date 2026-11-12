@@ -59,11 +59,40 @@ export interface GitCommitDetailsRequest {
   commitHash: string;
 }
 
+export interface GitDiffFileStat {
+  path: string;
+  originalPath?: string;
+  /** null for binary files */
+  additions: number | null;
+  deletions: number | null;
+}
+
 export interface GitCommitDetails {
   commit: GitCommitSummary;
   diff: string;
   truncated: boolean;
+  files: GitDiffFileStat[];
+  filesTruncated: boolean;
 }
+
+export type GitHistorySearchField = 'message' | 'author';
+
+export interface GitCommitHistoryRequest {
+  projectId: string;
+  skip: number;
+  query?: string;
+  field?: GitHistorySearchField;
+}
+
+export interface GitWorkingTreeNumstat {
+  staged: GitDiffFileStat[];
+  unstaged: GitDiffFileStat[];
+  truncated: boolean;
+}
+
+export type GitWorkingTreeNumstatResult =
+  | ({ success: true } & GitWorkingTreeNumstat)
+  | { success: false; error: string };
 
 export type GitCommitDetailsResult =
   | { success: true; details: GitCommitDetails }
@@ -124,6 +153,13 @@ export interface GitBranchInfo {
   name: string;
   current: boolean;
   upstream: string | null;
+  /** true for refs/remotes/* (name is e.g. origin/main) */
+  remote: boolean;
+  ahead: number;
+  behind: number;
+  upstreamGone: boolean;
+  lastCommitSubject: string;
+  lastCommitDate: string;
 }
 
 export interface GitBranchesData {
@@ -170,6 +206,21 @@ export interface GitCodeFileRequest {
   projectId: string;
   path: string;
 }
+
+export type GitCodeFileListResult =
+  | { success: true; paths: string[]; truncated: boolean }
+  | { success: false; error: string };
+
+export interface GitComposeStatus {
+  running: number;
+  /** More containers exist than were read; the counts are a lower bound. */
+  truncated?: boolean;
+  total: number;
+}
+
+export type GitComposeStatusResult =
+  | { success: true; status: GitComposeStatus | null }
+  | { success: false; error: string };
 
 export type GitCodeFileResult =
   | { success: true; path: string; content: string; byteLength: number }

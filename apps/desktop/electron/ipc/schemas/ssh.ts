@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { idSchema, noPayloadSchema, portSchema, terminalDataSchema, sshPathSchema } from './common';
 export { noPayloadSchema };
 import { isSafeGitCodePath } from '../../projects/git-code';
+import {
+  MAX_GIT_HISTORY_SKIP,
+  isSafeGitHistoryQuery,
+} from '../../projects/git-history';
 
 const terminalSizeSchema = z.object({
   cols: z.number().finite().int().min(1).max(1000),
@@ -150,6 +154,13 @@ const gitBranchNameSchema = z
 export const sshGitBranchActionSchema = z.object({
   projectId: idSchema,
   branch: gitBranchNameSchema,
+});
+
+export const sshGitHistorySchema = z.object({
+  projectId: idSchema,
+  skip: z.number().int().min(0).max(MAX_GIT_HISTORY_SKIP),
+  query: z.string().trim().refine(isSafeGitHistoryQuery).optional(),
+  field: z.enum(['message', 'author']).optional(),
 });
 
 export const sshGitCommitDetailsSchema = z.object({

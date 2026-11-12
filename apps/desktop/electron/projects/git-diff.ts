@@ -1,7 +1,7 @@
 import type { GitDiffScope } from '@ownshell/core';
 import { shellQuote, shellQuotePath } from '../utils/shell-quote';
 
-export const MAX_DIFF_BYTES = 256 * 1024;
+export const MAX_DIFF_BYTES = 5 * 1024 * 1024;
 
 export function isSafeRepositoryRelativePath(path: string): boolean {
   if (
@@ -37,6 +37,16 @@ export function buildGitDiffCommand(
       }-- ${pathArgument}`;
 
   return `${diff} | head -c ${MAX_DIFF_BYTES + 1}`;
+}
+
+export function buildGitWorkingTreeNumstatCommand(
+  repositoryPath: string,
+  scope: GitDiffScope,
+  maxBytes: number
+): string {
+  return `git -C ${shellQuotePath(repositoryPath)} diff --no-ext-diff --numstat -z --find-renames${
+    scope === 'staged' ? ' --cached' : ''
+  } | head -c ${maxBytes + 1}`;
 }
 
 export function truncateGitDiff(content: string): { content: string; truncated: boolean } {

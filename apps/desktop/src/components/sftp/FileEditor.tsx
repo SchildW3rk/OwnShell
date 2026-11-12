@@ -14,15 +14,7 @@ import { X, Save, Loader2, AlertCircle, FileCode } from 'lucide-react';
 // CodeMirror imports
 import { EditorView, basicSetup } from 'codemirror';
 import { EditorState, Compartment } from '@codemirror/state';
-import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { yaml } from '@codemirror/lang-yaml';
-import { python } from '@codemirror/lang-python';
-import { markdown } from '@codemirror/lang-markdown';
-import { xml } from '@codemirror/lang-xml';
-import { css } from '@codemirror/lang-css';
-import { html } from '@codemirror/lang-html';
-import { php } from '@codemirror/lang-php';
+import { getLanguageExtension, hasLanguageSupport } from '../../lib/codemirror-languages';
 import { useAppearanceStore } from '../../stores/useAppearanceStore';
 import { useThemeStore } from '../../stores/useThemeStore';
 import { getCodeMirrorTheme } from '../../utils/codemirror-theme';
@@ -39,45 +31,6 @@ interface FileEditorProps {
   loadError?: string | null;
 }
 
-/**
- * Set of file extensions with syntax highlighting support.
- * Used for cheap existence checks (e.g. footer status bar)
- * without instantiating language extensions.
- */
-const SUPPORTED_EXTENSIONS = new Set([
-  'js',
-  'jsx',
-  'ts',
-  'tsx',
-  'mjs',
-  'cjs',
-  'json',
-  'jsonc',
-  'yaml',
-  'yml',
-  'py',
-  'pyw',
-  'md',
-  'mdx',
-  'xml',
-  'svg',
-  'plist',
-  'html',
-  'htm',
-  'css',
-  'scss',
-  'less',
-  'php',
-]);
-
-/**
- * Check if a filename has syntax highlighting support
- */
-function hasLanguageSupport(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  return SUPPORTED_EXTENSIONS.has(ext);
-}
-
 function getFileLanguageLabel(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   const baseName = filename.toLowerCase();
@@ -85,54 +38,6 @@ function getFileLanguageLabel(filename: string): string {
   if (baseName === 'caddyfile') return 'Caddyfile';
   if (!ext || ext === filename.toLowerCase()) return 'Plain Text';
   return hasLanguageSupport(filename) ? ext.toUpperCase() : 'Plain Text';
-}
-
-/**
- * Determine the CodeMirror language extension based on file extension.
- * Only instantiates the single required extension (not all 20+).
- */
-function getLanguageExtension(filename: string) {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-
-  switch (ext) {
-    case 'js':
-    case 'mjs':
-    case 'cjs':
-      return javascript();
-    case 'jsx':
-      return javascript({ jsx: true });
-    case 'ts':
-      return javascript({ typescript: true });
-    case 'tsx':
-      return javascript({ typescript: true, jsx: true });
-    case 'json':
-    case 'jsonc':
-      return json();
-    case 'yaml':
-    case 'yml':
-      return yaml();
-    case 'py':
-    case 'pyw':
-      return python();
-    case 'md':
-    case 'mdx':
-      return markdown();
-    case 'xml':
-    case 'svg':
-    case 'plist':
-      return xml();
-    case 'html':
-    case 'htm':
-      return html();
-    case 'css':
-    case 'scss':
-    case 'less':
-      return css();
-    case 'php':
-      return php();
-    default:
-      return null;
-  }
 }
 
 export const FileEditor: React.FC<FileEditorProps> = ({

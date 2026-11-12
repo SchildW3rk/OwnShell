@@ -1,10 +1,9 @@
 import React from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import type { GitBranchInfo } from '@ownshell/core';
 import {
   AlertCircle,
   CheckCircle2,
-  Container,
   FileCode2,
   Files,
   FolderGit2,
@@ -14,23 +13,23 @@ import {
   LayoutDashboard,
   Loader2,
   RefreshCw,
-  Server,
 } from 'lucide-react';
-import { Button, ConfirmDialog, EmptyState, PageHeader, cn } from '@ownshell/ui';
+import { Button, ConfirmDialog, EmptyState, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { queryKeys } from '../../lib/queryClient';
 import { useHostStore } from '../../stores/useHostStore';
+import { useTerminalStore } from '../../stores/useTerminalStore';
+import { useWorkspaceStore } from '../../stores/useWorkspaceStore';
 import {
   ProjectGitStatusError,
   type GitDiffSelection,
   useInitProjectGitRepository,
   useProject,
+  useProjectComposeStatus,
   useProjectGitBranchActions,
   useProjectGitBranches,
-  useProjectGitCommitDetails,
   useProjectGitDiff,
-  useProjectGitHistory,
   useProjectGitStatus,
   useProjectGitWorkingTreeActions,
 } from './useProjectQueries';
@@ -40,6 +39,7 @@ import { RepositoryAccessPanel, RepositoryOverview } from './ProjectOverviewTab'
 import { RepositoryHistory } from './ProjectHistoryTab';
 import { RepositoryChanges } from './ProjectChangesTab';
 import { RepositoryBranches } from './ProjectBranchesTab';
+import { formatAbsoluteDate } from './gitFormat';
 
 interface ProjectViewProps {
   projectId: string;
@@ -56,39 +56,29 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ projectId }) => {
   const [commitMessage, setCommitMessage] = React.useState('');
   const [newBranch, setNewBranch] = React.useState('');
   const [branchToDelete, setBranchToDelete] = React.useState<GitBranchInfo | null>(null);
+  const [remoteBranchToCheckout, setRemoteBranchToCheckout] = React.useState<GitBranchInfo | null>(
+    null
+  );
   const [initRepositoryOpen, setInitRepositoryOpen] = React.useState(false);
   const [copiedCommand, setCopiedCommand] = React.useState<'clone' | 'remote' | null>(null);
   const projectQuery = useProject(projectId);
   const gitStatusQuery = useProjectGitStatus(projectId);
   const gitDiffQuery = useProjectGitDiff(projectId, diffSelection);
-  const gitHistoryQuery = useProjectGitHistory(
-    projectId,
-    repositorySection === 'history' && Boolean(gitStatusQuery.data)
-  );
-  const gitCommitDetailsQuery = useProjectGitCommitDetails(
-    projectId,
-    repositorySection === 'history' ? selectedCommitHash : null
-  );
   const gitBranchesQuery = useProjectGitBranches(
     projectId,
     repositorySection === 'branches' && Boolean(gitStatusQuery.data)
   );
+  const composeStatusQuery = useProjectComposeStatus(
+    projectId,
+    repositorySection === 'overview' && Boolean(projectQuery.data?.compose_project)
+  );
   const branchActions = useProjectGitBranchActions(projectId);
   const workingTreeActions = useProjectGitWorkingTreeActions(projectId);
   const initRepository = useInitProjectGitRepository(projectId);
+  const isFetching = useIsFetching({ queryKey: queryKeys.projects.byId(projectId) }) > 0;
   const host = useHostStore((state) =>
     state.hosts.find((item) => item.id === projectQuery.data?.host_id)
   );
-
-  React.useEffect(() => {
-    if (
-      repositorySection === 'history' &&
-      !selectedCommitHash &&
-      gitHistoryQuery.data?.commits[0]
-    ) {
-      setSelectedCommitHash(gitHistoryQuery.data.commits[0].hash);
-    }
-  }, [gitHistoryQuery.data, repositorySection, selectedCommitHash]);
 
   React.useEffect(() => {
     if (!gitStatusQuery.data?.bare) return;
@@ -120,20 +110,14 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ projectId }) => {
   const selectedFile = diffSelection
     ? gitStatus?.changedFiles.find((file) => file.path === diffSelection.path)
     : undefined;
-  const authoredAt = gitStatus?.lastCommit?.authoredAt
-    ? new Date(gitStatus.lastCommit.authoredAt)
+  const formattedAuthoredAt = gitStatus?.lastCommit?.authoredAt
+    ? formatAbsoluteDate(gitStatus.lastCommit.authoredAt, i18n.language)
     : null;
-  const formattedAuthoredAt =
-    authoredAt && !Number.isNaN(authoredAt.getTime())
-      ? new Intl.DateTimeFormat(i18n.language, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }).format(authoredAt)
-      : null;
   const branchActionPending =
     branchActions.createBranch.isPending ||
     branchActions.switchBranch.isPending ||
-    branchActions.deleteBranch.isPending;
+    branchActions.deleteBranch.isPending ||
+    branchActions.checkoutRemoteBranch.isPending;
   const workingTreeActionPending =
     workingTreeActions.stageFile.isPending ||
     workingTreeActions.unstageFile.isPending ||
@@ -141,6 +125,13 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ projectId }) => {
   const canInitializeRepository =
     gitStatusQuery.error instanceof ProjectGitStatusError &&
     gitStatusQuery.error.code === 'NOT_A_REPOSITORY';
+  const context = [
+    host ? `${host.label} (${host.username}@${host.hostname})` : t('projects.noHost'),
+    project.repository_path,
+    project.compose_project,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const handleCreateBranch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -176,229 +167,228 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ projectId }) => {
     }
   };
 
+  // Docker lives in the SSH session's feature tabs: reuse an open terminal pane for the host,
+  // otherwise open a new one, and switch it to Docker.
+  const openDocker = host
+    ? () => {
+        const { sessions, createSession, setSessionFeatureTab } = useTerminalStore.getState();
+        const { panes, addPane, setActivePane } = useWorkspaceStore.getState();
+        const pane = panes.find(
+          (item) =>
+            item.type === 'terminal' &&
+            sessions.some(
+              (session) =>
+                session.id === item.contentId &&
+                session.kind === 'ssh' &&
+                session.host?.id === host.id &&
+                session.state !== 'error'
+            )
+        );
+        if (pane) {
+          setSessionFeatureTab(pane.contentId, 'docker');
+          setActivePane(pane.id);
+          return;
+        }
+        const sessionId = createSession(host);
+        setSessionFeatureTab(sessionId, 'docker');
+        addPane({
+          type: 'terminal',
+          contentId: sessionId,
+          title: host.label || `${host.username}@${host.hostname}`,
+        });
+      }
+    : null;
+
+  const changedCount = gitStatus?.changedFiles.length ?? 0;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <PageHeader
-        icon={FolderGit2}
-        title={project.name}
-        subtitle={t('projects.projectSubtitle')}
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              // Every per-project query key starts with byId(projectId); only active ones refetch.
-              void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byId(projectId) });
-            }}
-            disabled={
-              gitStatusQuery.isFetching ||
-              gitDiffQuery.isFetching ||
-              gitHistoryQuery.isFetching ||
-              gitCommitDetailsQuery.isFetching ||
-              gitBranchesQuery.isFetching
-            }
-          >
-            <RefreshCw
-              className={cn(
-                'mr-2 h-4 w-4',
-                (gitStatusQuery.isFetching ||
-                  gitDiffQuery.isFetching ||
-                  gitHistoryQuery.isFetching ||
-                  gitCommitDetailsQuery.isFetching ||
-                  gitBranchesQuery.isFetching) &&
-                  'animate-spin'
-              )}
-            />
-            {t('projects.refresh')}
-          </Button>
-        }
-      />
-
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <InfoCard
-              icon={Server}
-              label={t('projects.sshHost')}
-              value={
-                host ? `${host.label} · ${host.username}@${host.hostname}` : t('projects.noHost')
-              }
-            />
-            <InfoCard
-              icon={FileCode2}
-              label={t('projects.repositoryPath')}
-              value={project.repository_path}
-              monospace
-            />
-            <InfoCard
-              icon={Container}
-              label={t('projects.composeProject')}
-              value={project.compose_project || t('projects.notLinked')}
-            />
-          </div>
-
-          <section className="overflow-hidden rounded-lg border border-border bg-card">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <div className="flex items-center gap-2">
-                <GitBranch className="h-5 w-5 text-muted-foreground" />
-                <h2 className="font-semibold text-foreground">{t('projects.repository')}</h2>
-              </div>
-              {gitStatus && (
-                <div
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                    gitStatus.bare
-                      ? 'bg-primary/15 text-primary'
-                      : gitStatus.clean
-                        ? 'bg-success/15 text-success'
-                        : 'bg-warning/15 text-warning'
-                  )}
-                >
-                  {gitStatus.bare ? (
-                    <FolderGit2 className="h-3.5 w-3.5" />
-                  ) : gitStatus.clean ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <AlertCircle className="h-3.5 w-3.5" />
-                  )}
-                  {gitStatus.bare
-                    ? t('projects.bareRepository')
-                    : gitStatus.clean
-                      ? t('projects.clean')
-                      : t('projects.changes')}
-                </div>
-              )}
-            </div>
-
-            {gitStatusQuery.isLoading ? (
-              <div className="flex items-center justify-center gap-2 px-5 py-12 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('projects.loadingGit')}
-              </div>
-            ) : gitStatusQuery.isError ? (
-              <div className="px-5 py-8 text-center">
-                <AlertCircle className="mx-auto mb-3 h-8 w-8 text-destructive" />
-                <p className="font-medium text-foreground">{t('projects.gitLoadFailed')}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{gitStatusQuery.error.message}</p>
-                <div className="mt-4 flex justify-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void gitStatusQuery.refetch()}
-                  >
-                    {t('projects.retry')}
-                  </Button>
-                  {canInitializeRepository && (
-                    <Button variant="primary" size="sm" onClick={() => setInitRepositoryOpen(true)}>
-                      <FolderPlus className="mr-1.5 h-4 w-4" />
-                      {t('projects.initializeRepository')}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : gitStatus ? (
-              <>
-                <RepositoryNavigation
-                  activeSection={repositorySection}
-                  changedFileCount={gitStatus.changedFiles.length}
-                  changedFilesTruncated={gitStatus.changedFilesTruncated}
-                  bare={gitStatus.bare}
-                  onSectionChange={setRepositorySection}
-                />
-                {repositorySection === 'overview' && (
-                  <>
-                    <RepositoryOverview
-                      gitStatus={gitStatus}
-                      formattedAuthoredAt={formattedAuthoredAt}
-                      onOpenCommit={(commit) => {
-                        setSelectedCommitHash(commit.hash);
-                        setRepositorySection('history');
-                      }}
-                    />
-                    {repositoryCommands && (
-                      <RepositoryAccessPanel
-                        commands={repositoryCommands}
-                        bare={gitStatus.bare}
-                        copiedCommand={copiedCommand}
-                        onCopy={copyRepositoryCommand}
-                      />
-                    )}
-                  </>
-                )}
-                {repositorySection === 'code' && (
-                  <ProjectCodeBrowser
-                    key={projectId}
-                    projectId={projectId}
-                    active
-                    hasHead={Boolean(gitStatus.lastCommit)}
-                  />
-                )}
-                {repositorySection === 'changes' && !gitStatus.bare && (
-                  <RepositoryChanges
-                    gitStatus={gitStatus}
-                    selection={diffSelection}
-                    selectedFile={selectedFile}
-                    diffQuery={gitDiffQuery}
-                    actions={workingTreeActions}
-                    commitMessage={commitMessage}
-                    actionPending={workingTreeActionPending}
-                    onSelectFile={(file) =>
-                      setDiffSelection({
-                        path: file.path,
-                        scope: file.unstaged ? 'unstaged' : 'staged',
-                      })
-                    }
-                    onScopeChange={(scope) =>
-                      selectedFile && setDiffSelection({ path: selectedFile.path, scope })
-                    }
-                    onCommitMessageChange={setCommitMessage}
-                    onCreateCommit={handleCreateCommit}
-                    onStageFile={(file) =>
-                      workingTreeActions.stageFile.mutate(file.path, {
-                        onSuccess: () => {
-                          if (diffSelection?.path === file.path) {
-                            setDiffSelection({ path: file.path, scope: 'staged' });
-                          }
-                        },
-                      })
-                    }
-                    onUnstageFile={(file) =>
-                      workingTreeActions.unstageFile.mutate(file.path, {
-                        onSuccess: () => {
-                          if (diffSelection?.path === file.path) {
-                            setDiffSelection({ path: file.path, scope: 'unstaged' });
-                          }
-                        },
-                      })
-                    }
-                  />
-                )}
-                {repositorySection === 'history' && (
-                  <RepositoryHistory
-                    historyQuery={gitHistoryQuery}
-                    detailsQuery={gitCommitDetailsQuery}
-                    selectedCommitHash={selectedCommitHash}
-                    onSelectCommit={setSelectedCommitHash}
-                  />
-                )}
-                {repositorySection === 'branches' && (
-                  <RepositoryBranches
-                    gitStatus={gitStatus}
-                    query={gitBranchesQuery}
-                    actions={branchActions}
-                    newBranch={newBranch}
-                    branchActionPending={branchActionPending}
-                    onNewBranchChange={setNewBranch}
-                    onCreateBranch={handleCreateBranch}
-                    onDeleteBranch={setBranchToDelete}
-                    onBranchSwitched={() => setDiffSelection(null)}
-                  />
-                )}
-              </>
-            ) : null}
-          </section>
+      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-2">
+        <FolderGit2 aria-hidden className="h-5 w-5 shrink-0 text-primary" />
+        <div className="flex min-w-0 flex-1 items-baseline gap-3">
+          <h1 className="shrink-0 truncate text-sm font-semibold text-foreground">{project.name}</h1>
+          <p className="min-w-0 truncate text-xs text-muted-foreground" title={context} translate="no">
+            {context}
+          </p>
         </div>
-      </div>
+        {gitStatus && (
+          <span
+            className={cn(
+              'flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
+              gitStatus.bare
+                ? 'bg-primary/15 text-primary'
+                : gitStatus.clean
+                  ? 'bg-success/15 text-success'
+                  : 'bg-warning/15 text-warning'
+            )}
+          >
+            {gitStatus.bare ? (
+              <FolderGit2 aria-hidden className="h-3.5 w-3.5" />
+            ) : gitStatus.clean ? (
+              <CheckCircle2 aria-hidden className="h-3.5 w-3.5" />
+            ) : (
+              <AlertCircle aria-hidden className="h-3.5 w-3.5" />
+            )}
+            {gitStatus.bare
+              ? t('projects.bareRepository')
+              : gitStatus.clean
+                ? t('projects.clean')
+                : t('projects.changeCount', {
+                    count: changedCount,
+                    suffix: gitStatus.changedFilesTruncated ? '+' : '',
+                  })}
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 shrink-0 p-0"
+          aria-label={t('projects.refresh')}
+          title={t('projects.refresh')}
+          onClick={() => {
+            // Every per-project query key starts with byId(projectId); only active ones refetch.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.projects.byId(projectId) });
+          }}
+          disabled={isFetching}
+        >
+          <RefreshCw aria-hidden className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+        </Button>
+      </header>
+
+      {gitStatusQuery.isLoading ? (
+        <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
+          {t('projects.loadingGit')}
+        </div>
+      ) : gitStatusQuery.isError ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
+          <AlertCircle aria-hidden className="mb-3 h-8 w-8 text-destructive" />
+          <p className="font-medium text-foreground">{t('projects.gitLoadFailed')}</p>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">{gitStatusQuery.error.message}</p>
+          <div className="mt-4 flex justify-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => void gitStatusQuery.refetch()}>
+              {t('projects.retry')}
+            </Button>
+            {canInitializeRepository && (
+              <Button variant="primary" size="sm" onClick={() => setInitRepositoryOpen(true)}>
+                <FolderPlus aria-hidden className="mr-1.5 h-4 w-4" />
+                {t('projects.initializeRepository')}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : gitStatus ? (
+        <>
+          <RepositoryNavigation
+            activeSection={repositorySection}
+            changedFileCount={changedCount}
+            changedFilesTruncated={gitStatus.changedFilesTruncated}
+            bare={gitStatus.bare}
+            onSectionChange={setRepositorySection}
+          />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {repositorySection === 'overview' && (
+              <div className="h-full overflow-y-auto">
+                <RepositoryOverview
+                  gitStatus={gitStatus}
+                  formattedAuthoredAt={formattedAuthoredAt}
+                  composeProject={project.compose_project}
+                  composeStatus={{
+                    isLoading: composeStatusQuery.isLoading,
+                    error: composeStatusQuery.error,
+                    data: composeStatusQuery.data,
+                  }}
+                  onOpenCommit={(commit) => {
+                    setSelectedCommitHash(commit.hash);
+                    setRepositorySection('history');
+                  }}
+                  onOpenChanges={() => setRepositorySection('changes')}
+                  onOpenDocker={openDocker}
+                />
+                {repositoryCommands && (
+                  <RepositoryAccessPanel
+                    commands={repositoryCommands}
+                    bare={gitStatus.bare}
+                    copiedCommand={copiedCommand}
+                    onCopy={copyRepositoryCommand}
+                  />
+                )}
+              </div>
+            )}
+            {repositorySection === 'code' && (
+              <ProjectCodeBrowser
+                key={projectId}
+                projectId={projectId}
+                hasHead={Boolean(gitStatus.lastCommit)}
+                rootPath={gitStatus.rootPath}
+                bare={gitStatus.bare}
+              />
+            )}
+            {repositorySection === 'changes' && !gitStatus.bare && (
+              <RepositoryChanges
+                projectId={projectId}
+                gitStatus={gitStatus}
+                selection={diffSelection}
+                selectedFile={selectedFile}
+                diffQuery={gitDiffQuery}
+                actions={workingTreeActions}
+                commitMessage={commitMessage}
+                actionPending={workingTreeActionPending}
+                onSelectFile={(file) =>
+                  setDiffSelection({
+                    path: file.path,
+                    scope: file.unstaged ? 'unstaged' : 'staged',
+                  })
+                }
+                onScopeChange={(scope) =>
+                  selectedFile && setDiffSelection({ path: selectedFile.path, scope })
+                }
+                onCommitMessageChange={setCommitMessage}
+                onCreateCommit={handleCreateCommit}
+                onStageFile={(file) =>
+                  workingTreeActions.stageFile.mutate(file.path, {
+                    onSuccess: () => {
+                      if (diffSelection?.path === file.path) {
+                        setDiffSelection({ path: file.path, scope: 'staged' });
+                      }
+                    },
+                  })
+                }
+                onUnstageFile={(file) =>
+                  workingTreeActions.unstageFile.mutate(file.path, {
+                    onSuccess: () => {
+                      if (diffSelection?.path === file.path) {
+                        setDiffSelection({ path: file.path, scope: 'unstaged' });
+                      }
+                    },
+                  })
+                }
+              />
+            )}
+            {repositorySection === 'history' && (
+              <RepositoryHistory
+                projectId={projectId}
+                selectedCommitHash={selectedCommitHash}
+                onSelectCommit={setSelectedCommitHash}
+              />
+            )}
+            {repositorySection === 'branches' && (
+              <RepositoryBranches
+                gitStatus={gitStatus}
+                query={gitBranchesQuery}
+                actions={branchActions}
+                newBranch={newBranch}
+                branchActionPending={branchActionPending}
+                onNewBranchChange={setNewBranch}
+                onCreateBranch={handleCreateBranch}
+                onDeleteBranch={setBranchToDelete}
+                onCheckoutRemoteBranch={setRemoteBranchToCheckout}
+                onBranchSwitched={() => setDiffSelection(null)}
+              />
+            )}
+          </div>
+        </>
+      ) : null}
 
       <ConfirmDialog
         isOpen={Boolean(branchToDelete)}
@@ -415,6 +405,28 @@ export const ProjectView: React.FC<ProjectViewProps> = ({ projectId }) => {
           });
         }}
         onCancel={() => setBranchToDelete(null)}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(remoteBranchToCheckout)}
+        title={t('projects.checkoutRemoteBranchTitle')}
+        message={t('projects.checkoutRemoteBranchConfirm', {
+          name: remoteBranchToCheckout?.name ?? '',
+          local: remoteBranchToCheckout?.name.slice(remoteBranchToCheckout.name.indexOf('/') + 1) ?? '',
+          path: project.repository_path,
+        })}
+        confirmLabel={t('projects.checkoutRemoteBranch')}
+        cancelLabel={t('common.cancel')}
+        isLoading={branchActions.checkoutRemoteBranch.isPending}
+        onConfirm={() => {
+          if (!remoteBranchToCheckout) return;
+          branchActions.checkoutRemoteBranch.mutate(remoteBranchToCheckout.name, {
+            onSuccess: () => {
+              setRemoteBranchToCheckout(null);
+              setDiffSelection(null);
+            },
+          });
+        }}
+        onCancel={() => setRemoteBranchToCheckout(null)}
       />
       <ConfirmDialog
         isOpen={initRepositoryOpen}
@@ -454,7 +466,10 @@ const RepositoryNavigation: React.FC<RepositoryNavigationProps> = ({
   const { t } = useTranslation();
 
   return (
-    <nav className="border-b border-border px-5" aria-label={t('projects.repositoryNavigation')}>
+    <nav
+      className="shrink-0 border-b border-border bg-surface px-2"
+      aria-label={t('projects.repositoryNavigation')}
+    >
       <div className="flex min-w-0 gap-1 overflow-x-auto">
         <RepositoryTab
           section="overview"
@@ -526,7 +541,7 @@ const RepositoryTab: React.FC<RepositoryTabProps> = ({
       aria-controls={`repository-panel-${section}`}
       onClick={() => onSelect(section)}
       className={cn(
-        '-mb-px inline-flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+        '-mb-px inline-flex h-9 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
         active
           ? 'border-primary text-foreground'
           : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
@@ -547,31 +562,5 @@ const RepositoryTab: React.FC<RepositoryTabProps> = ({
     </button>
   );
 };
-
-interface InfoCardProps {
-  icon: React.FC<{ className?: string }>;
-  label: string;
-  value: string;
-  monospace?: boolean;
-}
-
-const InfoCard = React.memo<InfoCardProps>(function InfoCard({
-  icon: Icon,
-  label,
-  value,
-  monospace,
-}) {
-  return (
-    <div className="min-w-0 rounded-lg border border-border bg-card p-4">
-      <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        {label}
-      </div>
-      <p className={cn('truncate text-sm font-medium text-foreground', monospace && 'font-mono')}>
-        {value}
-      </p>
-    </div>
-  );
-});
 
 export default ProjectView;

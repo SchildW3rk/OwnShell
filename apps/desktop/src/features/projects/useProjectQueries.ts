@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   GitCodeErrorCode,
   GitDiffScope,
+  GitHistorySearchField,
   ProjectDiscoveryData,
   ProjectsTable,
   ProjectUpdate,
@@ -126,13 +127,71 @@ export function useProjectGitBranches(id: string, enabled: boolean) {
   });
 }
 
-export function useProjectGitHistory(id: string, enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.projects.gitHistory(id),
-    queryFn: async () => {
-      const result = await window.electronAPI.projects.gitHistory(id);
+// Keys below extend existing per-project prefixes so the existing invalidations also cover them.
+const gitNumstatKey = (id: string) => [...queryKeys.projects.byId(id), 'git-numstat'] as const;
+
+export interface GitHistorySearch {
+  query: string;
+  field: GitHistorySearchField;
+}
+
+export function useProjectGitHistory(id: string, enabled: boolean, search: GitHistorySearch) {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.projects.gitHistory(id), search.field, search.query],
+    queryFn: async ({ pageParam }) => {
+      const result = await window.electronAPI.projects.gitHistory({
+        projectId: id,
+        skip: pageParam,
+        query: search.query || undefined,
+        field: search.field,
+      });
       if (!result.success) throw new Error(result.error);
-      return { commits: result.commits, truncated: result.truncated };
+      return { commits: result.commits, truncated: result.truncated, skip: pageParam };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (page) =>
+      page.truncated && page.commits.length > 0 ? page.skip + page.commits.length : undefined,
+    enabled: Boolean(id) && enabled,
+    staleTime: 15 * 1000,
+    retry: false,
+  });
+}
+
+export function useProjectGitNumstat(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: gitNumstatKey(id),
+    queryFn: async () => {
+      const result = await window.electronAPI.projects.gitWorkingTreeNumstat(id);
+      if (!result.success) throw new Error(result.error);
+      return result;
+    },
+    enabled: Boolean(id) && enabled,
+    staleTime: 15 * 1000,
+    retry: false,
+  });
+}
+
+export function useProjectGitCodeFiles(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.projects.gitCodeAll(id), 'files'],
+    queryFn: async () => {
+      const result = await window.electronAPI.projects.gitCodeFiles(id);
+      if (!result.success) throw new Error(result.error);
+      return { paths: result.paths, truncated: result.truncated };
+    },
+    enabled: Boolean(id) && enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useProjectComposeStatus(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...queryKeys.projects.byId(id), 'compose-status'],
+    queryFn: async () => {
+      const result = await window.electronAPI.projects.composeStatus(id);
+      if (!result.success) throw new Error(result.error);
+      return result.status;
     },
     enabled: Boolean(id) && enabled,
     staleTime: 15 * 1000,
@@ -190,6 +249,7 @@ export function useProjectGitWorkingTreeActions(id: string) {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.gitStatus(id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.gitDiffAll(id) }),
+      queryClient.invalidateQueries({ queryKey: gitNumstatKey(id) }),
     ]);
 
   const stageFile = useMutation({
@@ -299,7 +359,23 @@ export function useProjectGitBranchActions(id: string) {
       toast.error(t('projects.branchDeleteFailed', { error: error.message })),
   });
 
-  return { createBranch, switchBranch, deleteBranch };
+  const checkoutRemoteBranch = useMutation({
+    mutationFn: async (branch: string) => {
+      const result = await window.electronAPI.projects.checkoutRemoteGitBranch({
+        projectId: id,
+        branch,
+      });
+      if (!result.success) throw new Error(result.error);
+    },
+    onSuccess: (_data, branch) => {
+      toast.success(t('projects.remoteBranchCheckedOut', { name: branch }));
+      refreshGitData();
+    },
+    onError: (error: Error) =>
+      toast.error(t('projects.remoteBranchCheckoutFailed', { error: error.message })),
+  });
+
+  return { createBranch, switchBranch, deleteBranch, checkoutRemoteBranch };
 }
 
 export function useInitProjectGitRepository(id: string) {
