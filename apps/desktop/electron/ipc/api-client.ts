@@ -13,12 +13,16 @@ import { registerApiCookieHandlers } from './api-client/cookies';
 import { registerApiExecutionHandlers } from './api-client/execute';
 import { registerApiOAuthHandlers } from './api-client/oauth';
 import { registerApiRequestHandlers } from './api-client/requests';
+import { registerApiRunnerHandlers } from './api-client/runner';
 import { registerApiTransferHandlers } from './api-client/transfer';
+import { registerApiWebSocketHandlers } from './api-client/websocket';
 
 export function setupApiClientHandlers(db: Kysely<Database>): void {
   registerApiCollectionHandlers(db);
   registerApiRequestHandlers(db);
-  registerApiExecutionHandlers(db);
+  const execution = registerApiExecutionHandlers(db);
+  registerApiWebSocketHandlers(db, execution);
+  registerApiRunnerHandlers(db, execution);
   registerApiTransferHandlers(db);
   registerApiOAuthHandlers(db);
   registerApiCookieHandlers(db);

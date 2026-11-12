@@ -36,7 +36,6 @@ export class ImportError extends Error {
 export type ImportWarningCode =
   | 'SCRIPTS'
   | 'AUTH_UNSUPPORTED'
-  | 'GRAPHQL'
   | 'FILE_PARTS'
   | 'BINARY_FILE'
   | 'METHOD_UNSUPPORTED'
@@ -381,19 +380,12 @@ class PostmanMapper {
         this.warn('BINARY_FILE');
         return { ...none, body_type: 'binary' };
       case 'graphql': {
-        this.warn('GRAPHQL');
         const raw = source.graphql?.variables;
-        let variables: unknown = raw ?? {};
-        if (typeof raw === 'string') {
-          try {
-            variables = raw.trim() ? JSON.parse(raw) : {};
-          } catch {
-            variables = raw;
-          }
-        }
+        // Variables stay text, so unquoted {{placeholders}} in them survive the import.
+        const variables = typeof raw === 'string' ? raw : raw === undefined ? '' : JSON.stringify(raw, null, 2);
         return {
-          body: fixDynamic(JSON.stringify({ query: source.graphql?.query ?? '', variables }, null, 2)),
-          body_type: 'json',
+          body: fixDynamic(JSON.stringify({ query: source.graphql?.query ?? '', variables })),
+          body_type: 'graphql',
           raw_content_type: 'json',
         };
       }

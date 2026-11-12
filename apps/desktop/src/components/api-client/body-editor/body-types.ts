@@ -7,4 +7,5 @@ export const BODY_TYPES: Array<{ value: RequestBodyType; label: string }> = [
   { value: 'form-urlencoded', label: 'x-www-form-urlencoded' },
   { value: 'raw', label: 'Raw' },
   { value: 'binary', label: 'Binary' },
+  { value: 'graphql', label: 'GraphQL' },
 ];

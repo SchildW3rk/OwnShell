@@ -25,6 +25,8 @@ import { CodeViewer } from './response-viewer/CodeViewer';
 import { HeadersTable } from './response-viewer/HeadersTable';
 import { HtmlPreview } from './response-viewer/HtmlPreview';
 import { StatusBadge } from './response-viewer/StatusBadge';
+import { EventStreamView } from './response-viewer/EventStreamView';
+import type { StreamState } from './response-viewer/stream-state';
 import type { HttpResponse, ResponseContentType, ResponseTab } from './response-viewer/types';
 
 export type { HttpResponse } from './response-viewer/types';
@@ -32,6 +34,8 @@ export type { HttpResponse } from './response-viewer/types';
 interface ResponseViewerProps {
   response: HttpResponse | null;
   isLoading: boolean;
+  /** Server-Sent Events of this execution, when the response is an event stream. */
+  stream?: StreamState;
 }
 
 function detectContentType(response: HttpResponse | null): ResponseContentType {
@@ -82,7 +86,7 @@ function formatMs(ms: number): string {
   return `${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`;
 }
 
-export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoading }) => {
+export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoading, stream }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ResponseTab>('body');
   const [copied, setCopied] = useState(false);
@@ -144,6 +148,10 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, [hasBody, bodyBytes, binaryType, formattedBody, contentType]);
+
+  if (stream && ((isLoading && stream.status !== undefined) || (!isLoading && response?.streamEnd))) {
+    return <EventStreamView stream={stream} response={isLoading ? null : response} />;
+  }
 
   if (isLoading) {
     return (

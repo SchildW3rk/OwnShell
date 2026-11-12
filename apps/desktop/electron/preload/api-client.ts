@@ -1,4 +1,7 @@
-import type { IpcRenderer } from 'electron';
+import type { IpcRenderer, IpcRendererEvent } from 'electron';
+import type { RunRequestResult, RunSummary } from '../http/collection-runner';
+import type { StreamMessage } from '../http/sse';
+import type { WebSocketConnectResult, WebSocketEvent } from '../ipc/api-client/websocket';
 import type { ApiRequestHistoryTable } from '@ownshell/core';
 import type { ImportCounts } from '../http/api-import';
 import type { PublicVariable, VariableInput } from '../http/api-variables';
@@ -13,6 +16,10 @@ type RequestSettingsColumns = {
   variables?: string;
   /** 0 = cookie jar off for this request; null = on. */
   cookie_jar?: 0 | 1 | null;
+  kind?: 'http' | 'websocket';
+  /** Runner assertions / captures, JSON arrays. */
+  assertions?: string;
+  captures?: string;
 };
 
 /** Owner of an OAuth 2.0 auth config (and its cached token). */
@@ -76,7 +83,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         params?: string;
         headers?: string;
         body?: string;
-        body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+        body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary' | 'graphql';
         raw_content_type?: 'text' | 'json' | 'xml' | 'html';
         auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
         auth_config?: string;
@@ -94,7 +101,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           params?: string;
           headers?: string;
           body?: string;
-          body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+          body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary' | 'graphql';
           raw_content_type?: 'text' | 'json' | 'xml' | 'html';
           auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
           auth_config?: string;
@@ -116,12 +123,49 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
       /** Cancels a running execute() started with the same `executionId`. */
       cancel: (executionId: string): Promise<void> =>
         ipcRenderer.invoke('api:requests:cancel', executionId),
+      /** Live text/event-stream data of running executes (bounded batches). */
+      onStream: (callback: (message: StreamMessage) => void) => {
+        const subscription = (_event: IpcRendererEvent, message: StreamMessage) => callback(message);
+        ipcRenderer.on('api:stream', subscription);
+        return () => {
+          ipcRenderer.removeListener('api:stream', subscription);
+        };
+      },
       /** Builds a curl command from the same preparation as a send. */
       exportCurl: (
         config: HttpRequestConfig,
         resolveVariables: boolean
       ): Promise<{ command?: string; errorCode?: string; errorDetail?: string; errorScopes?: string[] }> =>
         ipcRenderer.invoke('api:requests:export-curl', { config, resolveVariables }),
+    },
+    webSocket: {
+      /** Opens a WebSocket with the same preparation as a send (auth, variables, SSH host, TLS setting). */
+      connect: (connectionId: string, config: HttpRequestConfig): Promise<WebSocketConnectResult> =>
+        ipcRenderer.invoke('api:ws:connect', { connectionId, config }),
+      send: (connectionId: string, text: string): Promise<void> =>
+        ipcRenderer.invoke('api:ws:send', { connectionId, text }),
+      /** Closes an open connection or cancels a pending connect. */
+      close: (connectionId: string): Promise<void> => ipcRenderer.invoke('api:ws:close', connectionId),
+      onEvent: (callback: (event: WebSocketEvent) => void) => {
+        const subscription = (_event: IpcRendererEvent, payload: WebSocketEvent) => callback(payload);
+        ipcRenderer.on('api:ws:event', subscription);
+        return () => {
+          ipcRenderer.removeListener('api:ws:event', subscription);
+        };
+      },
+    },
+    runner: {
+      /** Runs every saved request of a folder in order; cancel with requests.cancel(runId). */
+      run: (runId: string, collectionId: string, stopOnFailure: boolean): Promise<RunSummary> =>
+        ipcRenderer.invoke('api:runner:run', { runId, collectionId, stopOnFailure }),
+      onProgress: (callback: (progress: { runId: string; result: RunRequestResult }) => void) => {
+        const subscription = (_event: IpcRendererEvent, progress: { runId: string; result: RunRequestResult }) =>
+          callback(progress);
+        ipcRenderer.on('api:runner:progress', subscription);
+        return () => {
+          ipcRenderer.removeListener('api:runner:progress', subscription);
+        };
+      },
     },
     /** Saves new sort_order values for collections and requests in one transaction. */
     reorder: (changes: {

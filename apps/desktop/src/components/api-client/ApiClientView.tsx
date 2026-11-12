@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
   VaultEnvironmentsTable,
+  ApiRequestKind,
   HttpMethod,
   RawRequestContentType,
   RequestBodyType,
@@ -44,9 +45,15 @@ import {
 import { BodyEditor } from './BodyEditor';
 import type { BodyEditorMemory, BodyValue } from './body-editor/types';
 import { hasBodyContent } from './body-editor/utils';
+import { INTROSPECTION_QUERY, serializeGraphqlBody } from './body-editor/graphql-schema';
 import { AuthEditor, hasInsecureOAuthUrl } from './AuthEditor';
 import { CookieManagerDialog } from './CookieManagerDialog';
 import { ResponseViewer, HttpResponse } from './ResponseViewer';
+import { applyStreamMessage, type StreamState } from './response-viewer/stream-state';
+import { RunnerChecksEditor, parseChecks } from './RunnerChecksEditor';
+import { WebSocketPanel } from './WebSocketPanel';
+import { appendMessage, applyWsEvent, type WsSession } from './websocket-session';
+import type { Assertion, Capture } from '../../../electron/http/runner-checks';
 import {
   DEFAULT_REQUEST_SETTINGS,
   RequestSettings,
@@ -76,6 +83,7 @@ function getErrorMessage(response: HttpResponse): string {
 type LayoutMode = 'horizontal' | 'vertical';
 
 interface RequestDraft {
+  kind: ApiRequestKind;
   method: HttpMethod;
   url: string;
   networkHostId: string | null;
@@ -89,6 +97,8 @@ interface RequestDraft {
   authType: RequestAuthType;
   authConfig: string;
   settings: RequestSettings;
+  assertions: Assertion[];
+  captures: Capture[];
   activeTab: RequestTab;
   editorMemory: BodyEditorMemory;
 }
@@ -130,6 +140,9 @@ export const ApiClientView: React.FC = () => {
   const [layout, setLayout] = useState<LayoutMode>('horizontal');
 
   // Request editor state (local draft)
+  const [draftKind, setDraftKind] = useState<ApiRequestKind>('http');
+  const [draftAssertions, setDraftAssertions] = useState<Assertion[]>([]);
+  const [draftCaptures, setDraftCaptures] = useState<Capture[]>([]);
   const [draftMethod, setDraftMethod] = useState<HttpMethod>(selectedRequest?.method ?? 'GET');
   const [draftUrl, setDraftUrl] = useState(selectedRequest?.url ?? '');
   const [draftNetworkHostId, setDraftNetworkHostId] = useState<string | null>(
@@ -156,6 +169,7 @@ export const ApiClientView: React.FC = () => {
   const draftsRef = useRef<Map<string, RequestDraft> | null>(null);
   const drafts = draftsRef.current ??= new Map<string, RequestDraft>();
   const currentDraft = useMemo<RequestDraft>(() => ({
+    kind: draftKind,
     method: draftMethod,
     url: draftUrl,
     networkHostId: draftNetworkHostId,
@@ -169,10 +183,12 @@ export const ApiClientView: React.FC = () => {
     authType: draftAuthType,
     authConfig: draftAuthConfig,
     settings: draftSettings,
+    assertions: draftAssertions,
+    captures: draftCaptures,
     activeTab,
     editorMemory,
   }), [
-    draftMethod, draftUrl, draftNetworkHostId, draftEnvironmentId, draftParams,
+    draftKind, draftAssertions, draftCaptures, draftMethod, draftUrl, draftNetworkHostId, draftEnvironmentId, draftParams,
     draftHeaders, draftVariables, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig,
     draftSettings, activeTab, editorMemory,
   ]);
@@ -190,6 +206,47 @@ export const ApiClientView: React.FC = () => {
   const isLoading = execution?.loading ?? false;
   const response = execution?.response ?? null;
 
+  // Live Server-Sent Events by execution id (bounded per stream, see applyStreamMessage).
+  const [streams, setStreams] = useState<Record<string, StreamState>>({});
+  useEffect(
+    () =>
+      window.electronAPI.apiClient.requests.onStream((message) =>
+        setStreams((current) => ({ ...current, [message.executionId]: applyStreamMessage(current[message.executionId], message) }))
+      ),
+    []
+  );
+  const stream = execution ? streams[execution.executionId] : undefined;
+
+  // WebSocket connections by request id, so switching requests keeps the connection and its log.
+  const [wsSessions, setWsSessions] = useState<Record<string, WsSession>>({});
+  const wsSessionsRef = useRef(wsSessions);
+  wsSessionsRef.current = wsSessions;
+  useEffect(() => {
+    const unsubscribe = window.electronAPI.apiClient.webSocket.onEvent((event) =>
+      setWsSessions((current) => {
+        const entry = Object.entries(current).find(([, session]) => session.connectionId === event.connectionId);
+        return entry ? { ...current, [entry[0]]: applyWsEvent(entry[1], event) } : current;
+      })
+    );
+    return () => {
+      unsubscribe();
+      // Leaving the API client closes its connections.
+      for (const session of Object.values(wsSessionsRef.current)) {
+        if (session.state !== 'closed') void window.electronAPI.apiClient.webSocket.close(session.connectionId).catch(() => undefined);
+      }
+    };
+  }, []);
+  const wsSession = selectedRequestId ? wsSessions[selectedRequestId] : undefined;
+  const wsActive = wsSession?.state === 'connecting' || wsSession?.state === 'open';
+  const updateWsSession = useCallback(
+    (requestId: string, connectionId: string, update: (session: WsSession) => WsSession) =>
+      setWsSessions((current) => {
+        const session = current[requestId];
+        return session?.connectionId === connectionId ? { ...current, [requestId]: update(session) } : current;
+      }),
+    []
+  );
+
   // Load hosts on mount
   useEffect(() => {
     loadHosts();
@@ -205,6 +262,7 @@ export const ApiClientView: React.FC = () => {
     }
     const draft = drafts.get(selectedRequestId) ?? (
       selectedRequest?.id === selectedRequestId ? {
+        kind: selectedRequest.kind ?? 'http',
         method: selectedRequest.method,
         url: selectedRequest.url,
         networkHostId: selectedRequest.network_host_id,
@@ -223,11 +281,16 @@ export const ApiClientView: React.FC = () => {
           verifyTls: selectedRequest.verify_tls !== 0,
           useCookieJar: selectedRequest.cookie_jar !== 0,
         },
+        assertions: parseChecks<Assertion>(selectedRequest.assertions),
+        captures: parseChecks<Capture>(selectedRequest.captures),
         activeTab: 'params' as RequestTab,
         editorMemory: {},
       } : undefined
     );
     if (!draft) return;
+    setDraftKind(draft.kind);
+    setDraftAssertions(draft.assertions);
+    setDraftCaptures(draft.captures);
     setDraftMethod(draft.method);
     setDraftUrl(draft.url);
     setDraftNetworkHostId(draft.networkHostId);
@@ -320,6 +383,9 @@ export const ApiClientView: React.FC = () => {
           auth_type: draftAuthType,
           auth_config: draftAuthConfig,
           ...settingsColumns(draftSettings),
+          kind: draftKind,
+          assertions: JSON.stringify(draftAssertions),
+          captures: JSON.stringify(draftCaptures),
         },
       });
     } catch {
@@ -342,6 +408,9 @@ export const ApiClientView: React.FC = () => {
     draftAuthType,
     draftAuthConfig,
     draftSettings,
+    draftKind,
+    draftAssertions,
+    draftCaptures,
     updateRequestMutation,
     t,
   ]);
@@ -386,6 +455,87 @@ export const ApiClientView: React.FC = () => {
     ]
   );
 
+  /** Introspection through the normal pipeline (auth, variables, SSH host, cookies); not saved. */
+  const handleFetchGraphqlSchema = useCallback(async () => {
+    if (!draftUrl.trim()) return null;
+    try {
+      const result = await window.electronAPI.apiClient.requests.execute({
+        ...buildConfig(serializeGraphqlBody({ query: INTROSPECTION_QUERY, variables: '', operationName: '' })),
+        method: 'POST',
+        bodyType: 'graphql',
+        requestId: null,
+      });
+      if (result.errorCode) {
+        toast.error(sendErrorMessage(result, t));
+        return null;
+      }
+      return result.body;
+    } catch (error) {
+      toast.error(t('api.errors.requestFailed', { error: error instanceof Error ? error.message : String(error) }));
+      return null;
+    }
+  }, [buildConfig, draftUrl, t]);
+
+  const handleWsConnect = useCallback(async () => {
+    if (!selectedRequestId || !draftUrl.trim() || wsActive) return;
+    const requestId = selectedRequestId;
+    const connectionId = crypto.randomUUID();
+    setWsSessions((current) => ({
+      ...current,
+      [requestId]: { connectionId, state: 'connecting', messages: [], chars: 0, dropped: 0 },
+    }));
+    try {
+      const { body } = await handleSave();
+      const result = await window.electronAPI.apiClient.webSocket.connect(connectionId, buildConfig(body));
+      void invalidateHistory();
+      updateWsSession(requestId, connectionId, (session) =>
+        result.ok
+          ? // A close that arrived before this answer wins.
+            { ...session, state: session.state === 'closed' ? 'closed' : 'open', status: result.status }
+          : { ...session, state: 'closed', status: result.status, error: result.errorCode ? sendErrorMessage(result, t) : result.message }
+      );
+    } catch (error) {
+      updateWsSession(requestId, connectionId, (session) => ({
+        ...session,
+        state: 'closed',
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }, [selectedRequestId, draftUrl, wsActive, handleSave, buildConfig, invalidateHistory, updateWsSession, t]);
+
+  const handleWsDisconnect = useCallback(() => {
+    if (!selectedRequestId || !wsSession || wsSession.state === 'closed') return;
+    void window.electronAPI.apiClient.webSocket.close(wsSession.connectionId).catch(() => undefined);
+    // A pending connect is aborted; an open connection reports its close through the event.
+    if (wsSession.state === 'connecting') {
+      updateWsSession(selectedRequestId, wsSession.connectionId, (session) => ({ ...session, state: 'closed' }));
+    }
+  }, [selectedRequestId, wsSession, updateWsSession]);
+
+  const handleWsSend = useCallback(
+    async (text: string) => {
+      if (!selectedRequestId || wsSession?.state !== 'open') return false;
+      const { connectionId } = wsSession;
+      try {
+        await window.electronAPI.apiClient.webSocket.send(connectionId, text);
+        updateWsSession(selectedRequestId, connectionId, (session) =>
+          appendMessage(session, {
+            direction: 'out',
+            data: text,
+            binary: false,
+            size: new TextEncoder().encode(text).length,
+            time: Date.now(),
+          })
+        );
+        return true;
+      } catch (error) {
+        toast.error(t('api.ws.sendFailed', { error: error instanceof Error ? error.message : String(error) }));
+        return false;
+      }
+    },
+    [selectedRequestId, wsSession, updateWsSession, t]
+  );
+
   const handleCancel = useCallback(() => {
     if (!execution?.loading) return;
     // Also covers a cancel during the save, before the main process has the execution.
@@ -419,6 +569,7 @@ export const ApiClientView: React.FC = () => {
     (command: string) => {
       const result = parseCurlWithToast(command, t);
       if (!result) return;
+      setDraftKind('http');
       setDraftMethod(result.method);
       setDraftUrl(result.url);
       setDraftParams(parseKeyValueItems(result.params));
@@ -447,6 +598,9 @@ export const ApiClientView: React.FC = () => {
     const requestId = selectedRequestId;
     const generation = ++executionSequence.current;
     const executionId = crypto.randomUUID();
+    const previous = execution?.executionId;
+    // Only the latest execution of a request keeps its stream events.
+    if (previous) setStreams(({ [previous]: _dropped, ...rest }) => rest);
     setExecutions(current => ({
       ...current,
       [requestId]: { generation, executionId, loading: true, response: null },
@@ -510,7 +664,7 @@ export const ApiClientView: React.FC = () => {
         return { ...current, [requestId]: { ...execution, loading: false } };
       });
     }
-  }, [draftUrl, execution?.loading, selectedRequestId, buildConfig, handleSave, sendFlow, t, updateRequestMutation, invalidateHistory]);
+  }, [draftUrl, execution?.loading, execution?.executionId, selectedRequestId, buildConfig, handleSave, sendFlow, t, updateRequestMutation, invalidateHistory]);
 
   // Only while focus is inside this view; capture phase so editors (CodeMirror) do not act on them first.
   const handleShortcut = useCallback(
@@ -522,15 +676,18 @@ export const ApiClientView: React.FC = () => {
         confirmResolvedCurl ||
         !!target?.closest(OVERLAY_SELECTOR) ||
         !!event.currentTarget.querySelector(`[aria-expanded="true"], ${OVERLAY_SELECTOR}`);
-      const action = getShortcutAction(event, { loading: !!execution?.loading, overlayOpen });
+      const webSocket = draftKind === 'websocket';
+      const loading = webSocket ? wsActive : !!execution?.loading;
+      const action = getShortcutAction(event, { loading, overlayOpen });
       if (!action) return;
       event.preventDefault();
       event.stopPropagation();
-      if (action === 'send') void handleSend();
+      if (action === 'send') void (webSocket ? handleWsConnect() : handleSend());
       else if (action === 'save') void handleSave().then(({ saved }) => saved && toast.success(t('api.saved')));
+      else if (webSocket) handleWsDisconnect();
       else handleCancel();
     },
-    [handleSend, handleSave, handleCancel, execution?.loading, showEnvDropdown, showCurlMenu, confirmResolvedCurl, t]
+    [handleSend, handleSave, handleCancel, handleWsConnect, handleWsDisconnect, draftKind, wsActive, execution?.loading, showEnvDropdown, showCurlMenu, confirmResolvedCurl, t]
   );
 
   if (selectedRequestId && draftRequestId !== selectedRequestId) {
@@ -612,7 +769,7 @@ export const ApiClientView: React.FC = () => {
                 type="button"
                 onClick={() => setShowCurlMenu(!showCurlMenu)}
                 aria-expanded={showCurlMenu}
-                disabled={!draftUrl.trim()}
+                disabled={!draftUrl.trim() || draftKind === 'websocket'}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors disabled:opacity-50"
                 title={t('api.curl.copyMenu')}
               >
@@ -768,16 +925,25 @@ export const ApiClientView: React.FC = () => {
 
         {/* URL Bar */}
         <RequestUrlBar
-          method={draftMethod}
+          kind={draftKind}
+          method={draftKind === 'http' && draftBodyType === 'graphql' ? 'POST' : draftMethod}
+          methodLocked={draftKind === 'http' && draftBodyType === 'graphql'}
           url={draftUrl}
           networkHostId={draftNetworkHostId}
           hosts={sshHosts}
-          isLoading={isLoading}
+          isLoading={draftKind === 'websocket' ? wsActive : isLoading}
+          onKindChange={(kind) => {
+            setDraftKind(kind);
+            if (kind === 'websocket') {
+              setDraftMethod('GET');
+              if (activeTab === 'body' || activeTab === 'tests') setActiveTab('params');
+            }
+          }}
           onMethodChange={setDraftMethod}
           onUrlChange={setDraftUrl}
           onNetworkHostChange={setDraftNetworkHostId}
-          onSend={handleSend}
-          onCancel={handleCancel}
+          onSend={draftKind === 'websocket' ? () => void handleWsConnect() : handleSend}
+          onCancel={draftKind === 'websocket' ? handleWsDisconnect : handleCancel}
           onPasteCurl={handlePasteCurl}
         />
 
@@ -811,6 +977,8 @@ export const ApiClientView: React.FC = () => {
               hasAuth={hasAuth}
               variableCount={variableCount}
               settingsWarning={!draftSettings.verifyTls}
+              kind={draftKind}
+              testCount={draftAssertions.length + draftCaptures.length}
             />
 
             {/* Tab Content */}
@@ -845,15 +1013,20 @@ export const ApiClientView: React.FC = () => {
                   valuePlaceholder={t('api.headers.value')}
                 />
               )}
-              {activeTab === 'body' && (
+              {activeTab === 'body' && draftKind === 'http' && (
                 <BodyEditor
                   bodyType={draftBodyType}
                   body={draftBody}
                   memory={editorMemory}
                   rawContentType={draftRawContentType}
                   onRawContentTypeChange={setDraftRawContentType}
-                  onBodyTypeChange={setDraftBodyType}
+                  onBodyTypeChange={(type) => {
+                    setDraftBodyType(type);
+                    // GraphQL over HTTP is a POST with a JSON body (also enforced in prepare-request).
+                    if (type === 'graphql') setDraftMethod('POST');
+                  }}
                   onBodyChange={setDraftBody}
+                  onFetchGraphqlSchema={handleFetchGraphqlSchema}
                 />
               )}
               {activeTab === 'variables' && (
@@ -870,6 +1043,14 @@ export const ApiClientView: React.FC = () => {
                     />
                   </div>
                 </div>
+              )}
+              {activeTab === 'tests' && draftKind === 'http' && (
+                <RunnerChecksEditor
+                  assertions={draftAssertions}
+                  captures={draftCaptures}
+                  onAssertionsChange={setDraftAssertions}
+                  onCapturesChange={setDraftCaptures}
+                />
               )}
               {activeTab === 'settings' && (
                 <RequestSettingsEditor settings={draftSettings} onChange={setDraftSettings} />
@@ -888,7 +1069,11 @@ export const ApiClientView: React.FC = () => {
 
           {/* Response Viewer Panel */}
           <Panel defaultSize={50} minSize={20} className="flex flex-col min-h-0 bg-background">
-            <ResponseViewer response={response} isLoading={isLoading} />
+            {draftKind === 'websocket' ? (
+              <WebSocketPanel session={wsSession} onSend={handleWsSend} />
+            ) : (
+              <ResponseViewer response={response} isLoading={isLoading} stream={stream} />
+            )}
           </Panel>
         </Group>
       </div>

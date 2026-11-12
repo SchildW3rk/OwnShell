@@ -19,6 +19,7 @@ import type { ImportFolder, ImportRequest } from './api-import';
 import { MAX_IMPORT_DEPTH, MAX_IMPORT_ITEMS } from './api-import';
 import { parseStoredVariables } from './api-variables';
 import { ImportError, parseImportJson } from './postman-import';
+import { assertionSchema, captureSchema, MAX_CHECKS, parseAssertions, parseCaptures } from './runner-checks';
 import { placeholderFor, redactParam, redactUrl, SENSITIVE_HEADER } from './prepare-request';
 
 export const OWNSHELL_API_FORMAT = 'ownshell-api';
@@ -55,7 +56,7 @@ const variableSchema = z.object({
   secret: z.boolean(),
 });
 const bodySchema = z.object({
-  type: z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary']),
+  type: z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary', 'graphql']),
   rawContentType: z.enum(['text', 'json', 'xml', 'html']),
   content: z.string().nullable(),
   items: z.array(kvSchema.extend({ type: z.enum(['text', 'file']).optional() })).nullable(),
@@ -76,6 +77,10 @@ const requestSchema = z.object({
     followRedirects: z.boolean().nullable(),
     verifyTls: z.boolean().nullable(),
   }),
+  // Added later in version 1: optional so older files still import.
+  kind: z.enum(['http', 'websocket']).optional(),
+  assertions: z.array(assertionSchema).max(MAX_CHECKS).optional(),
+  captures: z.array(captureSchema).max(MAX_CHECKS).optional(),
 });
 type RequestDoc = z.infer<typeof requestSchema>;
 
@@ -234,6 +239,9 @@ export function buildOwnShellApiDocument(
             followRedirects: flag(request.follow_redirects),
             verifyTls: flag(request.verify_tls),
           },
+          kind: request.kind ?? 'http',
+          assertions: parseAssertions(request.assertions),
+          captures: parseCaptures(request.captures),
         })),
     };
   };
@@ -300,6 +308,9 @@ export function parseOwnShellApiFile(text: string): ImportFolder {
         timeout_seconds: request.settings.timeoutSeconds,
         follow_redirects: toFlag(request.settings.followRedirects),
         verify_tls: toFlag(request.settings.verifyTls),
+        kind: request.kind ?? 'http',
+        assertions: JSON.stringify(request.assertions ?? []),
+        captures: JSON.stringify(request.captures ?? []),
       })),
     };
   };

@@ -431,7 +431,8 @@ function pre018Sqlite(): DatabaseSync {
 const snapshot = (sqlite: DatabaseSync) =>
   sqlite.prepare('SELECT * FROM api_requests ORDER BY id').all().map((row) => {
     const copy = { ...(row as Record<string, unknown>) };
-    delete copy.cookie_jar;
+    // Columns added by later migrations (018, 019).
+    for (const column of ['cookie_jar', 'kind', 'assertions', 'captures']) delete copy[column];
     return copy;
   });
 
@@ -473,7 +474,7 @@ test('migration 018: a populated pre-018 api_requests survives the rebuild, idem
   const afterFirst = sqlite.prepare('SELECT * FROM api_requests ORDER BY id').all();
   runIncrementalMigrations(sqlite as never);
   assert.deepEqual(sqlite.prepare('SELECT * FROM api_requests ORDER BY id').all(), afterFirst);
-  assert.equal(sqlite.prepare("SELECT name FROM sqlite_master WHERE name='api_requests_018'").get(), undefined);
+  assert.equal(sqlite.prepare("SELECT name FROM sqlite_master WHERE name='api_requests_rebuild'").get(), undefined);
 
   // A failure after DROP TABLE (a view the rename cannot resolve) rolls everything back.
   const failing = pre018Sqlite();
@@ -484,7 +485,7 @@ test('migration 018: a populated pre-018 api_requests survives the rebuild, idem
   const kept = (failing.prepare("SELECT sql FROM sqlite_master WHERE name='api_requests'").get() as { sql: string }).sql;
   assert.doesNotMatch(kept, /'oauth2'/, 'rebuild did not happen');
   assert.deepEqual(snapshot(failing), original, 'original rows intact');
-  assert.equal(failing.prepare("SELECT name FROM sqlite_master WHERE name='api_requests_018'").get(), undefined);
+  assert.equal(failing.prepare("SELECT name FROM sqlite_master WHERE name='api_requests_rebuild'").get(), undefined);
   assert.equal((failing.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys, 1);
   // The new tables and column are created even when the rebuild failed.
   for (const name of ['api_cookies', 'api_oauth_tokens']) {

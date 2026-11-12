@@ -1369,7 +1369,8 @@
       "headers": "Header",
       "body": "Body",
       "settings": "Einstellungen",
-      "variables": "Variablen"
+      "variables": "Variablen",
+      "tests": "Tests"
     },
     "params": {
       "key": "Parameter",
@@ -1472,7 +1473,8 @@
         "form-data": "Form Data",
         "form-urlencoded": "x-www-form-urlencoded",
         "raw": "Raw",
-        "binary": "Binary"
+        "binary": "Binary",
+        "graphql": "GraphQL"
       },
       "reselectFile": "Wähle die Datei erneut aus, um sie zu senden.",
       "formFieldName": "Feldname",
@@ -1522,7 +1524,12 @@
       "TIMEOUT": "Keine vollständige Antwort innerhalb des Timeouts. Du kannst es in den Request-Einstellungen erhöhen.",
       "OAUTH_FAILED": "Die OAuth-Token-Anfrage ist fehlgeschlagen ({{detail}}). Prüfe URLs, Client-ID und Secret.",
       "OAUTH_TOKEN_REQUIRED": "Kein gültiges OAuth-Token. Nutze „Neues Token abrufen“ im Auth-Tab.",
-      "OAUTH_INSECURE_URL": "OAuth-Token- und Autorisierungs-URLs müssen https:// verwenden (http:// ist nur für localhost und 127.0.0.1 erlaubt). Sonst würden Client-Secret und Tokens unverschlüsselt übertragen."
+      "OAUTH_INSECURE_URL": "OAuth-Token- und Autorisierungs-URLs müssen https:// verwenden (http:// ist nur für localhost und 127.0.0.1 erlaubt). Sonst würden Client-Secret und Tokens unverschlüsselt übertragen.",
+      "INVALID_GRAPHQL_VARIABLES": "Die GraphQL-Variablen sind kein gültiges JSON.",
+      "WS_TOO_MANY": "Zu viele offene WebSocket-Verbindungen. Schließe zuerst eine.",
+      "WS_BACKPRESSURE": "Der Server liest nicht mehr; die WebSocket-Verbindung wurde geschlossen.",
+      "WS_PROTOCOL": "Der Server hat das WebSocket-Protokoll verletzt: {{detail}}",
+      "WS_CONNECTION": "WebSocket-Verbindungsfehler: {{detail}}"
     },
     "collectionAuth": {
       "menu": "Authentifizierung",
@@ -1591,7 +1598,8 @@
         "collection": "Collection",
         "environment": "Umgebung",
         "global": "Global",
-        "dynamic": "Eingebaut"
+        "dynamic": "Eingebaut",
+        "runtime": "Lauf (erfasst)"
       }
     },
     "history": {
@@ -1619,7 +1627,6 @@
       "warnings": {
         "SCRIPTS": "Pre-Request- und Test-Skripte (nicht unterstützt): {{count}}",
         "AUTH_UNSUPPORTED": "Nicht unterstützte Auth-Typen, auf „keine Auth“ gesetzt: {{count}}",
-        "GRAPHQL": "GraphQL-Bodies, in JSON umgewandelt: {{count}}",
         "FILE_PARTS": "Form-Data-Dateien – vor dem Senden erneut auswählen: {{count}}",
         "BINARY_FILE": "Binäre Datei-Bodies – Datei erneut auswählen: {{count}}",
         "METHOD_UNSUPPORTED": "Requests mit nicht unterstützter Methode, übersprungen: {{count}}",
@@ -1650,6 +1657,91 @@
       "session": "Sitzung",
       "delete": "Cookie {{name}} löschen",
       "loadFailed": "Cookies konnten nicht geladen werden: {{error}}"
+    },
+    "graphql": {
+      "fetchSchema": "Schema abrufen",
+      "filterSchema": "Typen und Felder filtern",
+      "operationName": "Operationsname (optional)",
+      "schema": "GraphQL-Schema",
+      "schemaFailed": "Die Antwort ist kein Introspection-Ergebnis. Eventuell hat der Server Introspection deaktiviert.",
+      "variables": "Variablen (JSON)",
+      "methodLocked": "GraphQL-Anfragen werden immer per POST gesendet"
+    },
+    "stream": {
+      "live": "Stream läuft…",
+      "ended": {
+        "complete": "Stream beendet",
+        "cancelled": "Stream gestoppt",
+        "timeout": "Stream ohne Daten (Timeout)"
+      },
+      "eventCount": "Events: {{count}}",
+      "events": "Events",
+      "dropped": "{{count}} ältere Events werden nicht mehr angezeigt (Limit: letzte 1000 Events / 5 MB).",
+      "waiting": "Warte auf Events…",
+      "empty": "Keine Events empfangen",
+      "truncated": "gekürzt"
+    },
+    "tests": {
+      "assertions": "Prüfungen",
+      "addAssertion": "Prüfung hinzufügen",
+      "hint": "Werden geprüft, wenn der Ordner im Collection Runner läuft. JSON-Pfade: data.items[0].id",
+      "captures": "Übernahmen",
+      "addCapture": "Übernahme hinzufügen",
+      "capturesHint": "Speichert einen JSON-Wert der Antwort in einer Variable für die nächsten Requests desselben Laufs. Nur im Arbeitsspeicher, wird nie gespeichert.",
+      "enabled": "Aktiv",
+      "type": "Prüfung",
+      "expected": "Erwartet",
+      "headerName": "Header-Name",
+      "jsonPath": "JSON-Pfad",
+      "types": {
+        "status-equals": "Status ist",
+        "status-range": "Status im Bereich",
+        "header-exists": "Header vorhanden",
+        "header-equals": "Header ist gleich",
+        "json-equals": "JSON-Wert ist gleich",
+        "json-exists": "JSON-Wert vorhanden",
+        "json-contains": "JSON-Wert enthält",
+        "time-below": "Antwortzeit unter (ms)"
+      }
+    },
+    "runner": {
+      "menu": "Ordner ausführen",
+      "title": "„{{name}}“ ausführen",
+      "run": "Ausführen",
+      "stopOnFailure": "Beim ersten Fehler anhalten",
+      "running": "Läuft… {{count}} erledigt",
+      "summary": "{{passed}} bestanden, {{failed}} fehlgeschlagen von {{total}} · {{ms}} ms",
+      "cancelled": "abgebrochen",
+      "truncated": "nur die ersten 500 Requests wurden ausgeführt",
+      "hint": "Führt die gespeicherten Requests dieses Ordners und seiner Unterordner nacheinander aus (Unterordner zuerst). Ungespeicherte Änderungen sind nicht enthalten. Ergebnisse werden nicht gespeichert.",
+      "empty": "Starte einen Lauf, um die Ergebnisse zu sehen.",
+      "failed": "Lauf fehlgeschlagen: {{error}}",
+      "noResponse": "keine Antwort",
+      "noAssertions": "Keine Prüfungen: bestanden, sobald eine Antwort kommt.",
+      "skippedWebSocket": "WebSocket, übersprungen",
+      "actual": "tatsächlich: {{value}}",
+      "captured": "Übernommen: {{names}}"
+    },
+    "ws": {
+      "kind": "WebSocket",
+      "urlPlaceholder": "WebSocket-URL eingeben (z. B. wss://api.example.com/socket)",
+      "connect": "Verbinden",
+      "disconnect": "Trennen",
+      "connecting": "Verbinde…",
+      "open": "Verbunden",
+      "closed": "Geschlossen ({{code}}) {{reason}}",
+      "notConnected": "Nicht verbunden",
+      "messages": "Nachrichten",
+      "empty": "Noch keine Nachrichten",
+      "dropped": "{{count}} ältere Nachrichten werden nicht mehr angezeigt (Limit: letzte 1000 Nachrichten / 5 MB).",
+      "received": "Empfangen",
+      "sent": "Gesendet",
+      "binary": "[Binärnachricht]",
+      "composerPlaceholder": "Nachrichtentext (⌘/Strg+Enter zum Senden)",
+      "formatJson": "JSON formatieren",
+      "invalidJson": "Kein gültiges JSON",
+      "send": "Senden",
+      "sendFailed": "Nachricht nicht gesendet: {{error}}"
     }
   },
   "changelog": {

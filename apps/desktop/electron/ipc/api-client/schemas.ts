@@ -5,7 +5,7 @@ export { idSchema, noPayloadSchema };
 export const nullableIdSchema = idSchema.nullable();
 export const sortOrderSchema = z.number().finite().int().nonnegative().max(1000000);
 export const httpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
-export const bodyTypeSchema = z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary']);
+export const bodyTypeSchema = z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary', 'graphql']);
 export const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'oauth2', 'inherit']);
 export const jsonConfigStringSchema = z.string().max(1024 * 1024);
 export const rawContentTypeSchema = z.enum(['text', 'json', 'xml', 'html']);
@@ -45,6 +45,9 @@ export const requestSchema = z.object({
   verify_tls: flagSchema.nullable().optional(),
   variables: jsonConfigStringSchema.optional(),
   cookie_jar: flagSchema.nullable().optional(),
+  kind: z.enum(['http', 'websocket']).optional(),
+  assertions: jsonConfigStringSchema.optional(),
+  captures: jsonConfigStringSchema.optional(),
 });
 export const requestUpdateSchema = requestSchema.partial().extend({
   last_executed_at: z.number().finite().int().nonnegative().nullable().optional(),

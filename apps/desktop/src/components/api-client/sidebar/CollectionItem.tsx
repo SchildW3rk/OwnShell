@@ -16,6 +16,7 @@ import {
   KeyRound,
   MoreHorizontal,
   Pencil,
+  Play,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import toast from 'react-hot-toast';
 import { CollectionAuthDialog } from './CollectionAuthDialog';
 import { VariablesDialog } from './VariablesDialog';
 import { ContextMenu } from './ContextMenu';
+import { RunnerDialog } from './RunnerDialog';
 import { RequestItem } from './RequestItem';
 import type { ApiCollectionTreeItem, ContextMenuItem } from './types';
 
@@ -67,6 +69,7 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showVariablesDialog, setShowVariablesDialog] = useState(false);
+  const [showRunner, setShowRunner] = useState(false);
 
   const handleExport = async () => {
     try {
@@ -92,6 +95,11 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
       label: t('api.newFolder'),
       icon: <FolderPlus className="w-4 h-4" />,
       onClick: () => onCreateCollection(collection.id),
+    },
+    {
+      label: t('api.runner.menu'),
+      icon: <Play className="w-4 h-4" />,
+      onClick: () => setShowRunner(true),
     },
     {
       label: t('api.collectionAuth.menu'),
@@ -241,6 +249,10 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
           variables={parsePublicVariables(collection.variables)}
           onClose={() => setShowVariablesDialog(false)}
         />
+      )}
+
+      {showRunner && (
+        <RunnerDialog collectionId={collection.id} name={collection.name} onClose={() => setShowRunner(false)} />
       )}
 
       {showAuthDialog && (

@@ -27,7 +27,8 @@ export type ApiRequestErrorCode =
   | 'CANCELLED'
   | 'OAUTH_FAILED'
   | 'OAUTH_TOKEN_REQUIRED'
-  | 'OAUTH_INSECURE_URL';
+  | 'OAUTH_INSECURE_URL'
+  | 'INVALID_GRAPHQL_VARIABLES';
 
 /** Error with a stable code the renderer can translate; `detail` is safe to show (names only, no values). */
 export class ApiRequestError extends Error {
@@ -71,8 +72,9 @@ export interface LoadedFile {
 /**
  * Variable lookup order, highest precedence first:
  * request → folder chain (nearest first) → collection root → environment (vault) → global.
+ * A collection run puts the values it captured (`runtime`) in front of all of them.
  */
-export type VariableScopeName = 'request' | 'folder' | 'collection' | 'environment' | 'global';
+export type VariableScopeName = 'runtime' | 'request' | 'folder' | 'collection' | 'environment' | 'global';
 
 export interface VariableScope {
   scope: VariableScopeName;
@@ -103,6 +105,8 @@ export interface PrepareContext {
   /** Must not return more than `maxBytes` bytes (throw BODY_TOO_LARGE instead). */
   loadFile: (filePath: string, maxBytes: number) => Promise<LoadedFile>;
   boundary?: string;
+  /** WebSocket request: the URL must be ws: or wss: (instead of http: or https:). */
+  webSocket?: boolean;
 }
 
 export interface PreparedRequest {
@@ -246,6 +250,28 @@ function decodeQueryPart(text: string): string {
   }
 }
 
+/** Stored GraphQL body: the query and the variables as typed (JSON text, may hold {{placeholders}}). */
+export interface GraphqlBody {
+  query: string;
+  variables: string;
+  operationName: string;
+}
+
+export function parseGraphqlBody(body: string): GraphqlBody {
+  const parsed = parseJson<Record<string, unknown>>(body, {});
+  const text = (value: unknown) => (typeof value === 'string' ? value : '');
+  return {
+    query: text(parsed.query),
+    variables:
+      typeof parsed.variables === 'string'
+        ? parsed.variables
+        : parsed.variables && typeof parsed.variables === 'object'
+          ? JSON.stringify(parsed.variables, null, 2)
+          : '',
+    operationName: text(parsed.operationName),
+  };
+}
+
 // RFC 7578 / WHATWG: quotes and line breaks in names must not break the part header.
 function escapeMultipartName(value: string): string {
   return value.replace(/"/g, '%22').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
@@ -263,8 +289,11 @@ export async function prepareRequest(
   } catch {
     throw new ApiRequestError('INVALID_URL', 'Invalid URL');
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new ApiRequestError('INVALID_URL', 'Only http and https URLs are supported');
+  if (context.webSocket ? url.protocol !== 'ws:' && url.protocol !== 'wss:' : url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new ApiRequestError(
+      'INVALID_URL',
+      context.webSocket ? 'WebSocket URLs start with ws:// or wss://' : 'Only http and https URLs are supported'
+    );
   }
   if (query.length > 0) {
     // Append as text so the user's existing query keeps its exact encoding.
@@ -408,7 +437,9 @@ async function assembleRequest(
     }
   }
 
-  const sendsBody = input.method !== 'GET' && input.method !== 'HEAD';
+  // GraphQL over HTTP is always a POST with a JSON body, whatever method is stored.
+  const method = input.bodyType === 'graphql' && !context.webSocket ? 'POST' : input.method;
+  const sendsBody = method !== 'GET' && method !== 'HEAD';
   let body: Buffer | undefined;
   let contentType: string | undefined;
   let parts: PreparedPart[] | undefined;
@@ -426,6 +457,32 @@ async function assembleRequest(
               : RAW_CONTENT_TYPES[input.rawContentType ?? 'text'] ?? 'text/plain';
         }
         break;
+
+      case 'graphql': {
+        const graphql = parseGraphqlBody(input.body);
+        if (!graphql.query.trim()) break;
+        const variablesText = interpolate(graphql.variables).trim();
+        const operationName = interpolate(graphql.operationName).trim();
+        const payload: Record<string, unknown> = { query: interpolate(graphql.query) };
+        // Report unknown {{variables}} first, not as invalid JSON.
+        if (!keepPlaceholders) throwIfMissing();
+        let json: string;
+        try {
+          if (variablesText) payload.variables = JSON.parse(variablesText);
+          if (operationName) payload.operationName = operationName;
+          json = JSON.stringify(payload);
+        } catch {
+          if (!keepPlaceholders) {
+            throw new ApiRequestError('INVALID_GRAPHQL_VARIABLES', 'GraphQL variables are not valid JSON');
+          }
+          // Export with an unquoted {{placeholder}} in the variables: keep the text as typed.
+          const rest = JSON.stringify({ variables: null, ...payload, ...(operationName && { operationName }) });
+          json = `{"variables":${variablesText}${rest.slice('{"variables":null'.length)}`;
+        }
+        body = Buffer.from(json, 'utf8');
+        contentType = 'application/json';
+        break;
+      }
 
       case 'form-urlencoded': {
         const items = parseJson<unknown>(input.body, null);
@@ -507,7 +564,7 @@ async function assembleRequest(
   if (contentType && !hasHeader(headers, 'Content-Type')) headers['Content-Type'] = contentType;
 
   return {
-    method: input.method,
+    method,
     urlText,
     query,
     headers,

@@ -6,7 +6,12 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 
 /**
  * Request body type
  */
-export type RequestBodyType = 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+export type RequestBodyType = 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary' | 'graphql';
+
+/**
+ * Request kind (migration 019): an HTTP request or a WebSocket connection
+ */
+export type ApiRequestKind = 'http' | 'websocket';
 
 /**
  * Authentication type
@@ -84,6 +89,9 @@ export interface ApiRequestsTable {
   verify_tls: number | null; // 0/1, null = verify
   variables: string; // JSON: [{ key, value, enabled }] request-level variables (migration 017)
   cookie_jar: number | null; // 0/1, null = use the cookie jar (migration 018)
+  kind: ApiRequestKind; // migration 019
+  assertions: string; // JSON: runner assertions [{ id, enabled, type, ... }] (migration 019)
+  captures: string; // JSON: runner captures [{ id, enabled, variable, path }] (migration 019)
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
   last_executed_at: number | null; // Track last execution
@@ -110,6 +118,9 @@ export interface NewApiRequest {
   verify_tls?: number | null;
   variables?: string;
   cookie_jar?: number | null;
+  kind?: ApiRequestKind;
+  assertions?: string;
+  captures?: string;
   created_at: number;
   updated_at: number;
   last_executed_at?: number | null;
@@ -135,6 +146,9 @@ export interface ApiRequestUpdate {
   verify_tls?: number | null;
   variables?: string;
   cookie_jar?: number | null;
+  kind?: ApiRequestKind;
+  assertions?: string;
+  captures?: string;
   updated_at: number;
   last_executed_at?: number | null;
 }

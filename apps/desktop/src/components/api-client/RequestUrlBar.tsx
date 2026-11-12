@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { Send, ChevronDown, Wifi, Server, Square } from 'lucide-react';
 import { Button, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
-import { HttpMethod, HostsTable } from '@ownshell/core';
+import type { ApiRequestKind, HttpMethod, HostsTable } from '@ownshell/core';
 import { looksLikeCurl } from './curl-import';
 import { SHORTCUT_LABELS } from './shortcuts';
 import { VariableInput } from './variables/VariableInput';
@@ -48,7 +48,12 @@ const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 
 // ============================================
 
 interface RequestUrlBarProps {
+  /** WebSocket: the button connects/disconnects instead of sending. */
+  kind?: ApiRequestKind;
+  onKindChange?: (kind: ApiRequestKind) => void;
   method: HttpMethod;
+  /** GraphQL body: the request is always sent as POST, other methods cannot be picked. */
+  methodLocked?: boolean;
   url: string;
   networkHostId: string | null;
   hosts: HostsTable[];
@@ -63,7 +68,10 @@ interface RequestUrlBarProps {
 }
 
 export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
+  kind = 'http',
+  onKindChange,
   method,
+  methodLocked = false,
   url,
   networkHostId,
   hosts,
@@ -76,6 +84,7 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
   onPasteCurl,
 }) => {
   const { t } = useTranslation();
+  const webSocket = kind === 'websocket';
   const [showMethodDropdown, setShowMethodDropdown] = useState(false);
   const [showNetworkDropdown, setShowNetworkDropdown] = useState(false);
 
@@ -101,10 +110,10 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
           aria-expanded={showMethodDropdown}
           className={cn(
             'flex items-center gap-1.5 px-3 py-2 rounded-md border border-border bg-secondary font-bold text-sm transition-colors hover:bg-accent',
-            methodColors[method]
+            webSocket ? 'text-teal-500' : methodColors[method]
           )}
         >
-          {method}
+          {webSocket ? 'WS' : method}
           <ChevronDown className="w-4 h-4 text-muted-foreground" />
         </button>
 
@@ -119,19 +128,40 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
                 <button
                   key={m}
                   type="button"
+                  disabled={methodLocked && m !== 'POST'}
+                  title={methodLocked && m !== 'POST' ? t('api.graphql.methodLocked') : undefined}
                   onClick={() => {
                     onMethodChange(m);
+                    onKindChange?.('http');
                     setShowMethodDropdown(false);
                   }}
                   className={cn(
-                    'w-full px-3 py-1.5 text-sm font-bold text-left hover:bg-primary/10 transition-colors',
+                    'w-full px-3 py-1.5 text-sm font-bold text-left hover:bg-primary/10 transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent',
                     methodColors[m],
-                    method === m && 'bg-primary/20'
+                    !webSocket && method === m && 'bg-primary/20'
                   )}
                 >
                   {m}
                 </button>
               ))}
+              {onKindChange && (
+                <>
+                  <div className="my-1 border-t border-border" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onKindChange('websocket');
+                      setShowMethodDropdown(false);
+                    }}
+                    className={cn(
+                      'w-full px-3 py-1.5 text-sm font-bold text-left text-teal-500 hover:bg-primary/10 transition-colors',
+                      webSocket && 'bg-primary/20'
+                    )}
+                  >
+                    {t('api.ws.kind')}
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
@@ -151,10 +181,7 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
               onPasteCurl(text);
             }
           }}
-          placeholder={t(
-            'api.urlPlaceholder',
-            'Enter request URL (e.g., https://api.example.com/users)'
-          )}
+          placeholder={webSocket ? t('api.ws.urlPlaceholder') : t('api.urlPlaceholder')}
           className="w-full px-3 py-2 bg-secondary border border-border rounded-md text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>
@@ -236,21 +263,21 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
           variant="secondary"
           onClick={onCancel}
           className="px-4"
-          title={`${t('api.cancelRequest')} (${SHORTCUT_LABELS.cancel})`}
+          title={`${t(webSocket ? 'api.ws.disconnect' : 'api.cancelRequest')} (${SHORTCUT_LABELS.cancel})`}
         >
           <Square className="w-4 h-4 mr-2" />
-          {t('api.cancelRequest')}
+          {t(webSocket ? 'api.ws.disconnect' : 'api.cancelRequest')}
         </Button>
       ) : (
         <Button
           variant="primary"
           onClick={onSend}
           disabled={!url.trim()}
-          className={cn('px-4', methodBgColors[method])}
-          title={`${t('api.send', 'Send')} (${SHORTCUT_LABELS.send})`}
+          className={cn('px-4', webSocket ? 'bg-teal-600' : methodBgColors[method])}
+          title={`${t(webSocket ? 'api.ws.connect' : 'api.send')} (${SHORTCUT_LABELS.send})`}
         >
           <Send className="w-4 h-4 mr-2" />
-          {t('api.send', 'Send')}
+          {t(webSocket ? 'api.ws.connect' : 'api.send')}
         </Button>
       )}
     </div>

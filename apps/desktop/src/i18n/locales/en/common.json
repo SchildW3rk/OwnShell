@@ -1369,7 +1369,8 @@
       "headers": "Headers",
       "body": "Body",
       "settings": "Settings",
-      "variables": "Variables"
+      "variables": "Variables",
+      "tests": "Tests"
     },
     "params": {
       "key": "Parameter",
@@ -1472,7 +1473,8 @@
         "form-data": "Form Data",
         "form-urlencoded": "x-www-form-urlencoded",
         "raw": "Raw",
-        "binary": "Binary"
+        "binary": "Binary",
+        "graphql": "GraphQL"
       },
       "reselectFile": "Select the file again to send it.",
       "formFieldName": "Field name",
@@ -1522,7 +1524,12 @@
       "TIMEOUT": "No complete response within the timeout. You can raise it in the request settings.",
       "OAUTH_FAILED": "The OAuth token request failed ({{detail}}). Check the URLs, client ID and secret.",
       "OAUTH_TOKEN_REQUIRED": "No valid OAuth token. Use \"Get new token\" in the Auth tab.",
-      "OAUTH_INSECURE_URL": "OAuth token and authorization URLs must use https:// (http:// is only allowed for localhost and 127.0.0.1). Otherwise the client secret and tokens would travel unencrypted."
+      "OAUTH_INSECURE_URL": "OAuth token and authorization URLs must use https:// (http:// is only allowed for localhost and 127.0.0.1). Otherwise the client secret and tokens would travel unencrypted.",
+      "INVALID_GRAPHQL_VARIABLES": "The GraphQL variables are not valid JSON.",
+      "WS_TOO_MANY": "Too many open WebSocket connections. Close one first.",
+      "WS_BACKPRESSURE": "The server stopped reading; the WebSocket connection was closed.",
+      "WS_PROTOCOL": "The server broke the WebSocket protocol: {{detail}}",
+      "WS_CONNECTION": "WebSocket connection error: {{detail}}"
     },
     "collectionAuth": {
       "menu": "Authentication",
@@ -1591,7 +1598,8 @@
         "collection": "Collection",
         "environment": "Environment",
         "global": "Global",
-        "dynamic": "Built-in"
+        "dynamic": "Built-in",
+        "runtime": "Run (captured)"
       }
     },
     "history": {
@@ -1619,7 +1627,6 @@
       "warnings": {
         "SCRIPTS": "Pre-request and test scripts (not supported): {{count}}",
         "AUTH_UNSUPPORTED": "Unsupported auth types, set to no auth: {{count}}",
-        "GRAPHQL": "GraphQL bodies, converted to JSON: {{count}}",
         "FILE_PARTS": "Form-data files – select them again before sending: {{count}}",
         "BINARY_FILE": "Binary file bodies – select the file again: {{count}}",
         "METHOD_UNSUPPORTED": "Requests with unsupported methods, skipped: {{count}}",
@@ -1650,6 +1657,91 @@
       "session": "Session",
       "delete": "Delete cookie {{name}}",
       "loadFailed": "Could not load cookies: {{error}}"
+    },
+    "graphql": {
+      "fetchSchema": "Fetch schema",
+      "filterSchema": "Filter types and fields",
+      "operationName": "Operation name (optional)",
+      "schema": "GraphQL schema",
+      "schemaFailed": "The response is not an introspection result. The server may have introspection disabled.",
+      "variables": "Variables (JSON)",
+      "methodLocked": "GraphQL requests are always sent as POST"
+    },
+    "stream": {
+      "live": "Streaming…",
+      "ended": {
+        "complete": "Stream ended",
+        "cancelled": "Stream stopped",
+        "timeout": "Stream idle timeout"
+      },
+      "eventCount": "Events: {{count}}",
+      "events": "Events",
+      "dropped": "{{count}} older events are no longer shown (limit: last 1000 events / 5 MB).",
+      "waiting": "Waiting for events…",
+      "empty": "No events received",
+      "truncated": "truncated"
+    },
+    "tests": {
+      "assertions": "Assertions",
+      "addAssertion": "Add assertion",
+      "hint": "Checked when the folder runs in the collection runner. JSON paths: data.items[0].id",
+      "captures": "Captures",
+      "addCapture": "Add capture",
+      "capturesHint": "Stores a JSON value of the response in a variable for the next requests of the same run. Only in memory, never saved.",
+      "enabled": "Enabled",
+      "type": "Check",
+      "expected": "Expected",
+      "headerName": "Header name",
+      "jsonPath": "JSON path",
+      "types": {
+        "status-equals": "Status is",
+        "status-range": "Status in range",
+        "header-exists": "Header exists",
+        "header-equals": "Header equals",
+        "json-equals": "JSON value equals",
+        "json-exists": "JSON value exists",
+        "json-contains": "JSON value contains",
+        "time-below": "Response time below (ms)"
+      }
+    },
+    "runner": {
+      "menu": "Run folder",
+      "title": "Run “{{name}}”",
+      "run": "Run",
+      "stopOnFailure": "Stop on first failure",
+      "running": "Running… {{count}} done",
+      "summary": "{{passed}} passed, {{failed}} failed of {{total}} · {{ms}} ms",
+      "cancelled": "cancelled",
+      "truncated": "only the first 500 requests were run",
+      "hint": "Runs the saved requests of this folder and its subfolders one after another (subfolders first). Unsaved changes are not included. Results are not stored.",
+      "empty": "Start a run to see the results.",
+      "failed": "Run failed: {{error}}",
+      "noResponse": "no response",
+      "noAssertions": "No assertions: passes when a response arrives.",
+      "skippedWebSocket": "WebSocket, skipped",
+      "actual": "actual: {{value}}",
+      "captured": "Captured: {{names}}"
+    },
+    "ws": {
+      "kind": "WebSocket",
+      "urlPlaceholder": "Enter WebSocket URL (e.g., wss://api.example.com/socket)",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "connecting": "Connecting…",
+      "open": "Connected",
+      "closed": "Closed ({{code}}) {{reason}}",
+      "notConnected": "Not connected",
+      "messages": "Messages",
+      "empty": "No messages yet",
+      "dropped": "{{count}} older messages are no longer shown (limit: last 1000 messages / 5 MB).",
+      "received": "Received",
+      "sent": "Sent",
+      "binary": "[binary message]",
+      "composerPlaceholder": "Message text (⌘/Ctrl+Enter to send)",
+      "formatJson": "Format JSON",
+      "invalidJson": "Not valid JSON",
+      "send": "Send",
+      "sendFailed": "Message not sent: {{error}}"
     }
   },
   "changelog": {

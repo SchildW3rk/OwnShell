@@ -3,6 +3,8 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import type { Duplex } from 'node:stream';
 import * as zlib from 'node:zlib';
+import type { EventStreamHooks } from './http-client';
+import { isEventStream } from './sse';
 import type { HttpResponse } from './types';
 import {
   MAX_RESPONSE_BODY_BYTES,
@@ -32,6 +34,30 @@ function decompress(bytes: Buffer, encoding: string | undefined): Buffer {
   }
 }
 
+function flattenHeaders(headers: http.IncomingHttpHeaders): Record<string, string> {
+  const flat: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (typeof value === 'string') flat[key] = value;
+    else if (Array.isArray(value)) flat[key] = value.join(', ');
+  }
+  return flat;
+}
+
+/** Streaming counterpart of decompress() for event streams. */
+function streamDecoder(encoding: string | undefined): zlib.Gunzip | zlib.Inflate | zlib.BrotliDecompress | undefined {
+  switch ((encoding ?? '').trim().toLowerCase()) {
+    case 'gzip':
+    case 'x-gzip':
+      return zlib.createGunzip();
+    case 'deflate':
+      return zlib.createInflate();
+    case 'br':
+      return zlib.createBrotliDecompress();
+    default:
+      return undefined;
+  }
+}
+
 /** One HTTP exchange; `headersAt`/`doneAt` are performance.now() stamps. */
 export type TransportResponse = Omit<HttpResponse, 'time' | 'timings'> & {
   headersAt: number;
@@ -56,6 +82,8 @@ export function requestOverConnection(options: {
   signal?: AbortSignal;
   /** Only for the direct https route; SSH-host TLS is set up by the caller. */
   rejectUnauthorized?: boolean;
+  /** A text/event-stream body goes here chunk by chunk instead of being buffered. */
+  stream?: EventStreamHooks;
 }): Promise<TransportResponse> {
   const { url, method, headers, body, createConnection, signal } = options;
   return new Promise((resolve, reject) => {
@@ -80,6 +108,27 @@ export function requestOverConnection(options: {
 
     const onResponse = (res: http.IncomingMessage) => {
       const headersAt = performance.now();
+      if (options.stream && isEventStream(res.headers['content-type'])) {
+        const responseHeaders = flattenHeaders(res.headers);
+        options.stream.start(res.statusCode || 0, res.statusMessage || '', responseHeaders);
+        const decoder = streamDecoder(responseHeaders['content-encoding']);
+        const source = decoder ? res.pipe(decoder) : res;
+        source.on('data', (chunk: Buffer) => options.stream!.data(chunk));
+        source.on('error', reject);
+        source.on('end', () =>
+          resolve({
+            status: res.statusCode || 0,
+            statusText: res.statusMessage || '',
+            headers: responseHeaders,
+            body: '',
+            size: 0,
+            headersAt,
+            doneAt: performance.now(),
+            setCookies: res.headers['set-cookie'],
+          })
+        );
+        return;
+      }
       const chunks: Buffer[] = [];
       let size = 0;
       res.on('data', (chunk: Buffer) => {
@@ -94,11 +143,7 @@ export function requestOverConnection(options: {
       res.on('error', reject);
       res.on('end', () => {
         try {
-          const responseHeaders: Record<string, string> = {};
-          for (const [key, value] of Object.entries(res.headers)) {
-            if (typeof value === 'string') responseHeaders[key] = value;
-            else if (Array.isArray(value)) responseHeaders[key] = value.join(', ');
-          }
+          const responseHeaders = flattenHeaders(res.headers);
           const bytes = decompress(Buffer.concat(chunks), responseHeaders['content-encoding']);
           resolve({
             status: res.statusCode || 0,

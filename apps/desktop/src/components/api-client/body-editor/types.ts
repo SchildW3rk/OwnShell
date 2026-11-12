@@ -18,6 +18,8 @@ export interface BodyEditorProps {
   onRawContentTypeChange: (type: RawContentType) => void;
   onBodyTypeChange: (type: RequestBodyType) => void;
   onBodyChange: (body: BodyValue) => void;
+  /** GraphQL: runs the introspection query; resolves to the response body, null on failure. */
+  onFetchGraphqlSchema?: () => Promise<string | null>;
 }
 
 export interface FormDataItem extends KeyValueItem {

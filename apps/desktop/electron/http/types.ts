@@ -32,6 +32,8 @@ export interface HttpRequestConfig {
   executionId?: string;
 }
 
+export type StreamEnd = 'complete' | 'cancelled' | 'timeout';
+
 /** Why a 3xx was shown instead of followed. */
 export type RedirectNotice = 'REDIRECT_OTHER_HOST' | 'REDIRECT_LIMIT';
 
@@ -51,6 +53,8 @@ export interface HttpResponse {
   /** MISSING_VARIABLES: the scopes that were searched, in lookup order. */
   errorScopes?: string[];
   redirectNotice?: RedirectNotice;
+  /** Set when the body was a text/event-stream handed over live (body stays empty): how the stream ended. */
+  streamEnd?: StreamEnd;
   timings?: {
     prepareMs: number;
     headersMs: number;

@@ -215,8 +215,8 @@ test('Postman v2.1: folders, requests, bodies, auth, variables and skipped featu
     { key: 'file', value: 'photo.png', enabled: true, type: 'file' },
   ]);
 
-  assert.equal(graphql.body_type, 'json');
-  assert.deepEqual(JSON.parse(graphql.body), { query: '{ me { id } }', variables: { a: 1 } });
+  assert.equal(graphql.body_type, 'graphql');
+  assert.deepEqual(JSON.parse(graphql.body), { query: '{ me { id } }', variables: '{"a":1}' });
   assert.equal(xml.body_type, 'raw');
   assert.equal(xml.raw_content_type, 'xml');
   assert.equal(binary.body_type, 'binary');
@@ -226,7 +226,6 @@ test('Postman v2.1: folders, requests, bodies, auth, variables and skipped featu
     SCRIPTS: 2,
     AUTH_UNSUPPORTED: 1,
     FILE_PARTS: 1,
-    GRAPHQL: 1,
     BINARY_FILE: 1,
     METHOD_UNSUPPORTED: 1,
   });

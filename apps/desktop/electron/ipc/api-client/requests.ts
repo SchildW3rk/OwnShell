@@ -1,4 +1,5 @@
 import type {
+  ApiRequestKind,
   ApiRequestUpdate,
   Database,
   HttpMethod,
@@ -166,6 +167,9 @@ async function handleCreateRequest(
       verify_tls: data.verify_tls ?? null,
       variables: data.variables ?? '[]',
       cookie_jar: data.cookie_jar ?? null,
+      kind: data.kind ?? 'http',
+      assertions: data.assertions ?? '[]',
+      captures: data.captures ?? '[]',
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -283,6 +287,9 @@ async function handleDuplicateRequest(
       verify_tls: original.verify_tls,
       variables: original.variables,
       cookie_jar: original.cookie_jar,
+      kind: original.kind,
+      assertions: original.assertions,
+      captures: original.captures,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -322,6 +329,9 @@ interface RequestInput {
   verify_tls?: 0 | 1 | null;
   variables?: string;
   cookie_jar?: 0 | 1 | null;
+  kind?: ApiRequestKind;
+  assertions?: string;
+  captures?: string;
 }
 
 interface RequestUpdateInput extends Partial<RequestInput> {

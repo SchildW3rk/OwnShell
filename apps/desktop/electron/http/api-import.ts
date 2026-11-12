@@ -4,6 +4,7 @@
  */
 
 import type {
+  ApiRequestKind,
   Database,
   HttpMethod,
   RawRequestContentType,
@@ -29,6 +30,9 @@ export interface ImportRequest {
   timeout_seconds: number | null;
   follow_redirects: number | null;
   verify_tls: number | null;
+  kind?: ApiRequestKind;
+  assertions?: string;
+  captures?: string;
 }
 
 export interface ImportFolder {
@@ -93,6 +97,9 @@ export async function insertImportTree(
           .insertInto('api_requests')
           .values({
             ...request,
+            kind: request.kind ?? 'http',
+            assertions: request.assertions ?? '[]',
+            captures: request.captures ?? '[]',
             id: uuidv4(),
             name: request.name.slice(0, 255) || request.method,
             collection_id: id,

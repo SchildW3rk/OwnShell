@@ -8,6 +8,7 @@
  * - form-urlencoded: URL-encoded form data
  * - raw: Plain text/XML/HTML/etc
  * - binary: File upload
+ * - graphql: query + JSON variables, sent as application/json
  */
 
 import React from 'react';
@@ -15,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 
 import { BinaryEditor } from './body-editor/BinaryEditor';
 import { BodyTypeSelector } from './body-editor/BodyTypeSelector';
+import { GraphqlEditor } from './body-editor/GraphqlEditor';
 import { FormDataEditor } from './body-editor/FormDataEditor';
 import { FormUrlEncodedEditor } from './body-editor/FormUrlEncodedEditor';
 import { JsonEditor } from './body-editor/JsonEditor';
@@ -29,6 +31,7 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   onRawContentTypeChange,
   onBodyTypeChange,
   onBodyChange,
+  onFetchGraphqlSchema,
 }) => {
   const { t } = useTranslation();
 
@@ -64,6 +67,10 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
         )}
 
         {bodyType === 'binary' && <BinaryEditor value={body.toString()} onChange={onBodyChange} />}
+
+        {bodyType === 'graphql' && (
+          <GraphqlEditor value={body} onChange={onBodyChange} onFetchSchema={onFetchGraphqlSchema} />
+        )}
       </div>
     </div>
   );

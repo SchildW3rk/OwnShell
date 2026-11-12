@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 // Types
 // ============================================
 
-export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'settings';
+export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'tests' | 'settings';
 
 interface RequestTabsProps {
   activeTab: RequestTab;
@@ -28,6 +28,9 @@ interface RequestTabsProps {
   variableCount?: number;
   /** TLS verification is off: the settings tab shows a warning dot. */
   settingsWarning?: boolean;
+  /** WebSocket requests have no body and no runner checks. */
+  kind?: 'http' | 'websocket';
+  testCount?: number;
 }
 
 // ============================================
@@ -43,6 +46,8 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
   hasAuth = false,
   variableCount = 0,
   settingsWarning = false,
+  kind = 'http',
+  testCount = 0,
 }) => {
   const { t } = useTranslation();
 
@@ -79,15 +84,21 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
       count: variableCount,
     },
     {
+      id: 'tests',
+      label: t('api.tabs.tests'),
+      count: testCount,
+    },
+    {
       id: 'settings',
       label: t('api.tabs.settings'),
       warning: settingsWarning,
     },
   ];
+  const visibleTabs = kind === 'http' ? tabs : tabs.filter((tab) => tab.id !== 'body' && tab.id !== 'tests');
 
   return (
     <div className="flex items-center h-10 border-b border-border bg-background">
-      {tabs.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           type="button"

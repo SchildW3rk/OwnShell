@@ -491,36 +491,41 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
     logger.warn('Migration 017 skipped or failed', error);
   }
 
-  try {
-    const table = sqlite
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='api_requests'")
-      .get() as { sql: string } | undefined;
-    if (table && /'inherit'\s*\)/.test(table.sql) && !table.sql.includes("'oauth2'")) {
-      // SQLite cannot change a CHECK constraint in place: rebuild the table with the same columns.
-      const indexes = sqlite
-        .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='api_requests' AND sql IS NOT NULL")
-        .all() as Array<{ sql: string }>;
-      const createSql = table.sql
-        .replace(/'api-key',\s*'inherit'\s*\)/, "'api-key', 'inherit', 'oauth2')")
-        .replace(/^CREATE TABLE\s+"?api_requests"?/i, 'CREATE TABLE api_requests_018');
-      const foreignKeys = (sqlite.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys;
-      if (foreignKeys) sqlite.exec('PRAGMA foreign_keys = OFF');
+  // SQLite cannot change a CHECK constraint in place: rebuild api_requests with the same columns.
+  const rebuildApiRequests = (createSql: string) => {
+    const indexes = sqlite
+      .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='api_requests' AND sql IS NOT NULL")
+      .all() as Array<{ sql: string }>;
+    const foreignKeys = (sqlite.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys;
+    if (foreignKeys) sqlite.exec('PRAGMA foreign_keys = OFF');
+    try {
+      sqlite.exec('BEGIN');
       try {
-        sqlite.exec('BEGIN');
-        try {
-          sqlite.exec(createSql);
-          sqlite.exec('INSERT INTO api_requests_018 SELECT * FROM api_requests');
-          sqlite.exec('DROP TABLE api_requests');
-          sqlite.exec('ALTER TABLE api_requests_018 RENAME TO api_requests');
-          for (const index of indexes) sqlite.exec(index.sql);
-          sqlite.exec('COMMIT');
-        } catch (error) {
-          sqlite.exec('ROLLBACK');
-          throw error;
-        }
-      } finally {
-        if (foreignKeys) sqlite.exec('PRAGMA foreign_keys = ON');
+        sqlite.exec(createSql.replace(/^CREATE TABLE\s+"?api_requests"?/i, 'CREATE TABLE api_requests_rebuild'));
+        sqlite.exec('INSERT INTO api_requests_rebuild SELECT * FROM api_requests');
+        sqlite.exec('DROP TABLE api_requests');
+        sqlite.exec('ALTER TABLE api_requests_rebuild RENAME TO api_requests');
+        for (const index of indexes) sqlite.exec(index.sql);
+        sqlite.exec('COMMIT');
+      } catch (error) {
+        sqlite.exec('ROLLBACK');
+        throw error;
       }
+    } finally {
+      if (foreignKeys) sqlite.exec('PRAGMA foreign_keys = ON');
+    }
+  };
+  const apiRequestsSql = () =>
+    (
+      sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='api_requests'").get() as
+        | { sql: string }
+        | undefined
+    )?.sql;
+
+  try {
+    const sql = apiRequestsSql();
+    if (sql && /'inherit'\s*\)/.test(sql) && !sql.includes("'oauth2'")) {
+      rebuildApiRequests(sql.replace(/'api-key',\s*'inherit'\s*\)/, "'api-key', 'inherit', 'oauth2')"));
     }
   } catch (error) {
     // The rebuild rolled back; the new tables below must still exist so the app keeps working.
@@ -558,5 +563,32 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
     logger.info('Migration 018 completed: API OAuth 2.0 tokens and cookie jar');
   } catch (error) {
     logger.warn('Migration 018 skipped or failed', error);
+  }
+
+  try {
+    const sql = apiRequestsSql();
+    if (sql && /'binary'\s*\)/.test(sql) && !sql.includes("'graphql'")) {
+      rebuildApiRequests(sql.replace(/'raw',\s*'binary'\s*\)/, "'raw', 'binary', 'graphql')"));
+    }
+  } catch (error) {
+    // Rolled back: GraphQL bodies cannot be saved, everything else keeps working.
+    logger.warn('Migration 019 table rebuild failed', error);
+  }
+
+  try {
+    const columns = sqlite.prepare('PRAGMA table_info(api_requests)').all() as Array<{ name: string }>;
+    const add = (name: string, definition: string) => {
+      if (columns.length > 0 && !columns.some((col) => col.name === name)) {
+        sqlite.exec(`ALTER TABLE api_requests ADD COLUMN ${definition};`);
+      }
+    };
+    // 'http' | 'websocket'
+    add('kind', "kind TEXT NOT NULL DEFAULT 'http'");
+    // Declarative runner checks and captures (JSON arrays); never values from a response.
+    add('assertions', "assertions TEXT NOT NULL DEFAULT '[]'");
+    add('captures', "captures TEXT NOT NULL DEFAULT '[]'");
+    logger.info('Migration 019 completed: GraphQL bodies, WebSocket requests, runner checks');
+  } catch (error) {
+    logger.warn('Migration 019 skipped or failed', error);
   }
 }

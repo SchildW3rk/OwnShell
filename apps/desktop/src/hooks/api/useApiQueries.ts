@@ -25,6 +25,10 @@ type RequestSettingsColumns = {
   follow_redirects?: 0 | 1 | null;
   verify_tls?: 0 | 1 | null;
   variables?: string;
+  cookie_jar?: 0 | 1 | null;
+  kind?: 'http' | 'websocket';
+  assertions?: string;
+  captures?: string;
 };
 
 type VariableInput = Parameters<typeof window.electronAPI.apiClient.variables.set>[1][number];
@@ -177,7 +181,7 @@ export function useCreateApiRequest() {
       params?: string;
       headers?: string;
       body?: string;
-      body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+      body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary' | 'graphql';
       raw_content_type?: RawRequestContentType;
       auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
       auth_config?: string;
@@ -218,7 +222,7 @@ export function useUpdateApiRequest() {
         params?: string;
         headers?: string;
         body?: string;
-        body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+        body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary' | 'graphql';
         raw_content_type?: RawRequestContentType;
         auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'inherit';
         auth_config?: string;

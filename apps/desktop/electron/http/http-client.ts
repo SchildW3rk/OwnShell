@@ -11,6 +11,7 @@ import type { Duplex } from 'node:stream';
 import * as tls from 'node:tls';
 import { decodeResponseBody, readResponseBytes } from './fetch-timeout';
 import { ApiRequestError, type PreparedRequest } from './prepare-request';
+import { isEventStream } from './sse';
 import { requestOverConnection, type TransportResponse } from './tunnel-request';
 import type { HttpResponse, RedirectNotice } from './types';
 
@@ -39,6 +40,18 @@ export interface SendDeps {
   signal?: AbortSignal;
   /** Off when the request disabled the jar. */
   cookieJar?: CookieJarAccess;
+  /**
+   * Server-Sent Events: a text/event-stream response is handed over chunk by chunk
+   * instead of buffered. Timeouts for a stream: `timeoutMs` bounds everything up to
+   * the response headers; after that only an idle timeout of the same length applies
+   * (no byte for `timeoutMs` ends the stream), so a live stream is never cut off.
+   */
+  onEventStream?: EventStreamHooks;
+}
+
+export interface EventStreamHooks {
+  start(status: number, statusText: string, headers: Record<string, string>): void;
+  data(chunk: Buffer): void;
 }
 
 /** Jar cookies go on the wire copy only, so a redirect never forwards them to another origin. */
@@ -135,13 +148,42 @@ export async function sendPreparedRequest(
 
   // One signal for deadline and user cancel; every hop and channel listens to it.
   const controller = new AbortController();
-  const timer = setTimeout(
-    () =>
-      controller.abort(
-        new ApiRequestError('TIMEOUT', `Request timed out after ${timeoutMs / 1000} s`)
-      ),
-    timeoutMs
-  );
+  const arm = (message: string) =>
+    setTimeout(() => controller.abort(new ApiRequestError('TIMEOUT', message)), timeoutMs);
+  let timer = arm(`Request timed out after ${timeoutMs / 1000} s`);
+
+  // Once a stream has started, its end (also by cancel or idle timeout) is a normal response.
+  let streamed: { status: number; statusText: string; headers: Record<string, string>; size: number; at: number } | undefined;
+  const idle = () => {
+    clearTimeout(timer);
+    timer = arm(`No stream data for ${timeoutMs / 1000} s`);
+  };
+  const stream: EventStreamHooks | undefined = deps.onEventStream && {
+    start: (status, statusText, headers) => {
+      streamed = { status, statusText, headers, size: 0, at: performance.now() };
+      idle();
+      deps.onEventStream!.start(status, statusText, headers);
+    },
+    data: (chunk) => {
+      if (!streamed || controller.signal.aborted) return;
+      streamed.size += chunk.length;
+      idle();
+      deps.onEventStream!.data(chunk);
+    },
+  };
+  const streamResponse = (streamEnd: NonNullable<HttpResponse['streamEnd']>): HttpResponse => {
+    const doneAt = performance.now();
+    return {
+      status: streamed!.status,
+      statusText: streamed!.statusText,
+      headers: streamed!.headers,
+      body: '',
+      size: streamed!.size,
+      time: Math.round(doneAt - started),
+      timings: { prepareMs: 0, headersMs: streamed!.at - started, bodyReadMs: doneAt - streamed!.at, totalMs: doneAt - started },
+      streamEnd,
+    };
+  };
   const cancel = () => controller.abort(new ApiRequestError('CANCELLED', 'Request cancelled'));
   if (deps.signal?.aborted) cancel();
   else deps.signal?.addEventListener('abort', cancel, { once: true });
@@ -153,9 +195,10 @@ export async function sendPreparedRequest(
       if (controller.signal.aborted) throw controller.signal.reason;
       const wire = withJarCookies(request, jarCookies);
       const { setCookies, ...hop } = networkHostId
-        ? await sendViaHost(wire, networkHostId, deps.openHostStream, controller.signal, verifyTls, timeoutMs)
-        : await sendDirect(wire, deps.fetch ?? fetch, controller.signal, verifyTls, timeoutMs);
+        ? await sendViaHost(wire, networkHostId, deps.openHostStream, controller.signal, verifyTls, timeoutMs, stream)
+        : await sendDirect(wire, deps.fetch ?? fetch, controller.signal, verifyTls, timeoutMs, stream);
       if (setCookies?.length) await deps.cookieJar?.store(request.url, setCookies);
+      if (streamed) return streamResponse('complete');
       const decision = decideRedirect(
         request,
         { status: hop.status, location: hop.headers['location'] },
@@ -179,8 +222,11 @@ export async function sendPreparedRequest(
       };
     }
   } catch (error) {
-    if (controller.signal.aborted) throw controller.signal.reason;
-    throw error;
+    const reason: unknown = controller.signal.aborted ? controller.signal.reason : error;
+    if (streamed && reason instanceof ApiRequestError && (reason.code === 'CANCELLED' || reason.code === 'TIMEOUT')) {
+      return streamResponse(reason.code === 'CANCELLED' ? 'cancelled' : 'timeout');
+    }
+    throw reason;
   } finally {
     clearTimeout(timer);
     deps.signal?.removeEventListener('abort', cancel);
@@ -192,7 +238,8 @@ async function sendDirect(
   fetchImpl: typeof fetch,
   signal: AbortSignal,
   verifyTls: boolean,
-  timeoutMs: number
+  timeoutMs: number,
+  stream?: EventStreamHooks
 ): Promise<TransportResponse> {
   if (!verifyTls && prepared.url.protocol === 'https:') {
     // fetch has no per-request TLS option; Node's https transport does.
@@ -204,6 +251,7 @@ async function sendDirect(
       signal,
       timeoutMs,
       rejectUnauthorized: false,
+      stream,
     });
   }
 
@@ -216,12 +264,32 @@ async function sendDirect(
     signal,
   });
   const headersAt = performance.now();
-  const bytes = await readResponseBytes(response);
-
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => {
     headers[key] = value;
   });
+
+  if (stream && isEventStream(headers['content-type']) && response.body) {
+    stream.start(response.status, response.statusText, headers);
+    const reader = response.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      stream.data(Buffer.from(value));
+    }
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+      body: '',
+      size: 0,
+      headersAt,
+      doneAt: performance.now(),
+      setCookies: response.headers.getSetCookie(),
+    };
+  }
+
+  const bytes = await readResponseBytes(response);
 
   return {
     status: response.status,
@@ -241,7 +309,8 @@ async function sendViaHost(
   openHostStream: SendDeps['openHostStream'],
   signal: AbortSignal,
   verifyTls: boolean,
-  timeoutMs: number
+  timeoutMs: number,
+  eventStream?: EventStreamHooks
 ): Promise<TransportResponse> {
   const { url } = prepared;
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
@@ -312,6 +381,7 @@ async function sendViaHost(
         body: prepared.body,
         createConnection: () => socket,
         timeoutMs,
+        stream: eventStream,
       })
     );
   } finally {

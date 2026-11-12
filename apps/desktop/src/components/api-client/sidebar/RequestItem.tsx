@@ -66,10 +66,10 @@ export const RequestItem: React.FC<RequestItemProps> = ({
         <span
           className={cn(
             'flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold',
-            methodColors[request.method]
+            request.kind === 'websocket' ? 'bg-teal-600 text-white' : methodColors[request.method]
           )}
         >
-          {methodShort[request.method]}
+          {request.kind === 'websocket' ? 'WS' : methodShort[request.method]}
         </span>
 
         <span className="flex-1 text-sm text-foreground truncate">{request.name}</span>
