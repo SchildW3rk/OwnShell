@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ApiRequestsTable } from '@ownshell/core';
 import { Button, cn } from '@ownshell/ui';
-import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ContextMenu } from './ContextMenu';
 import { methodColors, methodShort } from './method-badges';
@@ -14,6 +14,7 @@ interface RequestItemProps {
   onEdit: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onMove: (delta: -1 | 1) => void;
   depth?: number;
 }
 
@@ -24,6 +25,7 @@ export const RequestItem: React.FC<RequestItemProps> = ({
   onEdit,
   onDelete,
   onDuplicate,
+  onMove,
   depth = 0,
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -37,6 +39,8 @@ export const RequestItem: React.FC<RequestItemProps> = ({
   const contextMenuItems: ContextMenuItem[] = [
     { label: t('common.edit'), icon: <Pencil className="w-4 h-4" />, onClick: onEdit },
     { label: t('common.duplicate'), icon: <Copy className="w-4 h-4" />, onClick: onDuplicate },
+    { label: t('api.sidebar.moveUp'), icon: <ArrowUp className="w-4 h-4" />, onClick: () => onMove(-1) },
+    { label: t('api.sidebar.moveDown'), icon: <ArrowDown className="w-4 h-4" />, onClick: () => onMove(1) },
     {
       label: t('common.delete'),
       icon: <Trash2 className="w-4 h-4" />,

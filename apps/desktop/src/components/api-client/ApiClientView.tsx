@@ -9,9 +9,9 @@
  */
 
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
-import { Columns, Rows, Globe, ChevronDown, FileJson } from 'lucide-react';
+import { Columns, Rows, Globe, ChevronDown, FileJson, Terminal, ShieldAlert, Save } from 'lucide-react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
-import { cn } from '@ownshell/ui';
+import { ConfirmDialog, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
@@ -40,6 +40,14 @@ import type { BodyEditorMemory, BodyValue } from './body-editor/types';
 import { hasBodyContent } from './body-editor/utils';
 import { AuthEditor } from './AuthEditor';
 import { ResponseViewer, HttpResponse } from './ResponseViewer';
+import {
+  DEFAULT_REQUEST_SETTINGS,
+  RequestSettings,
+  RequestSettingsEditor,
+} from './RequestSettingsEditor';
+import { parseCurlWithToast, showCurlImportNotices } from './sidebar/ImportCurlDialog';
+import { OVERLAY_SELECTOR, SHORTCUT_LABELS, getShortcutAction } from './shortcuts';
+import { createSendFlow } from './send-flow';
 
 // ============================================
 // Types
@@ -70,14 +78,26 @@ interface RequestDraft {
   rawContentType: RawRequestContentType;
   authType: RequestAuthType;
   authConfig: string;
+  settings: RequestSettings;
   activeTab: RequestTab;
   editorMemory: BodyEditorMemory;
 }
 
 interface RequestExecution {
   generation: number;
+  executionId: string;
   loading: boolean;
   response: HttpResponse | null;
+}
+
+/** Stored columns: NULL means the default, so defaults can change later without a migration. */
+function settingsColumns(settings: RequestSettings) {
+  return {
+    timeout_seconds:
+      settings.timeoutSeconds === DEFAULT_REQUEST_SETTINGS.timeoutSeconds ? null : settings.timeoutSeconds,
+    follow_redirects: settings.followRedirects ? null : (0 as const),
+    verify_tls: settings.verifyTls ? null : (0 as const),
+  };
 }
 
 // ============================================
@@ -111,6 +131,9 @@ export const ApiClientView: React.FC = () => {
   const [draftRawContentType, setDraftRawContentType] = useState<RawRequestContentType>('text');
   const [draftAuthType, setDraftAuthType] = useState<RequestAuthType>('none');
   const [draftAuthConfig, setDraftAuthConfig] = useState('{}');
+  const [draftSettings, setDraftSettings] = useState<RequestSettings>(DEFAULT_REQUEST_SETTINGS);
+  const [showCurlMenu, setShowCurlMenu] = useState(false);
+  const [confirmResolvedCurl, setConfirmResolvedCurl] = useState(false);
 
   const [activeTab, setActiveTab] = useState<RequestTab>('params');
   const [editorMemory, setEditorMemory] = useState<BodyEditorMemory>(() => ({}));
@@ -129,11 +152,13 @@ export const ApiClientView: React.FC = () => {
     rawContentType: draftRawContentType,
     authType: draftAuthType,
     authConfig: draftAuthConfig,
+    settings: draftSettings,
     activeTab,
     editorMemory,
   }), [
     draftMethod, draftUrl, draftNetworkHostId, draftEnvironmentId, draftParams,
-    draftHeaders, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig, activeTab, editorMemory,
+    draftHeaders, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig,
+    draftSettings, activeTab, editorMemory,
   ]);
 
   // Environment dropdown
@@ -142,6 +167,8 @@ export const ApiClientView: React.FC = () => {
   // Responses and pending execution belong to the request that issued them.
   const [executions, setExecutions] = useState<Record<string, RequestExecution>>({});
   const executionSequence = useRef(0);
+  const sendFlowRef = useRef<ReturnType<typeof createSendFlow> | null>(null);
+  const sendFlow = sendFlowRef.current ??= createSendFlow();
   const execution = selectedRequestId ? executions[selectedRequestId] : undefined;
   const isLoading = execution?.loading ?? false;
   const response = execution?.response ?? null;
@@ -172,6 +199,11 @@ export const ApiClientView: React.FC = () => {
         rawContentType: selectedRequest.raw_content_type ?? 'text',
         authType: selectedRequest.auth_type,
         authConfig: selectedRequest.auth_config,
+        settings: {
+          timeoutSeconds: selectedRequest.timeout_seconds ?? DEFAULT_REQUEST_SETTINGS.timeoutSeconds,
+          followRedirects: selectedRequest.follow_redirects !== 0,
+          verifyTls: selectedRequest.verify_tls !== 0,
+        },
         activeTab: 'params' as RequestTab,
         editorMemory: {},
       } : undefined
@@ -188,6 +220,7 @@ export const ApiClientView: React.FC = () => {
     setDraftRawContentType(draft.rawContentType);
     setDraftAuthType(draft.authType);
     setDraftAuthConfig(draft.authConfig);
+    setDraftSettings(draft.settings);
     setActiveTab(draft.activeTab);
     setEditorMemory(draft.editorMemory);
     setDraftRequestId(selectedRequestId);
@@ -219,7 +252,7 @@ export const ApiClientView: React.FC = () => {
   // Save request to database
   const handleSave = useCallback(async () => {
     const body = draftBody.toString();
-    if (!selectedRequestId) return body;
+    if (!selectedRequestId) return { body, saved: false };
 
     try {
       await updateRequestMutation.mutateAsync({
@@ -236,12 +269,14 @@ export const ApiClientView: React.FC = () => {
           raw_content_type: draftRawContentType,
           auth_type: draftAuthType,
           auth_config: draftAuthConfig,
+          ...settingsColumns(draftSettings),
         },
       });
     } catch {
       // The mutation hook already shows an error toast.
+      return { body, saved: false };
     }
-    return body;
+    return { body, saved: true };
   }, [
     selectedRequestId,
     draftMethod,
@@ -255,19 +290,110 @@ export const ApiClientView: React.FC = () => {
     draftRawContentType,
     draftAuthType,
     draftAuthConfig,
+    draftSettings,
     updateRequestMutation,
   ]);
 
+  /** What a send would use; also the input for "Copy as curl". */
+  const buildConfig = useCallback(
+    (body: string) => ({
+      method: draftMethod,
+      url: draftUrl,
+      params: serializeKeyValueItems(draftParams),
+      headers: serializeKeyValueItems(draftHeaders),
+      body,
+      bodyType: draftBodyType,
+      rawContentType: draftRawContentType,
+      authType: draftAuthType,
+      authConfig: draftAuthConfig,
+      collectionId: selectedRequest?.collection_id ?? null,
+      networkHostId: draftNetworkHostId,
+      environmentId: draftEnvironmentId,
+      timeoutSeconds: draftSettings.timeoutSeconds,
+      followRedirects: draftSettings.followRedirects,
+      verifyTls: draftSettings.verifyTls,
+    }),
+    [
+      draftMethod,
+      draftUrl,
+      draftParams,
+      draftHeaders,
+      draftBodyType,
+      draftRawContentType,
+      draftAuthType,
+      draftAuthConfig,
+      selectedRequest?.collection_id,
+      draftNetworkHostId,
+      draftEnvironmentId,
+      draftSettings,
+    ]
+  );
+
+  const handleCancel = useCallback(() => {
+    if (!execution?.loading) return;
+    // Also covers a cancel during the save, before the main process has the execution.
+    sendFlow.cancel(execution.executionId);
+    window.electronAPI.apiClient.requests.cancel(execution.executionId).catch(() => undefined);
+  }, [execution, sendFlow]);
+
+  const handleCopyCurl = useCallback(
+    async (resolveVariables: boolean) => {
+      if (!draftUrl.trim()) return;
+      try {
+        const result = await window.electronAPI.apiClient.requests.exportCurl(
+          buildConfig(draftBody.toString()),
+          resolveVariables
+        );
+        if (!result.command) {
+          toast.error(t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '' }));
+          return;
+        }
+        await navigator.clipboard.writeText(result.command);
+        toast.success(t(resolveVariables ? 'api.curl.copiedResolved' : 'api.curl.copiedPlaceholders'));
+      } catch (error) {
+        toast.error(t('api.curl.copyFailed', { error: error instanceof Error ? error.message : String(error) }));
+      }
+    },
+    [buildConfig, draftBody, draftUrl, t]
+  );
+
+  /** A curl command pasted into the URL bar replaces the current draft (saved with Save/Send). */
+  const handlePasteCurl = useCallback(
+    (command: string) => {
+      const result = parseCurlWithToast(command, t);
+      if (!result) return;
+      setDraftMethod(result.method);
+      setDraftUrl(result.url);
+      setDraftParams(parseKeyValueItems(result.params));
+      setDraftHeaders(parseKeyValueItems(result.headers));
+      setDraftBody(result.body);
+      setDraftBodyType(result.bodyType);
+      setDraftRawContentType(result.rawContentType);
+      setDraftAuthType(result.authType);
+      setDraftAuthConfig(result.authConfig);
+      setDraftSettings((current) => ({
+        timeoutSeconds: result.timeoutSeconds ?? current.timeoutSeconds,
+        followRedirects: result.followRedirects ?? current.followRedirects,
+        verifyTls: result.verifyTls ?? current.verifyTls,
+      }));
+      // The body editor keeps its own document; start fresh for the imported body.
+      setEditorMemory({});
+      showCurlImportNotices(result, t);
+    },
+    [t]
+  );
+
   // Send HTTP request
   const handleSend = useCallback(async () => {
-    if (!selectedRequestId || !draftUrl.trim()) return;
+    if (!selectedRequestId || !draftUrl.trim() || execution?.loading) return;
     const requestId = selectedRequestId;
     const generation = ++executionSequence.current;
+    const executionId = crypto.randomUUID();
     setExecutions(current => ({
       ...current,
-      [requestId]: { generation, loading: true, response: null },
+      [requestId]: { generation, executionId, loading: true, response: null },
     }));
-    const publish = (response: HttpResponse) => {
+    const publish = (response: HttpResponse | null) => {
       setExecutions(current => {
         const execution = current[requestId];
         if (!execution || execution.generation !== generation) return current;
@@ -276,24 +402,19 @@ export const ApiClientView: React.FC = () => {
     };
 
     try {
-      const body = await handleSave();
-      // Execute request - vault variables are decrypted automatically in backend via environmentId
-      const ipcStarted = performance.now();
-      const result = await window.electronAPI.apiClient.requests.execute({
-        method: draftMethod,
-        url: draftUrl,
-        params: serializeKeyValueItems(draftParams),
-        headers: serializeKeyValueItems(draftHeaders),
-        body,
-        bodyType: draftBodyType,
-        rawContentType: draftRawContentType,
-        authType: draftAuthType,
-        authConfig: draftAuthConfig,
-        collectionId: selectedRequest?.collection_id ?? null,
-        networkHostId: draftNetworkHostId,
-        environmentId: draftEnvironmentId,
+      let ipcStarted = 0;
+      const sent = await sendFlow.run(executionId, handleSave, ({ body }) => {
+        // Execute request - vault variables are decrypted automatically in backend via environmentId
+        ipcStarted = performance.now();
+        return window.electronAPI.apiClient.requests.execute({ ...buildConfig(body), executionId });
       });
+      const result = sent?.result;
 
+      if (!result || result.errorCode === 'CANCELLED') {
+        // User-initiated: no error, no stale response.
+        publish(null);
+        return;
+      }
       publish({ ...result, ipcRoundTripMs: performance.now() - ipcStarted });
       if (result.errorCode) {
         toast.error(t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '' }));
@@ -317,9 +438,9 @@ export const ApiClientView: React.FC = () => {
       );
       publish({
         status: 0,
-        statusText: 'Error',
+        statusText: t('common.error'),
         headers: {},
-        body: JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+        body: JSON.stringify({ error: error instanceof Error ? error.message : t('common.unknownError') }),
         time: 0,
         size: 0,
       });
@@ -330,29 +451,33 @@ export const ApiClientView: React.FC = () => {
         return { ...current, [requestId]: { ...execution, loading: false } };
       });
     }
-  }, [
-    draftUrl,
-    draftMethod,
-    draftParams,
-    draftHeaders,
-    draftBody,
-    draftBodyType,
-    draftRawContentType,
-    draftAuthType,
-    draftAuthConfig,
-    draftNetworkHostId,
-    draftEnvironmentId,
-    selectedRequestId,
-    selectedRequest?.collection_id,
-    handleSave,
-    t,
-    updateRequestMutation,
-  ]);
+  }, [draftUrl, execution?.loading, selectedRequestId, buildConfig, handleSave, sendFlow, t, updateRequestMutation]);
+
+  // Only while focus is inside this view; capture phase so editors (CodeMirror) do not act on them first.
+  const handleShortcut = useCallback(
+    (event: React.KeyboardEvent<HTMLElement>) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const overlayOpen =
+        showEnvDropdown ||
+        showCurlMenu ||
+        confirmResolvedCurl ||
+        !!target?.closest(OVERLAY_SELECTOR) ||
+        !!event.currentTarget.querySelector(`[aria-expanded="true"], ${OVERLAY_SELECTOR}`);
+      const action = getShortcutAction(event, { loading: !!execution?.loading, overlayOpen });
+      if (!action) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (action === 'send') void handleSend();
+      else if (action === 'save') void handleSave().then(({ saved }) => saved && toast.success(t('api.saved')));
+      else handleCancel();
+    },
+    [handleSend, handleSave, handleCancel, execution?.loading, showEnvDropdown, showCurlMenu, confirmResolvedCurl, t]
+  );
 
   if (selectedRequestId && draftRequestId !== selectedRequestId) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" role="status" aria-label={t('common.loading', 'Loading...')} />
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" role="status" aria-label={t('common.loading')} />
       </div>
     );
   }
@@ -380,23 +505,93 @@ export const ApiClientView: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="h-full flex flex-col min-h-0" onKeyDownCapture={handleShortcut}>
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 h-10 border-b border-border bg-background">
         {/* Left: Request Name */}
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-medium text-foreground truncate max-w-[300px]">
-            {selectedRequest?.name ?? 'Untitled Request'}
+            {selectedRequest?.name}
           </h2>
+          {!draftSettings.verifyTls && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+              title={t('api.settings.tlsOffWarning')}
+            >
+              <ShieldAlert className="w-3 h-3" />
+              {t('api.settings.tlsOffBadge')}
+            </button>
+          )}
         </div>
 
-        {/* Right: Environment + Layout Toggle */}
+        {/* Right: Save + Copy as curl + Environment + Layout Toggle */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleSave().then(({ saved }) => saved && toast.success(t('api.saved')))}
+            className="p-1.5 rounded-md border border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            title={`${t('common.save')} (${SHORTCUT_LABELS.save})`}
+            aria-label={t('common.save')}
+          >
+            <Save className="w-4 h-4" />
+          </button>
+          <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowCurlMenu(false)}>
+            <button
+              type="button"
+              onClick={() => setShowCurlMenu(!showCurlMenu)}
+              aria-expanded={showCurlMenu}
+              disabled={!draftUrl.trim()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors disabled:opacity-50"
+              title={t('api.curl.copyMenu')}
+            >
+              <Terminal className="w-4 h-4 text-muted-foreground" />
+              <span>curl</span>
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+            {showCurlMenu && (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setShowCurlMenu(false)}
+                  tabIndex={-1}
+                  aria-label={t('common.close')}
+                />
+                <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[240px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCurlMenu(false);
+                      void handleCopyCurl(false);
+                    }}
+                    title={t('api.curl.placeholdersHint')}
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
+                  >
+                    {t('api.curl.copyPlaceholders')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCurlMenu(false);
+                      setConfirmResolvedCurl(true);
+                    }}
+                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
+                  >
+                    {t('api.curl.copyResolved')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Environment Selector */}
-          <div className="relative">
+          <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowEnvDropdown(false)}>
             <button
               type="button"
               onClick={() => setShowEnvDropdown(!showEnvDropdown)}
+              aria-expanded={showEnvDropdown}
               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors"
             >
               <Globe className="w-4 h-4 text-muted-foreground" />
@@ -410,7 +605,6 @@ export const ApiClientView: React.FC = () => {
                   type="button"
                   className="fixed inset-0 z-40 cursor-default"
                   onClick={() => setShowEnvDropdown(false)}
-                  onKeyDown={(e) => e.key === 'Escape' && setShowEnvDropdown(false)}
                   tabIndex={-1}
                   aria-label="Close dropdown"
                 />
@@ -513,6 +707,21 @@ export const ApiClientView: React.FC = () => {
         onUrlChange={setDraftUrl}
         onNetworkHostChange={setDraftNetworkHostId}
         onSend={handleSend}
+        onCancel={handleCancel}
+        onPasteCurl={handlePasteCurl}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmResolvedCurl}
+        title={t('api.curl.copyResolved')}
+        message={t('api.curl.resolvedWarning')}
+        confirmLabel={t('api.curl.copyAnyway')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => {
+          setConfirmResolvedCurl(false);
+          void handleCopyCurl(true);
+        }}
+        onCancel={() => setConfirmResolvedCurl(false)}
       />
 
       {/* Split Layout: Request Editor + Response Viewer */}
@@ -530,6 +739,7 @@ export const ApiClientView: React.FC = () => {
             headerCount={headerCount}
             hasBody={hasBody}
             hasAuth={hasAuth}
+            settingsWarning={!draftSettings.verifyTls}
           />
 
           {/* Tab Content */}
@@ -568,6 +778,9 @@ export const ApiClientView: React.FC = () => {
                 onBodyTypeChange={setDraftBodyType}
                 onBodyChange={setDraftBody}
               />
+            )}
+            {activeTab === 'settings' && (
+              <RequestSettingsEditor settings={draftSettings} onChange={setDraftSettings} />
             )}
           </div>
         </Panel>

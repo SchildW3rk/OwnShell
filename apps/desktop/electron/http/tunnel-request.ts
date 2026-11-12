@@ -32,6 +32,12 @@ function decompress(bytes: Buffer, encoding: string | undefined): Buffer {
   }
 }
 
+/** One HTTP exchange; `headersAt`/`doneAt` are performance.now() stamps. */
+export type TransportResponse = Omit<HttpResponse, 'time' | 'timings'> & {
+  headersAt: number;
+  doneAt: number;
+};
+
 /**
  * Sends one HTTP request. With `createConnection` the bytes go over that stream
  * (e.g. an SSH channel, already TLS-wrapped for https); otherwise Node's default
@@ -43,8 +49,13 @@ export function requestOverConnection(options: {
   headers: Record<string, string>;
   body?: Buffer;
   createConnection?: () => Duplex;
-}): Promise<Omit<HttpResponse, 'time'>> {
-  const { url, method, headers, body, createConnection } = options;
+  /** Inactivity timeout; the caller enforces the overall deadline. */
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  /** Only for the direct https route; SSH-host TLS is set up by the caller. */
+  rejectUnauthorized?: boolean;
+}): Promise<TransportResponse> {
+  const { url, method, headers, body, createConnection, signal } = options;
   return new Promise((resolve, reject) => {
     const requestOptions: http.RequestOptions = {
       hostname: url.hostname.replace(/^\[|\]$/g, ''),
@@ -55,13 +66,18 @@ export function requestOverConnection(options: {
         body && !Object.keys(headers).some((key) => key.toLowerCase() === 'content-length')
           ? { ...headers, 'Content-Length': String(body.length) }
           : headers,
+      signal,
     };
+    if (options.rejectUnauthorized === false) {
+      (requestOptions as https.RequestOptions).rejectUnauthorized = false;
+    }
     if (createConnection) {
       // No agent: with any agent (even `agent: false`) Node ignores createConnection and dials directly.
       requestOptions.createConnection = createConnection as http.RequestOptions['createConnection'];
     }
 
     const onResponse = (res: http.IncomingMessage) => {
+      const headersAt = performance.now();
       const chunks: Buffer[] = [];
       let size = 0;
       res.on('data', (chunk: Buffer) => {
@@ -88,6 +104,8 @@ export function requestOverConnection(options: {
             headers: responseHeaders,
             ...decodeResponseBody(bytes, responseHeaders['content-type']),
             size: bytes.length,
+            headersAt,
+            doneAt: performance.now(),
           });
         } catch (error) {
           reject(error);
@@ -101,9 +119,12 @@ export function requestOverConnection(options: {
         : http.request(requestOptions, onResponse);
 
     req.on('error', reject);
-    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-      req.destroy(new Error('Request timeout'));
-    });
+    // An SSH channel has no setTimeout (Node would throw); that route has the caller's deadline.
+    if (!createConnection) {
+      req.setTimeout(options.timeoutMs ?? REQUEST_TIMEOUT_MS, () => {
+        req.destroy(new Error('Request timeout'));
+      });
+    }
     req.end(body);
   });
 }
@@ -116,7 +137,7 @@ export function requestViaTunnel(
   method: HttpMethod,
   headers: Record<string, string>,
   body?: string
-): Promise<Omit<HttpResponse, 'time'>> {
+): Promise<TransportResponse> {
   return requestOverConnection({
     url: new URL(`${isHttps ? 'https' : 'http'}://127.0.0.1:${tunnelPort}${path}`),
     method,

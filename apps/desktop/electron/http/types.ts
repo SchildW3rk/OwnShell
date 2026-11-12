@@ -16,7 +16,18 @@ export interface HttpRequestConfig {
   collectionId?: string | null;
   networkHostId: string | null;
   environmentId: string | null;
+  /** 1..600, default 30. */
+  timeoutSeconds?: number;
+  /** Default true. */
+  followRedirects?: boolean;
+  /** Default true. */
+  verifyTls?: boolean;
+  /** Renderer-chosen id so the send can be cancelled. */
+  executionId?: string;
 }
+
+/** Why a 3xx was shown instead of followed. */
+export type RedirectNotice = 'REDIRECT_OTHER_HOST' | 'REDIRECT_LIMIT';
 
 export interface HttpResponse {
   status: number;
@@ -31,6 +42,7 @@ export interface HttpResponse {
   /** Set for failures the UI can explain (see ApiRequestErrorCode). */
   errorCode?: string;
   errorDetail?: string;
+  redirectNotice?: RedirectNotice;
   timings?: {
     prepareMs: number;
     headersMs: number;

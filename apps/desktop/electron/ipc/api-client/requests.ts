@@ -15,6 +15,7 @@ import {
   collectionIdSchema,
   idSchema,
   noPayloadSchema,
+  reorderSchema,
   requestSchema,
   requestUpdateArgsSchema,
 } from './schemas';
@@ -52,6 +53,38 @@ export function registerApiRequestHandlers(db: Kysely<Database>): void {
   safeHandle('api:requests:duplicate', idSchema, async (_event, id) =>
     handleDuplicateRequest(db, _event, id)
   );
+  safeHandle('api:items:reorder', reorderSchema, (_event, changes) => saveSortOrders(db, changes));
+}
+
+/** All new positions in one transaction: a failure leaves the previous order intact. */
+export async function saveSortOrders(
+  db: Kysely<Database>,
+  changes: {
+    collections: Array<{ id: string; sort_order: number }>;
+    requests: Array<{ id: string; sort_order: number }>;
+  }
+): Promise<void> {
+  await db.transaction().execute(async (trx) => {
+    // One reorder moves siblings: every id must exist and share the same parent folder.
+    const parents = new Set<string | null>();
+    for (const { id } of changes.collections) {
+      const row = await trx.selectFrom('api_collections').select('parent_id').where('id', '=', id).executeTakeFirst();
+      if (!row) throw new Error('Unknown folder in reorder');
+      parents.add(row.parent_id);
+    }
+    for (const { id } of changes.requests) {
+      const row = await trx.selectFrom('api_requests').select('collection_id').where('id', '=', id).executeTakeFirst();
+      if (!row) throw new Error('Unknown request in reorder');
+      parents.add(row.collection_id);
+    }
+    if (parents.size > 1) throw new Error('Reorder items must share one parent folder');
+    for (const { id, sort_order } of changes.collections) {
+      await trx.updateTable('api_collections').set({ sort_order }).where('id', '=', id).execute();
+    }
+    for (const { id, sort_order } of changes.requests) {
+      await trx.updateTable('api_requests').set({ sort_order }).where('id', '=', id).execute();
+    }
+  });
 }
 
 async function handleGetRequestById(
@@ -119,6 +152,9 @@ async function handleCreateRequest(
       network_host_id: data.network_host_id ?? null,
       environment_id: data.environment_id ?? null,
       sort_order: sortOrder,
+      timeout_seconds: data.timeout_seconds ?? null,
+      follow_redirects: data.follow_redirects ?? null,
+      verify_tls: data.verify_tls ?? null,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -217,6 +253,9 @@ async function handleDuplicateRequest(
       network_host_id: original.network_host_id,
       environment_id: original.environment_id,
       sort_order: sortOrder,
+      timeout_seconds: original.timeout_seconds,
+      follow_redirects: original.follow_redirects,
+      verify_tls: original.verify_tls,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -251,6 +290,9 @@ interface RequestInput {
   network_host_id?: string | null;
   environment_id?: string | null;
   sort_order?: number;
+  timeout_seconds?: number | null;
+  follow_redirects?: 0 | 1 | null;
+  verify_tls?: 0 | 1 | null;
 }
 
 interface RequestUpdateInput extends Partial<RequestInput> {

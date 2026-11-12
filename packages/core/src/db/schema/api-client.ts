@@ -75,7 +75,10 @@ export interface ApiRequestsTable {
   auth_config: string; // JSON: { token, username, password, key, value, addTo }
   network_host_id: string | null; // FK to hosts (for SSH tunneling) - null = direct
   environment_id: string | null; // FK to vault_environments (for {{variables}})
-  sort_order: number; // For drag & drop ordering
+  sort_order: number; // Manual order within the folder
+  timeout_seconds: number | null; // 1..600, null = 30 (migration 016)
+  follow_redirects: number | null; // 0/1, null = follow
+  verify_tls: number | null; // 0/1, null = verify
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
   last_executed_at: number | null; // Track last execution
@@ -97,6 +100,9 @@ export interface NewApiRequest {
   network_host_id?: string | null;
   environment_id?: string | null;
   sort_order?: number;
+  timeout_seconds?: number | null;
+  follow_redirects?: number | null;
+  verify_tls?: number | null;
   created_at: number;
   updated_at: number;
   last_executed_at?: number | null;
@@ -117,6 +123,9 @@ export interface ApiRequestUpdate {
   network_host_id?: string | null;
   environment_id?: string | null;
   sort_order?: number;
+  timeout_seconds?: number | null;
+  follow_redirects?: number | null;
+  verify_tls?: number | null;
   updated_at: number;
   last_executed_at?: number | null;
 }

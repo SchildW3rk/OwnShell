@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import type { ApiCollectionsTable, ApiRequestsTable } from '@ownshell/core';
 import { Button } from '@ownshell/ui';
 import {
+  ArrowDown,
+  ArrowDownAZ,
+  ArrowUp,
   ChevronDown,
   ChevronRight,
   FileJson,
@@ -33,6 +36,8 @@ interface CollectionItemProps {
   onEditRequest: (request: ApiRequestsTable) => void;
   onDeleteRequest: (id: string) => void;
   onDuplicateRequest: (id: string) => void;
+  onMove: (kind: 'collection' | 'request', id: string, delta: -1 | 1) => void;
+  onSortFolder: (id: string) => void;
   depth?: number;
 }
 
@@ -49,6 +54,8 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   onEditRequest,
   onDeleteRequest,
   onDuplicateRequest,
+  onMove,
+  onSortFolder,
   depth = 0,
 }) => {
   const isExpanded = expandedIds.has(collection.id);
@@ -81,6 +88,21 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
       label: t('common.rename'),
       icon: <Pencil className="w-4 h-4" />,
       onClick: () => onEditCollection(collection),
+    },
+    {
+      label: t('api.sidebar.moveUp'),
+      icon: <ArrowUp className="w-4 h-4" />,
+      onClick: () => onMove('collection', collection.id, -1),
+    },
+    {
+      label: t('api.sidebar.moveDown'),
+      icon: <ArrowDown className="w-4 h-4" />,
+      onClick: () => onMove('collection', collection.id, 1),
+    },
+    {
+      label: t('api.sidebar.sortByName'),
+      icon: <ArrowDownAZ className="w-4 h-4" />,
+      onClick: () => onSortFolder(collection.id),
     },
     {
       label: t('common.delete'),
@@ -166,6 +188,8 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
               onEditRequest={onEditRequest}
               onDeleteRequest={onDeleteRequest}
               onDuplicateRequest={onDuplicateRequest}
+              onMove={onMove}
+              onSortFolder={onSortFolder}
               depth={depth + 1}
             />
           ))}
@@ -179,6 +203,7 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
               onEdit={() => onEditRequest(request)}
               onDelete={() => onDeleteRequest(request.id)}
               onDuplicate={() => onDuplicateRequest(request.id)}
+              onMove={(delta) => onMove('request', request.id, delta)}
               depth={depth + 1}
             />
           ))}

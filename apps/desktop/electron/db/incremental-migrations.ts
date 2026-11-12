@@ -451,4 +451,17 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
   } catch (error) {
     logger.warn('Migration 015 skipped or failed', error);
   }
+
+  try {
+    const columns = sqlite.prepare('PRAGMA table_info(api_requests)').all() as Array<{ name: string }>;
+    // Nullable on purpose: NULL means the built-in default (30 s, follow redirects, verify TLS).
+    for (const column of ['timeout_seconds', 'follow_redirects', 'verify_tls']) {
+      if (columns.length > 0 && !columns.some((col) => col.name === column)) {
+        sqlite.exec(`ALTER TABLE api_requests ADD COLUMN ${column} INTEGER;`);
+      }
+    }
+    logger.info('Migration 016 completed: API request settings');
+  } catch (error) {
+    logger.warn('Migration 016 skipped or failed', error);
+  }
 }

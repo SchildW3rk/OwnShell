@@ -5,7 +5,13 @@ import path from 'node:path';
 import type { Kysely } from 'kysely';
 import { openHostStream } from '../../http/host-stream';
 import { sendPreparedRequest, type HttpRequestConfig, type HttpResponse } from '../../http/http-client';
-import { ApiRequestError, prepareRequest, type AuthSource } from '../../http/prepare-request';
+import { toCurlCommand } from '../../http/curl-export';
+import {
+  ApiRequestError,
+  prepareRequest,
+  prepareRequestWithPlaceholders,
+  type AuthSource,
+} from '../../http/prepare-request';
 import {
   createPickedFiles,
   guessContentType,
@@ -15,13 +21,38 @@ import {
 import { logger } from '../../logger';
 import { cryptoManager } from '../../security/crypto';
 import { safeHandle } from '../safe-ipc';
-import { executeRequestSchema, noPayloadSchema } from './schemas';
+import {
+  cancelRequestSchema,
+  executeRequestSchema,
+  exportCurlSchema,
+  noPayloadSchema,
+} from './schemas';
 
 export function registerApiExecutionHandlers(db: Kysely<Database>): void {
   const pickedFiles = createPickedFiles(new SettingsQueries(db));
-  safeHandle('api:requests:execute', executeRequestSchema, (_event, config) =>
-    handleExecuteRequest(db, pickedFiles, config)
-  );
+  // Running sends by window + renderer-chosen id, so a window can only cancel its own.
+  const running = new Map<string, AbortController>();
+  safeHandle('api:requests:execute', executeRequestSchema, async (event, config) => {
+    const key = config.executionId && `${event.sender.id}:${config.executionId}`;
+    const controller = new AbortController();
+    if (key) running.set(key, controller);
+    try {
+      return await handleExecuteRequest(db, pickedFiles, config, controller.signal);
+    } finally {
+      if (key && running.get(key) === controller) running.delete(key);
+    }
+  });
+  safeHandle('api:requests:cancel', cancelRequestSchema, (event, executionId) => {
+    running.get(`${event.sender.id}:${executionId}`)?.abort();
+  });
+  safeHandle('api:requests:export-curl', exportCurlSchema, async (_event, { config, resolveVariables }) => {
+    try {
+      return { command: await exportCurl(db, config, resolveVariables) };
+    } catch (error) {
+      if (!(error instanceof ApiRequestError)) throw error;
+      return { errorCode: error.code, errorDetail: error.detail };
+    }
+  });
   safeHandle('api:files:pick', noPayloadSchema, async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     const options = { properties: ['openFile' as const] };
@@ -37,6 +68,39 @@ export function registerApiExecutionHandlers(db: Kysely<Database>): void {
     const name = path.basename(realPath);
     return { path: realPath, name, size: info.size, contentType: guessContentType(name) };
   });
+}
+
+/** Same preparation as a send; `resolveVariables` puts decrypted values into the command. */
+async function exportCurl(
+  db: Kysely<Database>,
+  config: HttpRequestConfig,
+  resolveVariables: boolean
+): Promise<string> {
+  const authChain =
+    config.authType === 'inherit' ? await loadCollectionAuthChain(db, config.collectionId) : [];
+  const options = {
+    timeoutSeconds: config.timeoutSeconds,
+    followRedirects: config.followRedirects,
+    verifyTls: config.verifyTls,
+  };
+  if (!resolveVariables) {
+    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain }), options);
+  }
+  const { variables, locked } = config.environmentId
+    ? await getDecryptedVariables(db, config.environmentId)
+    : { variables: {}, locked: false };
+  const prepared = await prepareRequest(config, {
+    variables,
+    variablesLocked: locked,
+    authChain,
+    // Exported by path; nothing is read.
+    loadFile: async (filePath) => ({
+      data: Buffer.alloc(0),
+      name: path.basename(filePath),
+      contentType: guessContentType(filePath),
+    }),
+  });
+  return toCurlCommand({ ...prepared, url: prepared.url.href }, options);
 }
 
 async function getDecryptedVariables(
@@ -97,7 +161,8 @@ async function loadCollectionAuthChain(
 async function handleExecuteRequest(
   db: Kysely<Database>,
   pickedFiles: PickedFiles,
-  config: HttpRequestConfig
+  config: HttpRequestConfig,
+  signal: AbortSignal
 ): Promise<HttpResponse> {
   const started = performance.now();
   let host: string | undefined;
@@ -115,8 +180,21 @@ async function handleExecuteRequest(
       loadFile: (filePath, maxBytes) => loadRequestFile(filePath, pickedFiles, maxBytes),
     });
     host = prepared.url.host;
+    const prepareMs = performance.now() - started;
 
-    const response = await sendPreparedRequest(prepared, config.networkHostId, { openHostStream });
+    const sent = await sendPreparedRequest(prepared, config.networkHostId, {
+      openHostStream,
+      timeoutMs: (config.timeoutSeconds ?? 30) * 1000,
+      followRedirects: config.followRedirects,
+      verifyTls: config.verifyTls,
+      signal,
+    });
+    const totalMs = prepareMs + (sent.timings?.totalMs ?? sent.time);
+    const response: HttpResponse = {
+      ...sent,
+      time: Math.round(totalMs),
+      timings: sent.timings && { ...sent.timings, prepareMs, totalMs },
+    };
     logger.info('API request completed', {
       method: config.method,
       host,

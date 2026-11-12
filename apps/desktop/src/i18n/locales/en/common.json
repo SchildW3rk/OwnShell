@@ -447,7 +447,8 @@
     "deleting": "Deleting...",
     "browse": "Browse",
     "rename": "Rename",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "unknownError": "Unknown error"
   },
   "permissions": {
     "title": "Edit Permissions",
@@ -1365,7 +1366,8 @@
       "params": "Params",
       "auth": "Auth",
       "headers": "Headers",
-      "body": "Body"
+      "body": "Body",
+      "settings": "Settings"
     },
     "params": {
       "key": "Parameter",
@@ -1454,7 +1456,16 @@
       "headerName": "Name",
       "headerValue": "Value",
       "previewWarning": "Preview is sandboxed. Scripts and external resources are blocked.",
-      "binaryBody": "Binary response ({{type}})"
+      "binaryBody": "Binary response ({{type}})",
+      "timing": "Timing",
+      "timingPrepare": "Prepare",
+      "timingHeaders": "Until headers",
+      "timingBody": "Body download",
+      "timingTotal": "Total",
+      "size": "Size",
+      "raw": "Raw",
+      "REDIRECT_OTHER_HOST": "Redirect not followed: it points to another host or port, and requests through an SSH host never leave that route.",
+      "REDIRECT_LIMIT": "Redirect not followed: the limit of 10 redirects was reached."
     },
     "addItem": "Add Item",
     "addRow": "Add Row",
@@ -1472,11 +1483,56 @@
       "FILE_ERROR": "The file {{detail}} cannot be read. Select it again.",
       "BODY_TOO_LARGE": "The request body exceeds the 50 MB limit.",
       "NETWORK_HOST_UNAVAILABLE": "The request was not sent: the selected SSH host could not reach the target ({{detail}}).",
-      "requestFailed": "Request failed: {{error}}"
+      "requestFailed": "Request failed: {{error}}",
+      "TIMEOUT": "No complete response within the timeout. You can raise it in the request settings."
     },
     "collectionAuth": {
       "menu": "Authentication",
       "title": "Authentication for {{name}}"
+    },
+    "cancelRequest": "Cancel",
+    "saved": "Request saved",
+    "settings": {
+      "timeout": "Timeout",
+      "seconds": "seconds",
+      "timeoutHint": "1 to 600 seconds for the whole request, including redirects and the response body.",
+      "followRedirects": "Follow redirects",
+      "followRedirectsHint": "Up to 10 redirects. Through an SSH host, only redirects to the same host and port are followed.",
+      "verifyTls": "Verify TLS certificates",
+      "verifyTlsHint": "Applies to this request only.",
+      "tlsOffWarning": "TLS certificate verification is off for this request. Anyone in the network path can read and change the traffic.",
+      "tlsOffBadge": "TLS not verified"
+    },
+    "sidebar": {
+      "searchPlaceholder": "Filter by name, method or URL",
+      "clearSearch": "Clear filter",
+      "noMatches": "No matching requests",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "sortByName": "Sort by name"
+    },
+    "curl": {
+      "importMenu": "Import curl",
+      "importTitle": "Import curl command",
+      "import": "Import",
+      "importPlaceholder": "curl -X POST https://api.example.com/items -H 'Content-Type: application/json' -d '{\"name\":\"x\"}'",
+      "unsupported": "Ignored curl options: {{flags}}",
+      "reselectFiles": "Select these files again before sending: {{files}}",
+      "errors": {
+        "NOT_CURL": "This is not a curl command.",
+        "UNTERMINATED_QUOTE": "The curl command has an unclosed quote.",
+        "NO_URL": "The curl command has no URL.",
+        "MIXED_BODY": "This curl command combines several body files or files and text. Import it with a single body."
+      },
+      "copyMenu": "Copy as curl",
+      "copyPlaceholders": "Copy as curl (variables as placeholders)",
+      "copyResolved": "Copy as curl (variables resolved)",
+      "resolvedWarning": "The command will contain the decrypted values of your environment variables, including secrets such as tokens and passwords. Anything that can read your clipboard can read them.",
+      "copyAnyway": "Copy with secrets",
+      "copiedResolved": "curl command with resolved variables copied",
+      "copyFailed": "Could not copy: {{error}}",
+      "copiedPlaceholders": "curl command copied. Auth secrets are replaced by placeholders; the body is copied as is.",
+      "placeholdersHint": "Variables and auth secrets (tokens, passwords, API keys, credential headers) become placeholders. Bodies are exported as is."
     }
   },
   "changelog": {

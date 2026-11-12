@@ -19,6 +19,13 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { queryKeys } from '@/lib/queryClient';
 
+/** Per-request settings; null = default (30 s, follow redirects, verify TLS). */
+type RequestSettingsColumns = {
+  timeout_seconds?: number | null;
+  follow_redirects?: 0 | 1 | null;
+  verify_tls?: 0 | 1 | null;
+};
+
 /** Mutations must not fail silently: every failed save/update/delete shows a toast. */
 function useMutationErrorToast() {
   const { t } = useTranslation();
@@ -174,7 +181,7 @@ export function useCreateApiRequest() {
       network_host_id?: string | null;
       environment_id?: string | null;
       sort_order?: number;
-    }) => window.electronAPI.apiClient.requests.create(data),
+    } & RequestSettingsColumns) => window.electronAPI.apiClient.requests.create(data),
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() });
       if (variables.collection_id) {
@@ -216,7 +223,7 @@ export function useUpdateApiRequest() {
         environment_id?: string | null;
         sort_order?: number;
         last_executed_at?: number | null;
-      };
+      } & RequestSettingsColumns;
     }) => window.electronAPI.apiClient.requests.update(id, data),
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() });
@@ -254,6 +261,28 @@ export function useDuplicateApiRequest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() });
     },
+  });
+}
+
+/**
+ * Writes new sort_order values (manual order, sort by name) in one transaction; one refresh at the end.
+ */
+export function useReorderApiItems() {
+  const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
+
+  return useMutation({
+    onError,
+    mutationFn: async (changes: {
+      collections: Array<{ id: string; sort_order: number }>;
+      requests: Array<{ id: string; sort_order: number }>;
+    }) => window.electronAPI.apiClient.reorder(changes),
+    // Awaited so isPending lasts until the new order is loaded; the next move must not start from stale data.
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.collections.all() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() }),
+      ]),
   });
 }
 

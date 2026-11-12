@@ -212,6 +212,10 @@ const vaultApiRequestSchema = z.object({
   network_host_id: nullableId,
   environment_id: nullableId,
   sort_order: z.number(),
+  // Added in migration 016; null = default (30 s, follow redirects, verify TLS).
+  timeout_seconds: z.number().int().min(1).max(600).nullable().default(null),
+  follow_redirects: z.number().int().min(0).max(1).nullable().default(null),
+  verify_tls: z.number().int().min(0).max(1).nullable().default(null),
   created_at: timestamp,
   updated_at: timestamp,
   last_executed_at: z.number().nullable(),

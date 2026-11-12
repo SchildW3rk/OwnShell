@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@ownshell/ui';
-import { FileJson, FolderPlus, Plus } from 'lucide-react';
+import { FileJson, FolderPlus, Plus, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface NewItemMenuProps {
@@ -8,6 +8,7 @@ interface NewItemMenuProps {
   onToggle: () => void;
   onCreateRequest: () => void;
   onCreateCollection: () => void;
+  onImportCurl: () => void;
 }
 
 export const NewItemMenu: React.FC<NewItemMenuProps> = ({
@@ -15,6 +16,7 @@ export const NewItemMenu: React.FC<NewItemMenuProps> = ({
   onToggle,
   onCreateRequest,
   onCreateCollection,
+  onImportCurl,
 }) => {
   const { t } = useTranslation();
 
@@ -41,6 +43,14 @@ export const NewItemMenu: React.FC<NewItemMenuProps> = ({
           >
             <FolderPlus className="w-4 h-4" />
             {t('api.newFolder', 'New Folder')}
+          </button>
+          <button
+            type="button"
+            onClick={onImportCurl}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-primary/10"
+          >
+            <Terminal className="w-4 h-4" />
+            {t('api.curl.importMenu')}
           </button>
         </div>
       )}

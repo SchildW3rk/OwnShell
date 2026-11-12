@@ -4,16 +4,18 @@
  * Recursive tree component for API collections and requests.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { ApiCollectionsTable, ApiRequestsTable } from '@ownshell/core';
 import { Button } from '@ownshell/ui';
-import { Plus } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useApiClientData } from '../../hooks/api/useApiQueries';
+import { useApiClientData, useReorderApiItems } from '../../hooks/api/useApiQueries';
 import { buildCollectionTree, getRootRequests, useApiStore } from '../../stores/useApiStore';
 import { CollectionItem } from './sidebar/CollectionItem';
+import { ImportCurlDialog } from './sidebar/ImportCurlDialog';
 import { NewItemMenu } from './sidebar/NewItemMenu';
 import { RequestItem } from './sidebar/RequestItem';
+import { filterTree, moveSibling, sortSiblingsByName } from './sidebar/tree-utils';
 
 interface ApiSidebarSectionProps {
   onCreateCollection: (parentId?: string | null) => void;
@@ -40,9 +42,49 @@ export const ApiSidebarSection: React.FC<ApiSidebarSectionProps> = ({
   const { collections, requests, isLoading } = useApiClientData();
   const { selectedRequestId, expandedCollectionIds, toggleCollectionExpanded } = useApiStore();
   const [showNewMenu, setShowNewMenu] = useState(false);
+  const [showImportCurl, setShowImportCurl] = useState(false);
+  const [query, setQuery] = useState('');
+  const reorder = useReorderApiItems();
 
-  const collectionTree = buildCollectionTree(collections, requests);
-  const rootRequests = getRootRequests(requests);
+  const fullTree = useMemo(() => buildCollectionTree(collections, requests), [collections, requests]);
+  const filtered = useMemo(
+    () => (query.trim() ? filterTree(fullTree, getRootRequests(requests), query) : null),
+    [fullTree, requests, query]
+  );
+  const collectionTree = filtered?.tree ?? fullTree;
+  const rootRequests = filtered?.rootRequests ?? getRootRequests(requests);
+  // While searching, folders on the path to a match are open without touching the saved state.
+  const visibleExpandedIds = filtered?.expandedIds ?? expandedCollectionIds;
+
+  // Siblings in displayed order (the queries sort by sort_order, then created_at).
+  const handleMove = useCallback(
+    (kind: 'collection' | 'request', id: string, delta: -1 | 1) => {
+      // One reorder at a time: a second one would start from the not-yet-saved order.
+      if (reorder.isPending) return;
+      if (kind === 'collection') {
+        const parentId = collections.find((c) => c.id === id)?.parent_id ?? null;
+        const changes = moveSibling(collections.filter((c) => c.parent_id === parentId), id, delta);
+        if (changes.length) reorder.mutate({ collections: changes, requests: [] });
+      } else {
+        const collectionId = requests.find((r) => r.id === id)?.collection_id ?? null;
+        const changes = moveSibling(requests.filter((r) => r.collection_id === collectionId), id, delta);
+        if (changes.length) reorder.mutate({ collections: [], requests: changes });
+      }
+    },
+    [collections, requests, reorder]
+  );
+
+  const handleSortFolder = useCallback(
+    (id: string) => {
+      if (reorder.isPending) return;
+      const changes = {
+        collections: sortSiblingsByName(collections.filter((c) => c.parent_id === id)),
+        requests: sortSiblingsByName(requests.filter((r) => r.collection_id === id)),
+      };
+      if (changes.collections.length || changes.requests.length) reorder.mutate(changes);
+    },
+    [collections, requests, reorder]
+  );
 
   const handleToggleExpand = useCallback(
     (id: string) => {
@@ -69,14 +111,54 @@ export const ApiSidebarSection: React.FC<ApiSidebarSectionProps> = ({
             onCreateCollection(null);
             setShowNewMenu(false);
           }}
+          onImportCurl={() => {
+            setShowImportCurl(true);
+            setShowNewMenu(false);
+          }}
         />
       </div>
+
+      {(collections.length > 0 || requests.length > 0) && (
+        <div className="flex-shrink-0 px-2 pt-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => event.key === 'Escape' && setQuery('')}
+              placeholder={t('api.sidebar.searchPlaceholder')}
+              aria-label={t('api.sidebar.searchPlaceholder')}
+              className="w-full pl-7 pr-7 py-1 bg-secondary border border-border rounded-md text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label={t('api.sidebar.clearSearch')}
+                title={t('api.sidebar.clearSearch')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showImportCurl && (
+        <ImportCurlDialog onClose={() => setShowImportCurl(false)} onImported={onSelectRequest} />
+      )}
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-1 py-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : filtered && collectionTree.length === 0 && rootRequests.length === 0 ? (
+          <p className="text-center py-8 px-4 text-xs text-muted-foreground">
+            {t('api.sidebar.noMatches')}
+          </p>
         ) : collectionTree.length === 0 && rootRequests.length === 0 ? (
           <div className="text-center py-8 px-4">
             <p className="text-xs text-muted-foreground mb-3">
@@ -98,7 +180,7 @@ export const ApiSidebarSection: React.FC<ApiSidebarSectionProps> = ({
               <CollectionItem
                 key={collection.id}
                 collection={collection}
-                expandedIds={expandedCollectionIds}
+                expandedIds={visibleExpandedIds}
                 onToggleExpand={handleToggleExpand}
                 selectedRequestId={selectedRequestId}
                 onSelectRequest={onSelectRequest}
@@ -109,6 +191,8 @@ export const ApiSidebarSection: React.FC<ApiSidebarSectionProps> = ({
                 onEditRequest={onEditRequest}
                 onDeleteRequest={onDeleteRequest}
                 onDuplicateRequest={onDuplicateRequest}
+                onMove={handleMove}
+                onSortFolder={handleSortFolder}
               />
             ))}
 
@@ -121,6 +205,7 @@ export const ApiSidebarSection: React.FC<ApiSidebarSectionProps> = ({
                 onEdit={() => onEditRequest(request)}
                 onDelete={() => onDeleteRequest(request.id)}
                 onDuplicate={() => onDuplicateRequest(request.id)}
+                onMove={(delta) => handleMove('request', request.id, delta)}
               />
             ))}
           </div>

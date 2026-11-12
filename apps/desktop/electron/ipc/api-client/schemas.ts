@@ -9,6 +9,8 @@ export const bodyTypeSchema = z.enum(['none', 'json', 'form-data', 'form-urlenco
 export const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']);
 export const jsonConfigStringSchema = z.string().max(1024 * 1024);
 export const rawContentTypeSchema = z.enum(['text', 'json', 'xml', 'html']);
+export const timeoutSecondsSchema = z.number().int().min(1).max(600);
+const flagSchema = z.union([z.literal(0), z.literal(1)]);
 
 export const collectionSchema = z.object({
   name: z.string().min(1).max(255),
@@ -37,6 +39,10 @@ export const requestSchema = z.object({
   network_host_id: nullableIdSchema.optional(),
   environment_id: nullableIdSchema.optional(),
   sort_order: sortOrderSchema.optional(),
+  // Request settings; null = default (30 s, follow redirects, verify TLS).
+  timeout_seconds: timeoutSecondsSchema.nullable().optional(),
+  follow_redirects: flagSchema.nullable().optional(),
+  verify_tls: flagSchema.nullable().optional(),
 });
 export const requestUpdateSchema = requestSchema.partial().extend({
   last_executed_at: z.number().finite().int().nonnegative().nullable().optional(),
@@ -55,4 +61,17 @@ export const executeRequestSchema = z.object({
   collectionId: nullableIdSchema.optional(),
   networkHostId: nullableIdSchema,
   environmentId: nullableIdSchema,
+  timeoutSeconds: timeoutSecondsSchema.optional(),
+  followRedirects: z.boolean().optional(),
+  verifyTls: z.boolean().optional(),
+  executionId: z.string().min(1).max(64).optional(),
 });
+export const cancelRequestSchema = z.string().min(1).max(64);
+export const exportCurlSchema = z.object({
+  config: executeRequestSchema,
+  resolveVariables: z.boolean(),
+});
+const sortEntriesSchema = z.array(z.object({ id: idSchema, sort_order: sortOrderSchema })).max(5000);
+export const reorderSchema = z
+  .object({ collections: sortEntriesSchema, requests: sortEntriesSchema })
+  .refine((v) => v.collections.length + v.requests.length <= 5000, 'Too many items in one reorder');

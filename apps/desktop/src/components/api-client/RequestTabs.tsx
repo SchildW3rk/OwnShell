@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 // Types
 // ============================================
 
-export type RequestTab = 'params' | 'auth' | 'headers' | 'body';
+export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'settings';
 
 interface RequestTabsProps {
   activeTab: RequestTab;
@@ -25,6 +25,8 @@ interface RequestTabsProps {
   headerCount?: number;
   hasBody?: boolean;
   hasAuth?: boolean;
+  /** TLS verification is off: the settings tab shows a warning dot. */
+  settingsWarning?: boolean;
 }
 
 // ============================================
@@ -38,6 +40,7 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
   headerCount = 0,
   hasBody = false,
   hasAuth = false,
+  settingsWarning = false,
 }) => {
   const { t } = useTranslation();
 
@@ -46,6 +49,7 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
     label: string;
     count?: number;
     indicator?: boolean;
+    warning?: boolean;
   }> = [
     {
       id: 'params',
@@ -66,6 +70,11 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
       id: 'body',
       label: t('api.tabs.body', 'Body'),
       indicator: hasBody,
+    },
+    {
+      id: 'settings',
+      label: t('api.tabs.settings'),
+      warning: settingsWarning,
     },
   ];
 
@@ -93,6 +102,7 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
 
             {/* Indicator Dot (for Auth/Body when configured) */}
             {tab.indicator && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+            {tab.warning && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
           </span>
 
           {/* Active Indicator */}

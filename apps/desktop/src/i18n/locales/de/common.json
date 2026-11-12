@@ -447,7 +447,8 @@
     "deleting": "Löscht...",
     "browse": "Durchsuchen",
     "rename": "Umbenennen",
-    "duplicate": "Duplizieren"
+    "duplicate": "Duplizieren",
+    "unknownError": "Unbekannter Fehler"
   },
   "permissions": {
     "title": "Berechtigungen bearbeiten",
@@ -1365,7 +1366,8 @@
       "params": "Parameter",
       "auth": "Auth",
       "headers": "Header",
-      "body": "Body"
+      "body": "Body",
+      "settings": "Einstellungen"
     },
     "params": {
       "key": "Parameter",
@@ -1454,7 +1456,16 @@
       "headerName": "Name",
       "headerValue": "Wert",
       "previewWarning": "Vorschau ist sandboxed. Scripts und externe Ressourcen sind blockiert.",
-      "binaryBody": "Binäre Antwort ({{type}})"
+      "binaryBody": "Binäre Antwort ({{type}})",
+      "timing": "Zeiten",
+      "timingPrepare": "Vorbereitung",
+      "timingHeaders": "Bis zu den Headern",
+      "timingBody": "Body-Download",
+      "timingTotal": "Gesamt",
+      "size": "Größe",
+      "raw": "Roh",
+      "REDIRECT_OTHER_HOST": "Weiterleitung nicht gefolgt: Sie zeigt auf einen anderen Host oder Port, und Requests über einen SSH-Host verlassen diese Route nie.",
+      "REDIRECT_LIMIT": "Weiterleitung nicht gefolgt: Das Limit von 10 Weiterleitungen ist erreicht."
     },
     "addItem": "Eintrag hinzufügen",
     "addRow": "Zeile hinzufügen",
@@ -1472,11 +1483,56 @@
       "FILE_ERROR": "Die Datei {{detail}} kann nicht gelesen werden. Wähle sie erneut aus.",
       "BODY_TOO_LARGE": "Der Request-Body überschreitet das Limit von 50 MB.",
       "NETWORK_HOST_UNAVAILABLE": "Die Anfrage wurde nicht gesendet: Der gewählte SSH-Host konnte das Ziel nicht erreichen ({{detail}}).",
-      "requestFailed": "Anfrage fehlgeschlagen: {{error}}"
+      "requestFailed": "Anfrage fehlgeschlagen: {{error}}",
+      "TIMEOUT": "Keine vollständige Antwort innerhalb des Timeouts. Du kannst es in den Request-Einstellungen erhöhen."
     },
     "collectionAuth": {
       "menu": "Authentifizierung",
       "title": "Authentifizierung für {{name}}"
+    },
+    "cancelRequest": "Abbrechen",
+    "saved": "Request gespeichert",
+    "settings": {
+      "timeout": "Timeout",
+      "seconds": "Sekunden",
+      "timeoutHint": "1 bis 600 Sekunden für den gesamten Request, inklusive Weiterleitungen und Antwort-Body.",
+      "followRedirects": "Weiterleitungen folgen",
+      "followRedirectsHint": "Bis zu 10 Weiterleitungen. Über einen SSH-Host wird nur Weiterleitungen zum selben Host und Port gefolgt.",
+      "verifyTls": "TLS-Zertifikate prüfen",
+      "verifyTlsHint": "Gilt nur für diesen Request.",
+      "tlsOffWarning": "Die Prüfung der TLS-Zertifikate ist für diesen Request ausgeschaltet. Jeder im Netzwerkpfad kann den Verkehr mitlesen und verändern.",
+      "tlsOffBadge": "TLS ungeprüft"
+    },
+    "sidebar": {
+      "searchPlaceholder": "Nach Name, Methode oder URL filtern",
+      "clearSearch": "Filter leeren",
+      "noMatches": "Keine passenden Requests",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "sortByName": "Nach Name sortieren"
+    },
+    "curl": {
+      "importMenu": "curl importieren",
+      "importTitle": "curl-Befehl importieren",
+      "import": "Importieren",
+      "importPlaceholder": "curl -X POST https://api.example.com/items -H 'Content-Type: application/json' -d '{\"name\":\"x\"}'",
+      "unsupported": "Ignorierte curl-Optionen: {{flags}}",
+      "reselectFiles": "Wähle diese Dateien vor dem Senden erneut aus: {{files}}",
+      "errors": {
+        "NOT_CURL": "Das ist kein curl-Befehl.",
+        "UNTERMINATED_QUOTE": "Im curl-Befehl ist ein Anführungszeichen nicht geschlossen.",
+        "NO_URL": "Der curl-Befehl enthält keine URL.",
+        "MIXED_BODY": "Dieser curl-Befehl kombiniert mehrere Body-Dateien oder Dateien und Text. Importiere ihn mit nur einem Body."
+      },
+      "copyMenu": "Als curl kopieren",
+      "copyPlaceholders": "Als curl kopieren (Variablen als Platzhalter)",
+      "copyResolved": "Als curl kopieren (Variablen aufgelöst)",
+      "resolvedWarning": "Der Befehl enthält die entschlüsselten Werte deiner Umgebungsvariablen, auch Geheimnisse wie Tokens und Passwörter. Alles, was deine Zwischenablage lesen kann, kann sie lesen.",
+      "copyAnyway": "Mit Geheimnissen kopieren",
+      "copiedResolved": "curl-Befehl mit aufgelösten Variablen kopiert",
+      "copyFailed": "Kopieren fehlgeschlagen: {{error}}",
+      "copiedPlaceholders": "curl-Befehl kopiert. Auth-Geheimnisse sind durch Platzhalter ersetzt; der Body wird unverändert übernommen.",
+      "placeholdersHint": "Variablen und Auth-Geheimnisse (Tokens, Passwörter, API-Keys, Zugangs-Header) werden zu Platzhaltern. Bodies werden unverändert exportiert."
     }
   },
   "changelog": {

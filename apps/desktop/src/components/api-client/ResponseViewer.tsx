@@ -15,6 +15,8 @@ import {
   Download,
   Eye,
   FileDown,
+  Gauge,
+  Info,
   ListTree,
 } from 'lucide-react';
 import { Button, cn, formatBytes } from '@ownshell/ui';
@@ -76,17 +78,24 @@ function formatBody(body: string | undefined, contentType: ResponseContentType) 
   return { body: body ?? '', parseMs: 0, formatMs: 0 };
 }
 
+function formatMs(ms: number): string {
+  return `${ms < 10 ? ms.toFixed(1) : Math.round(ms)} ms`;
+}
+
 export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoading }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ResponseTab>('body');
   const [copied, setCopied] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   const contentType = useMemo(() => detectContentType(response), [response]);
   const preparation = useMemo(
     () => formatBody(response?.body, contentType),
     [response?.body, contentType]
   );
-  const formattedBody = preparation.body;
+  // Raw is only different from pretty when the body was reformatted (JSON).
+  const canShowRaw = Boolean(response?.body) && preparation.body !== response?.body;
+  const formattedBody = showRaw && canShowRaw ? response?.body ?? '' : preparation.body;
   const canPreview = contentType === 'html';
   const bodyBytes = response?.bodyBytes;
   const binaryType = headerContentType(response).split(';')[0].trim().toLowerCase();
@@ -184,6 +193,17 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
   if (canPreview) {
     tabs.push({ id: 'preview', label: t('api.response.preview', 'Preview'), icon: Eye });
   }
+  if (response.timings) {
+    tabs.push({ id: 'timing', label: t('api.response.timing'), icon: Gauge });
+  }
+  const timingRows = response.timings
+    ? [
+        { label: t('api.response.timingPrepare'), ms: response.timings.prepareMs },
+        { label: t('api.response.timingHeaders'), ms: response.timings.headersMs },
+        { label: t('api.response.timingBody'), ms: response.timings.bodyReadMs },
+        { label: t('api.response.timingTotal'), ms: response.timings.totalMs },
+      ]
+    : [];
 
   return (
     <div
@@ -223,6 +243,16 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
         </div>
       </div>
 
+      {response.redirectNotice && (
+        <div
+          role="status"
+          className="flex-shrink-0 flex items-start gap-2 px-4 py-2 border-b border-border bg-amber-500/10 text-xs text-amber-700 dark:text-amber-400"
+        >
+          <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" />
+          <span>{t(`api.response.${response.redirectNotice}`)}</span>
+        </div>
+      )}
+
       <div className="flex-shrink-0 flex items-center justify-between px-2 border-b border-border bg-secondary/30">
         <div className="flex items-center">
           {tabs.map((tab) => {
@@ -253,6 +283,17 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
 
         {activeTab === 'body' && hasBody && (
           <div className="flex items-center gap-1">
+            {canShowRaw && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowRaw((current) => !current)}
+                aria-pressed={showRaw}
+                className={cn('h-7 text-xs', showRaw && 'text-primary')}
+              >
+                {t('api.response.raw')}
+              </Button>
+            )}
             {!bodyBytes && (
               <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
                 {copied ? (
@@ -308,6 +349,28 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
         {activeTab === 'headers' && (
           <div className="flex-1 min-h-0 overflow-auto">
             <HeadersTable headers={response.headers} />
+          </div>
+        )}
+
+        {activeTab === 'timing' && response.timings && (
+          <div className="flex-1 min-h-0 overflow-auto p-4">
+            <table className="text-sm">
+              <tbody>
+                {timingRows.map((row, index) => (
+                  <tr
+                    key={row.label}
+                    className={cn(index === timingRows.length - 1 && 'border-t border-border font-medium')}
+                  >
+                    <td className="py-1 pr-8 text-muted-foreground">{row.label}</td>
+                    <td className="py-1 text-right tabular-nums text-foreground">{formatMs(row.ms)}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td className="py-1 pr-8 text-muted-foreground">{t('api.response.size')}</td>
+                  <td className="py-1 text-right tabular-nums text-foreground">{formatBytes(response.size)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         )}
 

@@ -1,5 +1,11 @@
 import type { IpcRenderer } from 'electron';
-import type { HttpResponse } from '../http/types';
+import type { HttpRequestConfig, HttpResponse } from '../http/types';
+
+type RequestSettingsColumns = {
+  timeout_seconds?: number | null;
+  follow_redirects?: 0 | 1 | null;
+  verify_tls?: 0 | 1 | null;
+};
 
 export function createApiClientApi(ipcRenderer: IpcRenderer) {
   return {
@@ -49,7 +55,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         network_host_id?: string | null;
         environment_id?: string | null;
         sort_order?: number;
-      }) => ipcRenderer.invoke('api:requests:create', data),
+      } & RequestSettingsColumns) => ipcRenderer.invoke('api:requests:create', data),
       update: (
         id: string,
         data: {
@@ -68,7 +74,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           environment_id?: string | null;
           sort_order?: number;
           last_executed_at?: number | null;
-        }
+        } & RequestSettingsColumns
       ) => ipcRenderer.invoke('api:requests:update', id, data),
       delete: (id: string) => ipcRenderer.invoke('api:requests:delete', id),
       duplicate: (id: string) => ipcRenderer.invoke('api:requests:duplicate', id),
@@ -77,21 +83,23 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
        * @param config - Request configuration (environmentId used to auto-decrypt vault variables)
        * @returns HTTP response with status, headers, body, time, and size
        */
-      execute: (config: {
-        method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
-        url: string;
-        params: string;
-        headers: string;
-        body: string;
-        bodyType: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
-        rawContentType?: 'text' | 'json' | 'xml' | 'html';
-        authType: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
-        authConfig: string;
-        collectionId?: string | null;
-        networkHostId: string | null;
-        environmentId: string | null;
-      }): Promise<HttpResponse> => ipcRenderer.invoke('api:requests:execute', config),
+      execute: (config: HttpRequestConfig): Promise<HttpResponse> =>
+        ipcRenderer.invoke('api:requests:execute', config),
+      /** Cancels a running execute() started with the same `executionId`. */
+      cancel: (executionId: string): Promise<void> =>
+        ipcRenderer.invoke('api:requests:cancel', executionId),
+      /** Builds a curl command from the same preparation as a send. */
+      exportCurl: (
+        config: HttpRequestConfig,
+        resolveVariables: boolean
+      ): Promise<{ command?: string; errorCode?: string; errorDetail?: string }> =>
+        ipcRenderer.invoke('api:requests:export-curl', { config, resolveVariables }),
     },
+    /** Saves new sort_order values for collections and requests in one transaction. */
+    reorder: (changes: {
+      collections: Array<{ id: string; sort_order: number }>;
+      requests: Array<{ id: string; sort_order: number }>;
+    }): Promise<void> => ipcRenderer.invoke('api:items:reorder', changes),
     files: {
       /** Opens a file dialog; returns null when cancelled. The main process re-validates the file on send. */
       pick: (): Promise<{ path: string; name: string; size: number; contentType: string } | null> =>

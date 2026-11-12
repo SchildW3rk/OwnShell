@@ -2,5 +2,5 @@ import type { HttpResponse as NetworkResponse } from '../../../../electron/http/
 
 export type HttpResponse = NetworkResponse & { ipcRoundTripMs?: number };
 
-export type ResponseTab = 'body' | 'headers' | 'preview';
+export type ResponseTab = 'body' | 'headers' | 'preview' | 'timing';
 export type ResponseContentType = 'json' | 'xml' | 'html' | 'text';

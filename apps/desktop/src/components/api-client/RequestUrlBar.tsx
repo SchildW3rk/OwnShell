@@ -9,10 +9,12 @@
  */
 
 import React, { useState } from 'react';
-import { Send, ChevronDown, Wifi, Server } from 'lucide-react';
+import { Send, ChevronDown, Wifi, Server, Square } from 'lucide-react';
 import { Button, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 import { HttpMethod, HostsTable } from '@ownshell/core';
+import { looksLikeCurl } from './curl-import';
+import { SHORTCUT_LABELS } from './shortcuts';
 
 // ============================================
 // Method Colors
@@ -54,6 +56,9 @@ interface RequestUrlBarProps {
   onUrlChange: (url: string) => void;
   onNetworkHostChange: (hostId: string | null) => void;
   onSend: () => void;
+  onCancel: () => void;
+  /** A pasted `curl ...` command replaces the request instead of being inserted as URL. */
+  onPasteCurl: (command: string) => void;
 }
 
 export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
@@ -66,6 +71,8 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
   onUrlChange,
   onNetworkHostChange,
   onSend,
+  onCancel,
+  onPasteCurl,
 }) => {
   const { t } = useTranslation();
   const [showMethodDropdown, setShowMethodDropdown] = useState(false);
@@ -86,10 +93,11 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
   return (
     <div className="flex items-center gap-2 p-3 bg-background border-b border-border">
       {/* Method Selector */}
-      <div className="relative">
+      <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowMethodDropdown(false)}>
         <button
           type="button"
           onClick={() => setShowMethodDropdown(!showMethodDropdown)}
+          aria-expanded={showMethodDropdown}
           className={cn(
             'flex items-center gap-1.5 px-3 py-2 rounded-md border border-border bg-secondary font-bold text-sm transition-colors hover:bg-accent',
             methodColors[method]
@@ -104,7 +112,6 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
             <div
               className="fixed inset-0 z-40"
               onClick={() => setShowMethodDropdown(false)}
-              onKeyDown={(e) => e.key === 'Escape' && setShowMethodDropdown(false)}
             />
             <div className="absolute left-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[100px]">
               {methods.map((m) => (
@@ -136,6 +143,13 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
           value={url}
           onChange={(e) => onUrlChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={(event) => {
+            const text = event.clipboardData.getData('text');
+            if (looksLikeCurl(text)) {
+              event.preventDefault();
+              onPasteCurl(text);
+            }
+          }}
           placeholder={t(
             'api.urlPlaceholder',
             'Enter request URL (e.g., https://api.example.com/users)'
@@ -145,10 +159,11 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
       </div>
 
       {/* Via Network Selector */}
-      <div className="relative">
+      <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowNetworkDropdown(false)}>
         <button
           type="button"
           onClick={() => setShowNetworkDropdown(!showNetworkDropdown)}
+          aria-expanded={showNetworkDropdown}
           className={cn(
             'flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-secondary text-sm transition-colors hover:bg-accent',
             networkHostId ? 'text-primary' : 'text-muted-foreground'
@@ -164,7 +179,6 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
             <div
               className="fixed inset-0 z-40"
               onClick={() => setShowNetworkDropdown(false)}
-              onKeyDown={(e) => e.key === 'Escape' && setShowNetworkDropdown(false)}
             />
             <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[180px]">
               {/* Direct option */}
@@ -215,22 +229,29 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
         )}
       </div>
 
-      {/* Send Button */}
-      <Button
-        variant="primary"
-        onClick={onSend}
-        disabled={isLoading || !url.trim()}
-        className={cn('px-4', methodBgColors[method])}
-      >
-        {isLoading ? (
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <>
-            <Send className="w-4 h-4 mr-2" />
-            {t('api.send', 'Send')}
-          </>
-        )}
-      </Button>
+      {/* Send / Cancel */}
+      {isLoading ? (
+        <Button
+          variant="secondary"
+          onClick={onCancel}
+          className="px-4"
+          title={`${t('api.cancelRequest')} (${SHORTCUT_LABELS.cancel})`}
+        >
+          <Square className="w-4 h-4 mr-2" />
+          {t('api.cancelRequest')}
+        </Button>
+      ) : (
+        <Button
+          variant="primary"
+          onClick={onSend}
+          disabled={!url.trim()}
+          className={cn('px-4', methodBgColors[method])}
+          title={`${t('api.send', 'Send')} (${SHORTCUT_LABELS.send})`}
+        >
+          <Send className="w-4 h-4 mr-2" />
+          {t('api.send', 'Send')}
+        </Button>
+      )}
     </div>
   );
 };
