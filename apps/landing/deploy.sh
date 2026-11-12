@@ -45,9 +45,7 @@ cleanup() {
 trap cleanup EXIT
 
 has_checkout_env() {
-  [[ -n "${VITE_LEMON_CHECKOUT_URL:-}" ]] ||
-    [[ -n "${VITE_LEMON_MONTHLY_CHECKOUT_URL:-}" ]] ||
-    [[ -n "${VITE_LEMON_YEARLY_CHECKOUT_URL:-}" ]]
+  [[ -n "${VITE_LEMON_INDIVIDUAL_CHECKOUT_URL:-}" ]]
 }
 
 load_remote_checkout_env() {
@@ -62,9 +60,7 @@ import shlex
 from pathlib import Path
 
 allowed = {
-    "VITE_LEMON_CHECKOUT_URL",
-    "VITE_LEMON_MONTHLY_CHECKOUT_URL",
-    "VITE_LEMON_YEARLY_CHECKOUT_URL",
+    "VITE_LEMON_INDIVIDUAL_CHECKOUT_URL",
 }
 
 env_path = Path(os.environ["REMOTE_PATH"]) / ".env"
@@ -102,7 +98,7 @@ ENDSSH
   fi
 
   if [[ "$REQUIRE_CHECKOUT_ENV" == "1" ]] && ! has_checkout_env; then
-    error "Missing VITE_LEMON_CHECKOUT_URL or plan-specific checkout URLs for production deploy."
+    error "Missing VITE_LEMON_INDIVIDUAL_CHECKOUT_URL for production deploy."
   fi
 }
 

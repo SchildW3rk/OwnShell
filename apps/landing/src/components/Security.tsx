@@ -1,4 +1,4 @@
-import { Shield, Lock, HardDrive, WifiOff, EyeOff } from 'lucide-react';
+import { Shield, Lock, HardDrive, WifiOff, Github } from 'lucide-react';
 import { motion } from 'motion/react';
 import * as m from '../paraglide/messages';
 
@@ -15,7 +15,7 @@ export function Security() {
       description: m.security_local_desc(),
     },
     {
-      icon: EyeOff,
+      icon: Github,
       title: m.security_opensource_title(),
       description: m.security_opensource_desc(),
     },

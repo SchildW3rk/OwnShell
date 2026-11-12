@@ -1,40 +1,42 @@
 # OwnShell
 
-OwnShell is a local-first macOS DevOps workspace for developers, sysadmins and solo operators who manage servers and infrastructure without handing workspace data to a cloud dashboard.
+OwnShell is an open-source (MIT), local-first macOS workspace for your servers, databases and APIs. It is built for freelancers and small teams who run their own servers and manage several client environments.
 
 ## Product Summary
 
-OwnShell combines native OpenSSH terminals, SFTP, S3-compatible storage, S3 CORS editing, Docker tools, database clients, REST API requests and an encrypted local vault in one desktop app.
+OwnShell reduces context switches: open a project or environment, SSH into the server, call an internal API through that server, then check the result in the database or in Docker, all in one desktop app. Workspace data stays on your device.
 
 ## Key Capabilities
 
-- Native OpenSSH terminal with panes, SSH keys, jump hosts and tunnel quick-start.
-- SFTP file browser for remote server files.
-- S3 browser for AWS S3 and MinIO-compatible buckets.
-- S3 CORS configuration editor for bucket rules.
-- Docker container, logs and compose tools over SSH.
-- Database client for Postgres, MySQL, Redis and MongoDB.
-- REST API client with collections, headers, authentication, request bodies and environments.
-- Local encrypted vault for credentials and `.env` management.
-- Privacy-first: no tracking, no analytics and no cloud sync for workspace data.
+- Native OpenSSH terminals with panes, SSH keys, jump hosts and SSH tunnels.
+- Dual-pane SFTP file browser for remote server files.
+- S3 browser for AWS S3 and MinIO-compatible buckets, with a bucket CORS editor.
+- Docker containers, logs, shell access and compose projects.
+- Database client for Postgres, MySQL, SQLite, Redis and MongoDB.
+- REST API client with collections, environments from the vault and requests routed through an SSH host.
+- Encrypted local vault for credentials and `.env` management.
+- Privacy-first: no account, no tracking, no analytics, no telemetry and no cloud sync for workspace data.
+
+## Planned (not available yet)
+
+- Team Vaults: self-hosted, end-to-end encrypted sync for teams.
+- Business and team licenses.
+
+## Open Source and Licensing
+
+- Source code: MIT license, https://github.com/SchildW3rk/OwnShell
+- Personal: official downloads are free for private, non-commercial use. All features, no account.
+- Commercial / Individual: EUR 79 per year including VAT, for work-related or revenue-generating use. One person, up to 3 devices, updates for 12 months. Every version released during the license year can be used forever.
+- Every download includes a 30-day free evaluation from first launch, without account or payment data.
+- Payments are processed by Lemon Squeezy as merchant of record.
 
 ## Common Search Intents
 
+- Open-source SSH client with SFTP, Docker and database tools.
+- Local-first DevOps workspace for freelancers.
+- REST API client that can reach internal APIs through an SSH host.
 - S3 CORS editor for macOS.
-- S3 browser with CORS configuration.
-- REST API client with local environments.
-- OpenSSH desktop client with SFTP and Docker tools.
-- Local-first DevOps workspace.
 - Termius alternative with S3, database and API tools.
-
-## Pricing
-
-Launch pricing is available for the first 100 active users:
-
-- Monthly: EUR 18 per month, or EUR 16.20 for the first paid month with launch code CZOTU1MG.
-- Annual: EUR 180 per year, or EUR 162.00 for the first paid year with launch code CZOTU1MG.
-
-All plans include a 14-day free trial. The launch code is limited to the first 100 redemptions.
 
 ## Canonical URLs
 
@@ -42,6 +44,8 @@ All plans include a 14-day free trial. The launch code is limited to the first 1
 - Features: https://ownshell.app/#features
 - Security: https://ownshell.app/#security
 - Pricing: https://ownshell.app/#pricing
+- FAQ: https://ownshell.app/#faq
+- Source code: https://github.com/SchildW3rk/OwnShell
 - Privacy: https://ownshell.app/privacy
 - Terms: https://ownshell.app/terms
 - Legal notice: https://ownshell.app/impressum

@@ -1,6 +1,7 @@
-import { Globe, Terminal } from 'lucide-react';
+import { Github, Globe, Terminal } from 'lucide-react';
 import * as m from '../paraglide/messages';
 import { getLocale, setLocale } from '../paraglide/runtime';
+import { GITHUB_URL } from '../links';
 
 export function Header() {
   const currentLocale = getLocale();
@@ -44,10 +45,23 @@ export function Header() {
             >
               {m.nav_pricing()}
             </a>
+            <a href="#faq" className="text-sm text-[#969696] hover:text-white transition-colors">
+              {m.nav_faq()}
+            </a>
           </nav>
 
           {/* Actions */}
           <div className="flex items-center gap-3">
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2 py-1.5 text-sm text-[#969696] hover:text-white transition-colors"
+              aria-label={m.nav_github()}
+            >
+              <Github className="w-4 h-4" />
+              <span className="hidden sm:inline font-medium">{m.nav_github()}</span>
+            </a>
             {/* Language Switcher */}
             <button
               type="button"

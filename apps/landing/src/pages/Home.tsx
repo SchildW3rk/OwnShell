@@ -3,6 +3,7 @@ import { Hero } from '../components/Hero';
 import { Features } from '../components/Features';
 import { Security } from '../components/Security';
 import { Pricing } from '../components/Pricing';
+import { Faq } from '../components/Faq';
 import { Footer } from '../components/Footer';
 
 export function Home() {
@@ -14,6 +15,7 @@ export function Home() {
         <Features />
         <Security />
         <Pricing />
+        <Faq />
       </main>
       <Footer />
     </div>

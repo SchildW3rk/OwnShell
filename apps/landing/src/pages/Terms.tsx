@@ -1,6 +1,8 @@
 import { LegalLayout } from '../components/LegalLayout';
 import * as m from '../paraglide/messages';
 
+// TODO: legal review required: license model, fallback right, evaluation, payment, refund and
+// changes sections were rewritten for the open-source + commercial license model.
 export function Terms() {
   return (
     <LegalLayout title={m.legal_terms_title()}>
@@ -9,6 +11,11 @@ export function Terms() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_license_title()}</h2>
         <p className="text-[#969696] leading-relaxed">{m.legal_terms_license_text()}</p>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_fallback_title()}</h2>
+        <p className="text-[#969696] leading-relaxed">{m.legal_terms_fallback_text()}</p>
       </section>
 
       <section className="mb-8">

@@ -7,12 +7,14 @@ import {
   Container,
   Database,
   Download,
+  Github,
   KeyRound,
   Terminal,
   Zap,
 } from 'lucide-react';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import * as m from '../paraglide/messages';
+import { GITHUB_URL } from '../links';
 
 declare const __OWNSHELL_DESKTOP_VERSION__: string;
 
@@ -147,7 +149,11 @@ function HeroToolBlock({ block, index }: { block: ToolBlock; index: number }) {
       animate={{
         opacity: 0.72,
         y: [0, -14, 0],
-        rotate: [`${block.rotate}deg`, `${block.rotate + (index % 2 === 0 ? 2 : -2)}deg`, `${block.rotate}deg`],
+        rotate: [
+          `${block.rotate}deg`,
+          `${block.rotate + (index % 2 === 0 ? 2 : -2)}deg`,
+          `${block.rotate}deg`,
+        ],
       }}
       transition={{
         opacity: { duration: 0.65, delay: 0.18 + index * 0.04 },
@@ -209,7 +215,10 @@ export function Hero() {
   }, []);
 
   return (
-    <section className="relative min-h-screen overflow-hidden border-b border-[#2b2b2e] px-4 pt-28 pb-16">
+    <section
+      id="download"
+      className="relative min-h-screen overflow-hidden border-b border-[#2b2b2e] px-4 pt-28 pb-16"
+    >
       <div className="hero-bg" aria-hidden="true">
         <div className="hero-bg__grid" />
         <div className="hero-bg__glow hero-bg__glow--left" />
@@ -230,7 +239,7 @@ export function Hero() {
         </MotionIn>
 
         <MotionIn delay={0.08}>
-          <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-7xl">
+          <h1 className="mx-auto max-w-4xl text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">
             {m.hero_title_1()} <span className="text-[#06b6d4]">{m.hero_title_2()}</span>
           </h1>
         </MotionIn>
@@ -242,49 +251,63 @@ export function Hero() {
         </MotionIn>
 
         <MotionIn delay={0.24} className="mt-9 flex flex-col items-center gap-4">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMacDropdown(!showMacDropdown)}
-              onBlur={() => setTimeout(() => setShowMacDropdown(false), 150)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#06b6d4] px-6 py-3 font-semibold text-[#061014] transition-colors hover:bg-[#38d5ee] sm:w-auto"
-            >
-              <Apple className="h-5 w-5" />
-              macOS
-              <ChevronDown className="h-4 w-4" />
-            </button>
+          <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowMacDropdown(!showMacDropdown)}
+                onBlur={() => setTimeout(() => setShowMacDropdown(false), 150)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#06b6d4] px-6 py-3 font-semibold text-[#061014] transition-colors hover:bg-[#38d5ee] sm:w-auto"
+              >
+                <Apple className="h-5 w-5" />
+                macOS
+                <ChevronDown className="h-4 w-4" />
+              </button>
 
-            {showMacDropdown && (
-              <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-[#3E3E42] bg-[#171717] shadow-2xl">
-                <a
-                  href={release.downloads['mac-arm64']}
-                  className={`flex items-center gap-2 px-4 py-3 text-[#d6d6d6] transition-colors hover:bg-[#252526] ${
-                    release.downloads['mac-x64'] ? 'rounded-t-lg' : 'rounded-lg'
-                  }`}
-                >
-                  <Download className="h-4 w-4" />
-                  Apple Silicon
-                </a>
-                {release.downloads['mac-x64'] && (
+              {showMacDropdown && (
+                <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-[#3E3E42] bg-[#171717] shadow-2xl">
                   <a
-                    href={release.downloads['mac-x64']}
-                    className="flex items-center gap-2 rounded-b-lg border-t border-[#3E3E42] px-4 py-3 text-[#d6d6d6] transition-colors hover:bg-[#252526]"
+                    href={release.downloads['mac-arm64']}
+                    className={`flex items-center gap-2 px-4 py-3 text-[#d6d6d6] transition-colors hover:bg-[#252526] ${
+                      release.downloads['mac-x64'] ? 'rounded-t-lg' : 'rounded-lg'
+                    }`}
                   >
                     <Download className="h-4 w-4" />
-                    Intel
+                    Apple Silicon
                   </a>
-                )}
-              </div>
-            )}
+                  {release.downloads['mac-x64'] && (
+                    <a
+                      href={release.downloads['mac-x64']}
+                      className="flex items-center gap-2 rounded-b-lg border-t border-[#3E3E42] px-4 py-3 text-[#d6d6d6] transition-colors hover:bg-[#252526]"
+                    >
+                      <Download className="h-4 w-4" />
+                      Intel
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-6 py-3 font-semibold text-[#e6e6e6] transition-colors hover:border-[#06b6d4]/60 hover:text-white"
+            >
+              <Github className="h-5 w-5" />
+              {m.hero_cta_github()}
+            </a>
           </div>
 
           <p className="text-sm text-[#969696]">
-            v{release.version} - Apple Silicon
+            v{release.version} · {m.hero_platform()}
             {release.downloads['mac-x64'] ? ' & Intel' : ''}
           </p>
         </MotionIn>
 
-        <MotionIn delay={0.32} className="mt-14 grid w-full max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <MotionIn
+          delay={0.32}
+          className="mt-14 grid w-full max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+        >
           {heroStats.map((stat) => (
             <div
               key={stat.label}

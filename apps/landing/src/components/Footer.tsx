@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageCircle, Download, Terminal } from 'lucide-react';
+import { ShieldCheck, MessageCircle, Download, Terminal, Github, Scale } from 'lucide-react';
 import * as m from '../paraglide/messages';
+import { GITHUB_URL } from '../links';
 
 const DISCORD_INVITE = 'https://discord.gg/Hz8M8Fq5ac';
 
@@ -24,6 +25,10 @@ export function Footer() {
               <ShieldCheck className="w-3.5 h-3.5" />
               {m.footer_privacy_badge()}
             </div>
+            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/15 text-[#d6d6d6] text-xs font-medium">
+              <Scale className="w-3.5 h-3.5" />
+              {m.opensource_badge()}
+            </div>
           </div>
 
           {/* Product */}
@@ -31,18 +36,23 @@ export function Footer() {
             <h2 className="text-sm font-semibold text-white mb-4">{m.footer_product()}</h2>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#features" className="text-[#969696] hover:text-white transition-colors">
+                <a href="/#features" className="text-[#969696] hover:text-white transition-colors">
                   {m.nav_features()}
                 </a>
               </li>
               <li>
-                <a href="#security" className="text-[#969696] hover:text-white transition-colors">
+                <a href="/#security" className="text-[#969696] hover:text-white transition-colors">
                   {m.nav_security()}
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="text-[#969696] hover:text-white transition-colors">
+                <a href="/#pricing" className="text-[#969696] hover:text-white transition-colors">
                   {m.nav_pricing()}
+                </a>
+              </li>
+              <li>
+                <a href="/#faq" className="text-[#969696] hover:text-white transition-colors">
+                  {m.nav_faq()}
                 </a>
               </li>
               <li>
@@ -65,6 +75,17 @@ export function Footer() {
           <div>
             <h2 className="text-sm font-semibold text-white mb-4">{m.footer_resources()}</h2>
             <ul className="space-y-2 text-sm">
+              <li>
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[#969696] hover:text-white transition-colors"
+                >
+                  <Github className="w-3.5 h-3.5" />
+                  {m.footer_source()}
+                </a>
+              </li>
               <li>
                 <a
                   href={DISCORD_INVITE}

@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OwnShell - S3 CORS, API Client & Native OpenSSH Workspace</title>
+    <title>OwnShell - Your servers, databases and APIs. One local workspace.</title>
     <meta
       name="description"
-      content="OwnShell is a local-first macOS DevOps workspace with native OpenSSH terminals, SFTP, S3 browser with CORS editing, Docker tools, database explorer, REST API client and encrypted secrets."
+      content="OwnShell is an open-source (MIT), local-first macOS workspace for your servers, databases and APIs: native OpenSSH terminals, SSH tunnels, SFTP, S3 with CORS editing, Docker, a database client, a REST API client and an encrypted vault. Free for personal use, 79 EUR per year for commercial use."
     />
     <meta
       name="keywords"
-      content="S3 CORS editor, S3 browser, API client, REST client, OpenSSH terminal, SSH client, SFTP client, Docker GUI, database client, Redis client, MongoDB client, Postgres client, local-first DevOps, Termius alternative"
+      content="S3 CORS editor, S3 browser, API client, REST client, OpenSSH terminal, SSH client, SFTP client, Docker GUI, database client, Redis client, MongoDB client, Postgres client, local-first DevOps, open source SSH client, Termius alternative"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="author" content="Rene Schober" />
@@ -21,10 +21,10 @@
     <link rel="apple-touch-icon" href="/favicon.png" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="OwnShell - S3 CORS, API Client & Native OpenSSH Workspace" />
+    <meta property="og:title" content="OwnShell - Your servers, databases and APIs. One local workspace." />
     <meta
       property="og:description"
-      content="Native OpenSSH, SFTP, S3 browser with CORS editing, Docker, databases, REST API requests and encrypted secrets in one privacy-first desktop app."
+      content="Open-source (MIT), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault. Free for personal use."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ownshell.app" />
@@ -34,10 +34,10 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="OwnShell - S3 CORS, API Client & Native OpenSSH Workspace" />
+    <meta name="twitter:title" content="OwnShell - Your servers, databases and APIs. One local workspace." />
     <meta
       name="twitter:description"
-      content="Native OpenSSH, SFTP, S3 browser with CORS editing, Docker, databases, REST API requests and encrypted secrets in one privacy-first desktop app."
+      content="Open-source (MIT), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault. Free for personal use."
     />
     <meta name="twitter:image" content="https://ownshell.app/favicon.png" />
 
@@ -52,7 +52,7 @@
             "@id": "https://ownshell.app/#website",
             "url": "https://ownshell.app/",
             "name": "OwnShell",
-            "description": "Local-first DevOps workspace for native OpenSSH, SFTP, S3 CORS editing, Docker, databases, REST API requests and encrypted secrets.",
+            "description": "Open-source, local-first workspace for your servers, databases and APIs: native OpenSSH, SFTP, S3 CORS editing, Docker, databases, REST API requests and encrypted secrets.",
             "inLanguage": ["en", "de"]
           },
           {
@@ -64,15 +64,17 @@
             "applicationSubCategory": "DevOps workspace",
             "operatingSystem": "macOS",
             "softwareVersion": "__OWNSHELL_DESKTOP_VERSION__",
-            "description": "OwnShell is a local-first macOS desktop app for native OpenSSH terminals, SSH tunneling, SFTP, S3-compatible storage with CORS editing, Docker, databases, REST API requests and encrypted local secrets.",
+            "description": "OwnShell is an open-source (MIT), local-first macOS desktop app for native OpenSSH terminals, SSH tunneling, SFTP, S3-compatible storage with CORS editing, Docker, databases, REST API requests and encrypted local secrets.",
+            "license": "https://opensource.org/licenses/MIT",
+            "sameAs": ["https://github.com/SchildW3rk/OwnShell"],
             "featureList": [
               "Native OpenSSH terminal with panes",
               "SSH key management and jump host support",
-              "SFTP file browser",
+              "Dual-pane SFTP file browser",
               "S3 browser for AWS S3 and MinIO",
               "S3 CORS configuration editor",
-              "REST API client with collections and environments",
-              "Database client for Postgres, MySQL, Redis and MongoDB",
+              "REST API client with collections, vault environments and requests through an SSH host",
+              "Database client for Postgres, MySQL, SQLite, Redis and MongoDB",
               "Docker container, logs and compose tools",
               "Encrypted local vault for credentials and environment variables",
               "No tracking and no telemetry"
@@ -80,16 +82,16 @@
             "offers": [
               {
                 "@type": "Offer",
-                "name": "OwnShell Monthly",
-                "price": "18",
+                "name": "OwnShell Personal (private use)",
+                "price": "0",
                 "priceCurrency": "EUR",
                 "availability": "https://schema.org/InStock",
                 "url": "https://ownshell.app/#pricing"
               },
               {
                 "@type": "Offer",
-                "name": "OwnShell Annual",
-                "price": "180",
+                "name": "OwnShell Commercial / Individual (per person, per year, incl. VAT)",
+                "price": "79",
                 "priceCurrency": "EUR",
                 "availability": "https://schema.org/InStock",
                 "url": "https://ownshell.app/#pricing"
@@ -104,30 +106,12 @@
             "@type": "FAQPage",
             "@id": "https://ownshell.app/#faq",
             "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "What is OwnShell?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "OwnShell is a local-first macOS DevOps workspace that combines native OpenSSH terminals, SFTP, S3 browser and CORS editing, Docker, database tools, REST API requests and encrypted secrets."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Can OwnShell edit S3 CORS settings?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Yes. OwnShell includes an S3-compatible browser for AWS S3 and MinIO with bucket CORS configuration editing."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Does OwnShell include an API client?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "Yes. OwnShell includes a REST API client with saved requests, collections, headers, authentication, request bodies and local vault environments."
-                }
-              }
+              {"@type": "Question", "name": "What counts as commercial use?", "acceptedAnswer": {"@type": "Answer", "text": "Any use connected to your work or income: client projects, your job, freelance work, or running servers for a business. Private projects, learning and your own homelab are personal use."}},
+              {"@type": "Question", "name": "Can I build OwnShell myself from source?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The source code is MIT licensed and available on GitHub. The license model applies to the official signed downloads; a commercial license is how you support development if you use OwnShell for work."}},
+              {"@type": "Question", "name": "What happens when my license year ends?", "acceptedAnswer": {"@type": "Answer", "text": "You keep using every version released during your license period, forever. Renew when you want newer versions."}},
+              {"@type": "Question", "name": "Do I need an account?", "acceptedAnswer": {"@type": "Answer", "text": "No. OwnShell works without an account, for the evaluation, for personal use and with a commercial license key."}},
+              {"@type": "Question", "name": "Is my data sent anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "OwnShell is local-first and has no telemetry. Hosts, keys, vault entries and saved requests are stored encrypted on your device and are not sent to us. Data only goes to targets you connect to yourself (your servers, databases, buckets, APIs). The app only talks to us to check for updates and – if you activate a commercial license – to verify that license."}},
+              {"@type": "Question", "name": "Can I get a refund?", "acceptedAnswer": {"@type": "Answer", "text": "Within 14 days of your purchase we voluntarily refund the full amount, processed through Lemon Squeezy. Your statutory right of withdrawal as a consumer is not affected; you receive the withdrawal information in the Lemon Squeezy checkout."}}
             ]
           }
         ]
