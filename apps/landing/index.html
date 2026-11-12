@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OwnShell - S3 CORS, API Client & Native OpenSSH Workspace</title>
+    <meta
+      name="description"
+      content="OwnShell is a local-first macOS DevOps workspace with native OpenSSH terminals, SFTP, S3 browser with CORS editing, Docker tools, database explorer, REST API client and encrypted secrets."
+    />
+    <meta
+      name="keywords"
+      content="S3 CORS editor, S3 browser, API client, REST client, OpenSSH terminal, SSH client, SFTP client, Docker GUI, database client, Redis client, MongoDB client, Postgres client, local-first DevOps, Termius alternative"
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="Rene Schober" />
+    <link rel="canonical" href="https://ownshell.app/" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="OwnShell - S3 CORS, API Client & Native OpenSSH Workspace" />
+    <meta
+      property="og:description"
+      content="Native OpenSSH, SFTP, S3 browser with CORS editing, Docker, databases, REST API requests and encrypted secrets in one privacy-first desktop app."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ownshell.app" />
+    <meta property="og:image" content="https://ownshell.app/favicon.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="OwnShell - S3 CORS, API Client & Native OpenSSH Workspace" />
+    <meta
+      name="twitter:description"
+      content="Native OpenSSH, SFTP, S3 browser with CORS editing, Docker, databases, REST API requests and encrypted secrets in one privacy-first desktop app."
+    />
+    <meta name="twitter:image" content="https://ownshell.app/favicon.png" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#0a0a0f" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://ownshell.app/#website",
+            "url": "https://ownshell.app/",
+            "name": "OwnShell",
+            "description": "Local-first DevOps workspace for native OpenSSH, SFTP, S3 CORS editing, Docker, databases, REST API requests and encrypted secrets.",
+            "inLanguage": ["en", "de"]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://ownshell.app/#software",
+            "name": "OwnShell",
+            "url": "https://ownshell.app/",
+            "applicationCategory": "DeveloperApplication",
+            "applicationSubCategory": "DevOps workspace",
+            "operatingSystem": "macOS",
+            "softwareVersion": "__OWNSHELL_DESKTOP_VERSION__",
+            "description": "OwnShell is a local-first macOS desktop app for native OpenSSH terminals, SSH tunneling, SFTP, S3-compatible storage with CORS editing, Docker, databases, REST API requests and encrypted local secrets.",
+            "featureList": [
+              "Native OpenSSH terminal with panes",
+              "SSH key management and jump host support",
+              "SFTP file browser",
+              "S3 browser for AWS S3 and MinIO",
+              "S3 CORS configuration editor",
+              "REST API client with collections and environments",
+              "Database client for Postgres, MySQL, Redis and MongoDB",
+              "Docker container, logs and compose tools",
+              "Encrypted local vault for credentials and environment variables",
+              "No tracking and no telemetry"
+            ],
+            "offers": [
+              {
+                "@type": "Offer",
+                "name": "OwnShell Monthly",
+                "price": "18",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/InStock",
+                "url": "https://ownshell.app/#pricing"
+              },
+              {
+                "@type": "Offer",
+                "name": "OwnShell Annual",
+                "price": "180",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/InStock",
+                "url": "https://ownshell.app/#pricing"
+              }
+            ],
+            "publisher": {
+              "@type": "Person",
+              "name": "Rene Schober"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://ownshell.app/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is OwnShell?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "OwnShell is a local-first macOS DevOps workspace that combines native OpenSSH terminals, SFTP, S3 browser and CORS editing, Docker, database tools, REST API requests and encrypted secrets."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can OwnShell edit S3 CORS settings?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. OwnShell includes an S3-compatible browser for AWS S3 and MinIO with bucket CORS configuration editing."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does OwnShell include an API client?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. OwnShell includes a REST API client with saved requests, collections, headers, authentication, request bodies and local vault environments."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

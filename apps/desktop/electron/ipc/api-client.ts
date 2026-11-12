@@ -1,0 +1,21 @@
+/**
+ * API Client IPC Handlers (v1.18.0)
+ *
+ * Collection, request, and execution handlers live in focused modules. This
+ * file stays as the registration boundary used by the Electron main process.
+ */
+
+import type { Database } from '@ownshell/core';
+import type { Kysely } from 'kysely';
+import { logger } from '../logger';
+import { registerApiCollectionHandlers } from './api-client/collections';
+import { registerApiExecutionHandlers } from './api-client/execute';
+import { registerApiRequestHandlers } from './api-client/requests';
+
+export function setupApiClientHandlers(db: Kysely<Database>): void {
+  registerApiCollectionHandlers(db);
+  registerApiRequestHandlers(db);
+  registerApiExecutionHandlers(db);
+
+  logger.info('API Client IPC handlers registered successfully');
+}

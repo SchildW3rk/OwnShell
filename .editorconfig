@@ -1,0 +1,79 @@
+# EditorConfig helps maintain consistent coding styles
+# across different editors and IDEs
+# https://editorconfig.org
+
+root = true
+
+# ============================================
+# All Files
+# ============================================
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# ============================================
+# Code Files
+# ============================================
+[*.{ts,tsx,js,jsx,json,css,scss,html}]
+indent_style = space
+indent_size = 2
+max_line_length = 100
+
+# ============================================
+# TypeScript / JavaScript
+# ============================================
+[*.{ts,tsx,js,jsx}]
+indent_style = space
+indent_size = 2
+quote_type = single
+
+# ============================================
+# JSON Files
+# ============================================
+[*.json]
+indent_style = space
+indent_size = 2
+insert_final_newline = false
+
+# ============================================
+# YAML Files
+# ============================================
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# ============================================
+# Markdown Files
+# ============================================
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# ============================================
+# Shell Scripts
+# ============================================
+[*.{sh,bash}]
+indent_style = space
+indent_size = 2
+
+# ============================================
+# Configuration Files
+# ============================================
+[{package.json,.eslintrc,.prettierrc}]
+indent_style = space
+indent_size = 2
+
+# ============================================
+# Makefile
+# ============================================
+[Makefile]
+indent_style = tab
+
+# ============================================
+# Python (if needed)
+# ============================================
+[*.py]
+indent_style = space
+indent_size = 4

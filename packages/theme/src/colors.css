@@ -1,0 +1,196 @@
+/**
+ * OwnShell Design Tokens
+ * 
+ * Color values are defined as HSL components (without hsl())
+ * to enable opacity modifiers like bg-primary/50
+ * 
+ * Usage: hsl(var(--primary)) or with opacity: hsl(var(--primary) / 0.5)
+ */
+
+:root {
+  /* ========================================
+     LIGHT MODE (Default)
+     ======================================== */
+
+  /* --- Backgrounds --- */
+  --background: 0 0% 100%; /* #ffffff - Main background */
+  --foreground: 240 10% 4%; /* #0a0a0f - Main text */
+
+  --surface: 0 0% 98%; /* #fafafa - Panels, headers, elevated surfaces */
+  --surface-foreground: 240 10% 4%; /* Text on surface */
+
+  --card: 0 0% 100%; /* #ffffff - Card/Panel background */
+  --card-foreground: 240 10% 4%; /* Text on cards */
+
+  --popover: 0 0% 100%; /* Dropdown/Popover background */
+  --popover-foreground: 240 10% 4%; /* Text in popovers */
+
+  /* --- Primary (Brand Cyan) --- */
+  --primary: 187 92% 43%; /* #06b6d4 - Primary actions */
+  --primary-foreground: 0 0% 100%; /* White text on primary */
+
+  /* --- Secondary --- */
+  --secondary: 240 5% 96%; /* #f4f4f5 - Secondary backgrounds */
+  --secondary-foreground: 240 6% 10%; /* Text on secondary */
+
+  /* --- Muted --- */
+  --muted: 240 5% 96%; /* #f4f4f5 - Muted backgrounds */
+  --muted-foreground: 240 4% 46%; /* #71717a - Muted text */
+
+  /* --- Accent (VS Code Teal) --- */
+  --accent: 172 66% 50%; /* #4ec9b0 - Highlights, links */
+  --accent-foreground: 240 6% 10%; /* Text on accent */
+
+  /* --- Destructive --- */
+  --destructive: 12 76% 70%; /* #f48771 - Errors, delete */
+  --destructive-foreground: 0 0% 100%; /* White text on destructive */
+
+  /* --- Success --- */
+  --success: 152 76% 40%; /* #0dbc79 - Success states */
+  --success-foreground: 0 0% 100%; /* White text on success */
+
+  /* --- Warning --- */
+  --warning: 38 92% 50%; /* #f59e0b - Warnings */
+  --warning-foreground: 0 0% 100%; /* White text on warning */
+
+  /* --- Info --- */
+  --info: 199 89% 48%; /* #0ea5e9 - Info states */
+  --info-foreground: 0 0% 100%; /* White text on info */
+
+  /* --- Border & Input --- */
+  --border: 240 6% 90%; /* #e4e4e7 - Default borders */
+  --input: 240 6% 90%; /* Input borders */
+  --ring: 187 92% 43%; /* Focus ring (primary) */
+
+  /* --- Sidebar --- */
+  --sidebar: 240 6% 97%; /* #f7f7f8 - Sidebar background */
+  --sidebar-foreground: 240 6% 10%; /* Sidebar text */
+  --sidebar-muted: 240 4% 46%; /* Sidebar muted text */
+  --sidebar-accent: 187 92% 43%; /* Sidebar active/accent */
+  --sidebar-border: 240 6% 90%; /* Sidebar borders */
+
+  /* --- Shell UI Surfaces --- */
+  --shell-rail: 240 6% 97%; /* Vertical icon rail */
+  --shell-rail-foreground: 240 6% 18%;
+  --shell-rail-muted: 240 4% 46%;
+  --shell-rail-hover: 240 5% 93%;
+  --shell-rail-active: 187 92% 43%;
+  --shell-rail-active-foreground: 0 0% 100%;
+  --shell-rail-border: 240 6% 88%;
+
+  --shell-panel: 0 0% 100%; /* Context sidebars and tool panels */
+  --shell-panel-foreground: 240 10% 4%;
+  --shell-panel-muted: 240 4% 46%;
+  --shell-panel-hover: 240 5% 96%;
+  --shell-panel-active: 187 92% 43%;
+  --shell-panel-border: 240 6% 88%;
+
+  --shell-control: 240 5% 96%;
+  --shell-control-foreground: 240 6% 10%;
+  --shell-control-hover: 240 5% 92%;
+  --shell-control-active: 187 92% 43%;
+  --shell-control-active-foreground: 0 0% 100%;
+  --shell-control-border: 240 6% 88%;
+  --shell-focus-soft: 187 92% 43%;
+
+  /* --- Chart Colors (for data visualization) --- */
+  --chart-1: 187 92% 43%; /* Cyan */
+  --chart-2: 172 66% 50%; /* Teal */
+  --chart-3: 152 76% 40%; /* Green */
+  --chart-4: 38 92% 50%; /* Orange */
+  --chart-5: 12 76% 70%; /* Red */
+}
+
+[data-theme='dark'] {
+  /* ========================================
+     DARK MODE - Unified Dark Design
+     ======================================== */
+
+  /* --- Backgrounds (cool dark shell) --- */
+  --background: 216 22% 6%; /* #0c0f13 - Main background */
+  --foreground: 214 18% 82%; /* Main text */
+
+  --surface: 216 22% 7%; /* Elevated app surfaces */
+  --surface-foreground: 214 18% 82%; /* Text on surface */
+
+  --card: 216 22% 7%; /* Same shell family */
+  --card-foreground: 214 18% 82%; /* Text on cards */
+
+  --popover: 216 22% 7%; /* Opaque dark popovers */
+  --popover-foreground: 214 18% 82%; /* Text in popovers */
+
+  /* --- Primary (Brand Cyan - same) --- */
+  --primary: 187 92% 43%; /* #06b6d4 */
+  --primary-foreground: 0 0% 100%;
+
+  /* --- Secondary (subtle contrast for inputs) --- */
+  --secondary: 216 18% 10%; /* Subtle secondary surface */
+  --secondary-foreground: 214 16% 76%; /* Text on secondary */
+
+  /* --- Muted --- */
+  --muted: 216 18% 12%; /* Muted dark surface */
+  --muted-foreground: 217 11% 58%; /* Muted text */
+
+  /* --- Accent (VS Code Teal - same) --- */
+  --accent: 172 66% 50%; /* #4ec9b0 */
+  --accent-foreground: 214 18% 82%;
+
+  /* --- Destructive (same) --- */
+  --destructive: 12 76% 70%; /* #f48771 */
+  --destructive-foreground: 0 0% 100%;
+
+  /* --- Success (same) --- */
+  --success: 152 76% 40%; /* #0dbc79 */
+  --success-foreground: 0 0% 100%;
+
+  /* --- Warning (same) --- */
+  --warning: 38 92% 50%; /* #f59e0b */
+  --warning-foreground: 0 0% 100%;
+
+  /* --- Info (same) --- */
+  --info: 199 89% 48%; /* #0ea5e9 */
+  --info-foreground: 0 0% 100%;
+
+  /* --- Border & Input --- */
+  --border: 215 18% 18%; /* Softer dark borders */
+  --input: 215 18% 18%; /* Input borders */
+  --ring: 187 92% 43%; /* Focus ring (primary) */
+
+  /* --- Sidebar (unified with background) --- */
+  --sidebar: 216 24% 7%; /* Same family as shell rail */
+  --sidebar-foreground: 214 18% 82%; /* Sidebar text */
+  --sidebar-muted: 217 11% 58%; /* Sidebar muted text */
+  --sidebar-accent: 187 92% 43%; /* Sidebar active/accent */
+  --sidebar-border: 240 6% 18%; /* #2a2a30 - Subtle border */
+
+  /* --- Shell UI Surfaces --- */
+  --shell-rail: 216 24% 7%; /* #0d1219 - Vertical icon rail */
+  --shell-rail-foreground: 214 18% 78%;
+  --shell-rail-muted: 217 11% 53%;
+  --shell-rail-hover: 216 21% 11%;
+  --shell-rail-active: 187 72% 58%;
+  --shell-rail-active-foreground: 220 18% 8%;
+  --shell-rail-border: 215 18% 15%;
+
+  --shell-panel: 216 22% 8%; /* Context sidebars and tool panels */
+  --shell-panel-foreground: 214 18% 82%;
+  --shell-panel-muted: 217 11% 58%;
+  --shell-panel-hover: 216 18% 12%;
+  --shell-panel-active: 187 72% 58%;
+  --shell-panel-border: 215 18% 16%;
+
+  --shell-control: 216 18% 10%;
+  --shell-control-foreground: 214 18% 82%;
+  --shell-control-hover: 216 18% 14%;
+  --shell-control-active: 187 72% 58%;
+  --shell-control-active-foreground: 220 18% 8%;
+  --shell-control-border: 215 18% 18%;
+  --shell-focus-soft: 187 72% 58%;
+
+  /* --- Chart Colors (same) --- */
+  --chart-1: 187 92% 43%;
+  --chart-2: 172 66% 50%;
+  --chart-3: 152 76% 40%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 12 76% 70%;
+}

@@ -1,0 +1,35 @@
+name = "ownshell-license-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-17"
+workers_dev = true
+routes = [
+  { pattern = "license.ownshell.app", custom_domain = true },
+]
+
+[vars]
+ENTITLEMENT_ISSUER = "ownshell-license-api"
+ENTITLEMENT_AUDIENCE = "ownshell-desktop"
+ENTITLEMENT_KEY_ID = "ownshell-license-2026-06"
+ENTITLEMENT_TTL_SECONDS = "604800"
+
+# Workers Rate Limiting. Keys are "<action>:<client ip>:<device id>".
+# namespace_id must be unique per Cloudflare account.
+[[ratelimits]]
+name = "ACTION_DEVICE_RATE_LIMITER" # activate/deactivate per device
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "ACTION_IP_RATE_LIMITER" # activate/deactivate per IP
+namespace_id = "1002"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "REFRESH_DEVICE_RATE_LIMITER"
+namespace_id = "1003"
+simple = { limit = 60, period = 60 }
+
+[[ratelimits]]
+name = "REFRESH_IP_RATE_LIMITER"
+namespace_id = "1004"
+simple = { limit = 180, period = 60 }

@@ -1,0 +1,113 @@
+/**
+ * Tailwind CSS v4 Theme Mapping
+ * 
+ * Maps CSS variables from colors.css to Tailwind utility classes.
+ * Using @theme inline ensures the CSS variable VALUES are used directly,
+ * enabling runtime theme switching.
+ * 
+ * Generated classes:
+ * - bg-primary, text-primary, border-primary, etc.
+ * - bg-card, text-card-foreground, etc.
+ */
+
+@theme inline {
+  /* === Backgrounds === */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-surface: hsl(var(--surface));
+  --color-surface-foreground: hsl(var(--surface-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  /* === Primary === */
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  /* === Secondary === */
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  /* === Muted === */
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  /* === Accent === */
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  /* === Destructive === */
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  /* === Success === */
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  /* === Warning === */
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  /* === Info === */
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  /* === Border & Input === */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* === Sidebar === */
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-muted: hsl(var(--sidebar-muted));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+
+  /* === Shell UI Surfaces === */
+  --color-shell-rail: hsl(var(--shell-rail));
+  --color-shell-rail-foreground: hsl(var(--shell-rail-foreground));
+  --color-shell-rail-muted: hsl(var(--shell-rail-muted));
+  --color-shell-rail-hover: hsl(var(--shell-rail-hover));
+  --color-shell-rail-active: hsl(var(--shell-rail-active));
+  --color-shell-rail-active-foreground: hsl(var(--shell-rail-active-foreground));
+  --color-shell-rail-border: hsl(var(--shell-rail-border));
+
+  --color-shell-panel: hsl(var(--shell-panel));
+  --color-shell-panel-foreground: hsl(var(--shell-panel-foreground));
+  --color-shell-panel-muted: hsl(var(--shell-panel-muted));
+  --color-shell-panel-hover: hsl(var(--shell-panel-hover));
+  --color-shell-panel-active: hsl(var(--shell-panel-active));
+  --color-shell-panel-border: hsl(var(--shell-panel-border));
+
+  --color-shell-control: hsl(var(--shell-control));
+  --color-shell-control-foreground: hsl(var(--shell-control-foreground));
+  --color-shell-control-hover: hsl(var(--shell-control-hover));
+  --color-shell-control-active: hsl(var(--shell-control-active));
+  --color-shell-control-active-foreground: hsl(var(--shell-control-active-foreground));
+  --color-shell-control-border: hsl(var(--shell-control-border));
+  --color-shell-focus-soft: hsl(var(--shell-focus-soft));
+
+  /* === Chart === */
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+}
+
+/* === Utilities === */
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

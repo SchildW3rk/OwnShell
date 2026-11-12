@@ -1,0 +1,10 @@
+# Package build output
+dist/
+*.tsbuildinfo
+
+# Development
+node_modules/
+.turbo/
+
+# Storybook (if added later)
+storybook-static/

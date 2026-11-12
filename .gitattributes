@@ -1,0 +1,99 @@
+# ============================================
+# Git Line Endings Configuration
+# ============================================
+# Ensures consistent line endings across platforms
+
+# Auto detect text files and normalize to LF
+* text=auto
+
+# ============================================
+# Source Code
+# ============================================
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# ============================================
+# Shell Scripts
+# ============================================
+*.sh text eol=lf
+*.bash text eol=lf
+
+# ============================================
+# Configuration Files
+# ============================================
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.npmrc text eol=lf
+.eslintrc* text eol=lf
+.prettierrc* text eol=lf
+tsconfig*.json text eol=lf
+package.json text eol=lf
+package-lock.json text eol=lf
+
+# ============================================
+# Binary Files
+# ============================================
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# ============================================
+# Archives
+# ============================================
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+
+# ============================================
+# Application Files
+# ============================================
+*.exe binary
+*.dmg binary
+*.deb binary
+*.rpm binary
+*.AppImage binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# ============================================
+# Database Files
+# ============================================
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# ============================================
+# Media Files
+# ============================================
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.webm binary
+
+# ============================================
+# Documents
+# ============================================
+*.pdf binary
+*.doc binary
+*.docx binary

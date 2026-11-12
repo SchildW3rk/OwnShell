@@ -1,0 +1,15 @@
+{
+  "extends": "@ownshell/config/tsconfig.react.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "ES2024.Promise", "DOM", "DOM.Iterable"],
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@electron/*": ["./electron/*"]
+    }
+  },
+  "include": ["src/**/*", "electron/**/*"],
+  "exclude": ["node_modules", "dist", "dist-electron"]
+}

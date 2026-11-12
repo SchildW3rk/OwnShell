@@ -1,0 +1,1050 @@
+{
+  "schemaVersion": 1,
+  "kind": "local-only-performance-clean-cutover",
+  "status": "accepted",
+  "source": {
+    "baseline": "b9caf6952798155acd48b81aeb04b00acb3870c2",
+    "performanceDiffFrom": "57df774d7816f0b1f410123326348ec680a8bf8e",
+    "performanceDiffTo": "bee808ec3a8721f8647d9f3c347a92673e7b9289",
+    "validatedRevision": "d440fb04351686aa44eecc25bb2c351f02d738b6",
+    "builtProductRevision": "aa7397a2b829aaafd41671913f7e6c3a466a0d61",
+    "relationship": "The validated revision adds methodology documentation only to the freshly built product revision. This evidence commit changes documentation/data only.",
+    "branch": "integration/performance-local-only",
+    "productVersion": "1.23.2",
+    "productPort": {
+      "directAtomicPathsBeforeLocalization": 71,
+      "baselineAdaptedPaths": 8,
+      "additionalChange": "Five DE/EN Mongo application-error translations, preserving worker/editor lifetimes."
+    },
+    "experimentRuntimeDependenciesFound": 0,
+    "originalCheckoutPreserved": true,
+    "performanceBackupBranchPreserved": "integration/performance-native-feel",
+    "intentionallyNotPorted": "Independent, non-performance Git committed-code browser and clone/add-remote UI from 0b7defd; preserved in original/backup branches, absent in the pre-experiment baseline."
+  },
+  "build": {
+    "renderer": "vite production build",
+    "productVersion": "1.23.2",
+    "electron": "unpackaged Electron 40.10.1",
+    "license": "existing development license exemption; NODE_ENV=development",
+    "packaged": false
+  },
+  "hardware": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M5 Max",
+    "logicalCpus": 18,
+    "totalMemory": 137438953472
+  },
+  "toolchain": {
+    "buildAndDriverNode": "22.22.0",
+    "electronRuntimeVersions": {
+      "node": "24.15.0",
+      "acorn": "8.16.0",
+      "ada": "3.4.4",
+      "amaro": "1.1.8",
+      "ares": "1.34.6",
+      "brotli": "1.0.9",
+      "cldr": "47.0",
+      "icu": "77.1",
+      "llhttp": "9.3.1",
+      "merve": "1.2.2",
+      "modules": "143",
+      "napi": "10",
+      "nbytes": "0.1.3",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.68.0",
+      "openssl": "0.0.0",
+      "simdjson": "4.5.0",
+      "simdutf": "7.7.0",
+      "sqlite": "3.51.3",
+      "tz": "2025b",
+      "undici": "7.24.4",
+      "unicode": "16.0",
+      "uv": "1.51.0",
+      "uvwasi": "0.0.23",
+      "v8": "14.4.258.32-electron.0",
+      "zlib": "1.3.1",
+      "zstd": "1.5.8",
+      "electron": "40.10.1",
+      "chrome": "144.0.7559.236"
+    }
+  },
+  "acquisition": {
+    "version": 2,
+    "mode": "sequential-plus-outcome",
+    "modeVersion": 1,
+    "cooldownMs": 4,
+    "windowMs": 8000,
+    "maxDistinctFrames": 960,
+    "meaning": "Input-to-compositor-capture upper bounds; not physical scan-out. No overhead subtraction. Original fixed workloads, goals, regions, ordering, guards and pacing retained."
+  },
+  "profiles": {
+    "everyday": {
+      "status": "complete",
+      "workload": {
+        "terminals": 4,
+        "outputTerminals": 1,
+        "textBytes": 1048576,
+        "entries": 10000,
+        "inputTargetMs": 32,
+        "switchTargetMs": 100,
+        "transferConnections": 1,
+        "additionalStandaloneSftpPane": 1,
+        "windowDIP": {
+          "width": 1200,
+          "height": 800
+        },
+        "textLineBytes": 128,
+        "textNewline": "LF"
+      },
+      "schedule": {
+        "warmupMs": 10000,
+        "repetitions": 3,
+        "samplesPerAction": 30,
+        "terminalEchoSamplesPerRepetition": 3,
+        "actionIntervalMs": 300,
+        "presentationVerificationHoldMs": 300,
+        "measurementMinimumMs": 218700,
+        "interactiveObservationMs": 180000,
+        "outputLinesPerSecond": 100,
+        "outputLineBytes": 128,
+        "transferBytes": 536870912,
+        "transferReadBytes": 32768,
+        "transferDelayMs": 20,
+        "unmeasuredDrainDelayMs": 0
+      },
+      "runtimeTimeOrigin": 1794076160650.626,
+      "samples": 369,
+      "trustedNativeInputSamples": 369,
+      "foregroundWindowAndWebContentsSamples": 369,
+      "summary": {
+        "typing": {
+          "n": 90,
+          "p50": 13.630250000016531,
+          "p95": 24.735625000001164,
+          "p99": 28.196249999993597,
+          "max": 28.196249999993597,
+          "targetMs": 32,
+          "outliers": []
+        },
+        "scroll": {
+          "n": 90,
+          "p50": 10.939790999982506,
+          "p95": 13.826292000012472,
+          "p99": 18.441583999985596,
+          "max": 18.441583999985596,
+          "targetMs": 32,
+          "outliers": []
+        },
+        "directory-scroll": {
+          "n": 90,
+          "p50": 8.366249999991851,
+          "p95": 12.570624999993015,
+          "p99": 14.676624999992782,
+          "max": 14.676624999992782,
+          "targetMs": 32,
+          "outliers": []
+        },
+        "warm-tab-switch": {
+          "n": 90,
+          "p50": 20.56479100001161,
+          "p95": 28.779874999978347,
+          "p99": 34.93450000000303,
+          "max": 34.93450000000303,
+          "targetMs": 100,
+          "outliers": []
+        },
+        "terminal-remote-echo": {
+          "n": 9,
+          "p50": 30.74195899994811,
+          "p95": 62.84487500000978,
+          "p99": 62.84487500000978,
+          "max": 62.84487500000978,
+          "targetMs": null,
+          "outliers": []
+        }
+      },
+      "correctness": {
+        "freshProfileHostCreation": true,
+        "listingAnchors": [
+          "file-000000.txt",
+          "file-005000.txt",
+          "file-009999.txt"
+        ],
+        "editorSave0": {
+          "bytes": 1048606,
+          "sha256": "57c4b216ce4689178cb3ddff58845bb3f64f48e82ade8138b361ad8f45d6e05d",
+          "transport": "independent actual SFTP read"
+        },
+        "editorSave1": {
+          "bytes": 1048636,
+          "sha256": "5018a61ee3e3ce1b19df448a610f73ed5f7ae30fd123e2ec7cb9920250cb8702",
+          "transport": "independent actual SFTP read"
+        },
+        "editorSave2": {
+          "bytes": 1048666,
+          "sha256": "2416175fbf81a7d7ffc056057a57327544d099da2985eef9c272291b3f2c794f",
+          "transport": "independent actual SFTP read"
+        },
+        "terminals": 4,
+        "structuredHelperShells": 3,
+        "outputTerminals": 1,
+        "directoryEntries": 10000,
+        "measurementBackgroundOverlap": [
+          {
+            "name": "transfer-a.bin",
+            "firstRead": 7978.480416,
+            "latestRead": 278491.150166,
+            "bytesRead": 262469984
+          },
+          {
+            "name": "transfer-b.bin",
+            "firstRead": 8029.16025,
+            "latestRead": 278491.08575,
+            "bytesRead": 262438064
+          }
+        ],
+        "visibleOutputSequence": {
+          "first": 27128,
+          "last": 27129,
+          "count": 2,
+          "contiguous": true
+        },
+        "terminalStreams": [
+          {
+            "sessionId": "6d12a09a-62b4-4b00-a240-210a7427a87b",
+            "first": 0,
+            "last": 27139,
+            "count": 27140,
+            "violations": []
+          }
+        ],
+        "unmeasuredDrain": {
+          "phase": "unmeasured-transfer-drain",
+          "transferDelayMs": 0,
+          "previousTransferDelayMs": 20,
+          "at": 278861.379625
+        },
+        "transfers": [
+          {
+            "name": "transfer-a.bin",
+            "bytes": 536870912,
+            "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+          },
+          {
+            "name": "transfer-b.bin",
+            "bytes": 536870912,
+            "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+          }
+        ],
+        "transferUI": {
+          "queueEmptyAfterDrain": true,
+          "completedLocalFilesVisible": 2
+        }
+      },
+      "safety": {
+        "isolatedProfile": true,
+        "realElectron": true,
+        "loopbackOnly": true,
+        "localePreference": {
+          "key": "ownshell-language",
+          "value": "en",
+          "method": "isolated session frame preload before product scripts; no additional navigation",
+          "observed": {
+            "navigatorLanguage": "en-US",
+            "stored": "en"
+          },
+          "observationDurationMs": 6.174541999999974
+        },
+        "confinementProbes": {
+          "main": true,
+          "native": true,
+          "worker": true
+        },
+        "rendererNonLoopbackRejected": true,
+        "cleanup": {
+          "electronExited": true,
+          "sshClosed": true,
+          "temporaryProfileRemoved": true
+        },
+        "screenLocks": [],
+        "blockedBrowserRequests": [],
+        "blockedNodeConnections": [
+          {
+            "at": 1588.474,
+            "host": "198.51.100.1"
+          },
+          {
+            "at": 1588.518542,
+            "host": "198.51.100.1"
+          },
+          {
+            "at": 2144.363167,
+            "host": "release.ownshell.app"
+          }
+        ]
+      }
+    },
+    "stress": {
+      "status": "complete",
+      "workload": {
+        "terminals": 8,
+        "outputTerminals": 2,
+        "textBytes": 10485632,
+        "entries": 50000,
+        "inputTargetMs": 50,
+        "switchTargetMs": 150,
+        "transferConnections": 1,
+        "additionalStandaloneSftpPane": 1,
+        "windowDIP": {
+          "width": 1200,
+          "height": 800
+        },
+        "textLineBytes": 128,
+        "textNewline": "LF"
+      },
+      "schedule": {
+        "warmupMs": 10000,
+        "repetitions": 3,
+        "samplesPerAction": 30,
+        "terminalEchoSamplesPerRepetition": 3,
+        "actionIntervalMs": 300,
+        "presentationVerificationHoldMs": 300,
+        "measurementMinimumMs": 218700,
+        "interactiveObservationMs": 180000,
+        "outputLinesPerSecond": 100,
+        "outputLineBytes": 128,
+        "transferBytes": 536870912,
+        "transferReadBytes": 32768,
+        "transferDelayMs": 20,
+        "unmeasuredDrainDelayMs": 0
+      },
+      "runtimeTimeOrigin": 1794076457002.094,
+      "samples": 369,
+      "trustedNativeInputSamples": 369,
+      "foregroundWindowAndWebContentsSamples": 369,
+      "summary": {
+        "typing": {
+          "n": 90,
+          "p50": 14.425707999995211,
+          "p95": 28.237207999998645,
+          "p99": 31.81729199999245,
+          "max": 31.81729199999245,
+          "targetMs": 50,
+          "outliers": []
+        },
+        "scroll": {
+          "n": 90,
+          "p50": 10.872375000006286,
+          "p95": 13.773124999999709,
+          "p99": 14.398916999998619,
+          "max": 14.398916999998619,
+          "targetMs": 50,
+          "outliers": []
+        },
+        "directory-scroll": {
+          "n": 90,
+          "p50": 8.720791999992798,
+          "p95": 13.390916999996989,
+          "p99": 16.09758299999521,
+          "max": 16.09758299999521,
+          "targetMs": 50,
+          "outliers": []
+        },
+        "warm-tab-switch": {
+          "n": 90,
+          "p50": 21.497749999980442,
+          "p95": 32.260083999994094,
+          "p99": 37.49929100001464,
+          "max": 37.49929100001464,
+          "targetMs": 150,
+          "outliers": []
+        },
+        "terminal-remote-echo": {
+          "n": 9,
+          "p50": 39.26179200000479,
+          "p95": 64.02145900001051,
+          "p99": 64.02145900001051,
+          "max": 64.02145900001051,
+          "targetMs": null,
+          "outliers": []
+        }
+      },
+      "correctness": {
+        "freshProfileHostCreation": true,
+        "listingAnchors": [
+          "file-000000.txt",
+          "file-025000.txt",
+          "file-049999.txt"
+        ],
+        "editorSave0": {
+          "bytes": 10485662,
+          "sha256": "f362ebb0591e8bd8fe25a27cc93ef16cbf8bfc768b9afe0118b3a4183c789bf8",
+          "transport": "independent actual SFTP read"
+        },
+        "editorSave1": {
+          "bytes": 10485692,
+          "sha256": "46e67ee3af0beb88b1a8a32ff5272bf1e0de188221d1b1c5b3c0a4d2500d19bb",
+          "transport": "independent actual SFTP read"
+        },
+        "editorSave2": {
+          "bytes": 10485722,
+          "sha256": "97575bf369b589c388ff47a00bf5a5e942e0c41248fc72ba7c837b3a657f2c1a",
+          "transport": "independent actual SFTP read"
+        },
+        "terminals": 8,
+        "structuredHelperShells": 3,
+        "outputTerminals": 2,
+        "directoryEntries": 50000,
+        "measurementBackgroundOverlap": [
+          {
+            "name": "transfer-a.bin",
+            "firstRead": 305397.696375,
+            "latestRead": 577159.287958,
+            "bytesRead": 261095552
+          },
+          {
+            "name": "transfer-b.bin",
+            "firstRead": 305450.306791,
+            "latestRead": 577157.921666,
+            "bytesRead": 261093792
+          }
+        ],
+        "visibleOutputSequence": {
+          "first": 27189,
+          "last": 27189,
+          "count": 1,
+          "contiguous": true
+        },
+        "terminalStreams": [
+          {
+            "sessionId": "80e786f0-5878-4a8e-9e8f-5d9e71891754",
+            "first": 0,
+            "last": 27199,
+            "count": 27200,
+            "violations": []
+          },
+          {
+            "sessionId": "08078ee4-6a3e-43cc-b025-29ab4315c055",
+            "first": 0,
+            "last": 27179,
+            "count": 27180,
+            "violations": []
+          }
+        ],
+        "unmeasuredDrain": {
+          "phase": "unmeasured-transfer-drain",
+          "transferDelayMs": 0,
+          "previousTransferDelayMs": 20,
+          "at": 577532.895666
+        },
+        "transfers": [
+          {
+            "name": "transfer-a.bin",
+            "bytes": 536870912,
+            "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+          },
+          {
+            "name": "transfer-b.bin",
+            "bytes": 536870912,
+            "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+          }
+        ],
+        "transferUI": {
+          "queueEmptyAfterDrain": true,
+          "completedLocalFilesVisible": 2
+        }
+      },
+      "safety": {
+        "isolatedProfile": true,
+        "realElectron": true,
+        "loopbackOnly": true,
+        "localePreference": {
+          "key": "ownshell-language",
+          "value": "en",
+          "method": "isolated session frame preload before product scripts; no additional navigation",
+          "observed": {
+            "navigatorLanguage": "en-US",
+            "stored": "en"
+          },
+          "observationDurationMs": 8.266791999980342
+        },
+        "confinementProbes": {
+          "main": true,
+          "native": true,
+          "worker": true
+        },
+        "rendererNonLoopbackRejected": true,
+        "cleanup": {
+          "electronExited": true,
+          "sshClosed": true,
+          "temporaryProfileRemoved": true
+        },
+        "screenLocks": [],
+        "blockedBrowserRequests": [],
+        "blockedNodeConnections": [
+          {
+            "at": 1356.661167,
+            "host": "198.51.100.1"
+          },
+          {
+            "at": 1356.725334,
+            "host": "198.51.100.1"
+          },
+          {
+            "at": 1882.398125,
+            "host": "release.ownshell.app"
+          }
+        ]
+      }
+    }
+  },
+  "checks": {
+    "buildVite": {
+      "status": "passed",
+      "command": "volta run --node 22.22.0 npm run build:vite --workspace=ownshell-desktop",
+      "source": "aa7397a2b829aaafd41671913f7e6c3a466a0d61",
+      "observation": "bg_31, exit 0"
+    },
+    "security": {
+      "status": "passed",
+      "command": "volta run --node 22.22.0 npm run test:security --workspace=ownshell-desktop",
+      "source": "aa7397a2b829aaafd41671913f7e6c3a466a0d61",
+      "observation": "bg_33, exit 0"
+    }
+  },
+  "featureProofs": {
+    "localStartup": {
+      "sourceCommits": [
+        "d440fb04351686aa44eecc25bb2c351f02d738b6"
+      ],
+      "build": {
+        "renderer": "vite production build",
+        "productVersion": "1.23.2",
+        "electron": "unpackaged Electron 40.10.1",
+        "license": "existing development license exemption; NODE_ENV=development",
+        "packaged": false
+      },
+      "hardware": {
+        "platform": "darwin",
+        "arch": "arm64",
+        "cpu": "Apple M5 Max",
+        "logicalCpus": 18,
+        "totalMemory": 137438953472
+      },
+      "definitions": {
+        "fresh": "New isolated local application profile with public master-password setup and recovery acknowledgement; OS disk cache not flushed.",
+        "existing": "New Electron process reusing the same local password-protected synthetic profile; OS cache warm.",
+        "unlock": "Explicit native UI lock followed by actual password verification and key derivation, license gate and successful UI action.",
+        "repetitions": "Three independent fresh profiles per batch, three existing-process starts and three in-process unlocks per profile. Invalid-password attempt is separate from timed valid unlock."
+      },
+      "summary": {
+        "fresh-start": {
+          "n": 3,
+          "min": 2510.024167000003,
+          "p50": 2625.089584,
+          "p95": 3358.552334,
+          "p99": 3358.552334,
+          "max": 3358.552334,
+          "mean": 2831.222028333334,
+          "standardDeviation": 375.82615751010917,
+          "targetMs": null
+        },
+        "existing-unlock": {
+          "n": 9,
+          "min": 1809.9286670000001,
+          "p50": 1828.5418329999957,
+          "p95": 1841.1532500000003,
+          "p99": 1841.1532500000003,
+          "max": 1841.1532500000003,
+          "mean": 1826.294217555555,
+          "standardDeviation": 11.471740252504596,
+          "targetMs": null
+        },
+        "existing-process-start": {
+          "n": 9,
+          "min": 3167.314250000003,
+          "p50": 3225.266082999995,
+          "p95": 3264.0600840000006,
+          "p99": 3264.0600840000006,
+          "max": 3264.0600840000006,
+          "mean": 3221.8992268888887,
+          "standardDeviation": 30.159545462862443,
+          "targetMs": null
+        },
+        "in-process-unlock": {
+          "n": 9,
+          "min": 227.0959159999984,
+          "p50": 250.45779199999743,
+          "p95": 306.0268750000032,
+          "p99": 306.0268750000032,
+          "max": 306.0268750000032,
+          "mean": 265.48584266666643,
+          "standardDeviation": 26.52292679480045,
+          "targetMs": null
+        }
+      },
+      "correctness": [
+        {
+          "freshLocalSetupGate": true,
+          "persistedHostSurvivedRestart": true,
+          "invalidPasswordRemainsLocked": true,
+          "explicitLockBoundary": true,
+          "developmentLicenseGateExecuted": true,
+          "hostsCreated": 7,
+          "nativeInput": true
+        },
+        {
+          "freshLocalSetupGate": true,
+          "persistedHostSurvivedRestart": true,
+          "invalidPasswordRemainsLocked": true,
+          "explicitLockBoundary": true,
+          "developmentLicenseGateExecuted": true,
+          "hostsCreated": 7,
+          "nativeInput": true
+        },
+        {
+          "freshLocalSetupGate": true,
+          "persistedHostSurvivedRestart": true,
+          "invalidPasswordRemainsLocked": true,
+          "explicitLockBoundary": true,
+          "developmentLicenseGateExecuted": true,
+          "hostsCreated": 7,
+          "nativeInput": true
+        }
+      ],
+      "cleanup": [
+        {
+          "electronExited": true,
+          "sshClosed": true,
+          "temporaryProfileRemoved": true
+        },
+        {
+          "electronExited": true,
+          "sshClosed": true,
+          "temporaryProfileRemoved": true
+        },
+        {
+          "electronExited": true,
+          "sshClosed": true,
+          "temporaryProfileRemoved": true
+        }
+      ],
+      "limitations": [
+        "Unpackaged Electron; Vite production assets with existing development-license exemption. Not activated/shipped-app entitlement or startup verification.",
+        "Small sample: p95/p99 are observed nearest ranks, not population guarantees. No absolute startup target was agreed.",
+        "Fresh profile is not an OS disk-cache-cold boot. Automated local password setup/recovery acknowledgement/form input time, confinement probes and screenshot capture are included. No overhead subtraction.",
+        "Usable endpoint requires actual successful host creation and captured compositor output, not just a window, DOM-ready or handler completion. It is an upper bound, not physical monitor timing."
+      ]
+    },
+    "closeFailure": {
+      "status": "passed",
+      "expectedFailure": "Synthetic close failure after real Electron exit",
+      "returnedLaunches": 1,
+      "recordedLaunches": 1,
+      "scenarioStatus": "failed",
+      "runnerExitCode": 1,
+      "cleanup": {
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    },
+    "editorEncoding": {
+      "status": "passed",
+      "correctness": {
+        "freshProfileHostCreation": true,
+        "remoteRereads": [
+          {
+            "name": "editor.txt",
+            "bytes": 1048603,
+            "sha256": "9d172e185d984ed4ca3a70a407455b9c3d421f01687c0b774a89650e0d600a23",
+            "completeByteEquality": true
+          },
+          {
+            "name": "editor.txt",
+            "bytes": 6,
+            "sha256": "3132c69cb17d9997107b54c9c185d3bb49965440cac9757e09c060093ee1ad58",
+            "completeByteEquality": true
+          },
+          {
+            "name": "syntax.js",
+            "bytes": 39,
+            "sha256": "e1dd19bef05382e002a4fe1ada994c9885ab75fc78a8a8e0fdfefe49efb2b4e8",
+            "completeByteEquality": true
+          },
+          {
+            "name": "editor.txt",
+            "bytes": 6,
+            "sha256": "3132c69cb17d9997107b54c9c185d3bb49965440cac9757e09c060093ee1ad58",
+            "completeByteEquality": true
+          }
+        ],
+        "listingAnchors": [
+          "file-000000.txt",
+          "file-005000.txt",
+          "file-009999.txt"
+        ],
+        "unicodeReadEditSave": true,
+        "latin1BytePreservation": true,
+        "standaloneUnicodeReadEditSave": true,
+        "standaloneLatin1BytePreservation": true
+      },
+      "cleanup": {
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    },
+    "sftpWorkerOwnership": {
+      "status": "passed",
+      "workerOwnerClose": {
+        "initializedDispatch": {
+          "at": 17729.841958,
+          "source": "Electron.webContents.sendInputEvent",
+          "types": [
+            "mouseMove",
+            "mouseDown",
+            "mouseUp"
+          ],
+          "nativeFocus": {
+            "windowFocused": true,
+            "webContentsFocused": true,
+            "activationRequested": false,
+            "setupDurationMs": 0.022166000002471264
+          }
+        },
+        "before": {
+          "clients": 12,
+          "timers": 3,
+          "pendingReads": 2,
+          "processes": 0,
+          "forwards": 0,
+          "sockets": 12,
+          "pendingProcessShells": 0,
+          "pendingSftpInitializations": 0
+        },
+        "initializedAfter": {
+          "clients": 9,
+          "timers": 2,
+          "pendingReads": 2,
+          "processes": 0,
+          "forwards": 0,
+          "sockets": 9,
+          "pendingProcessShells": 0,
+          "pendingSftpInitializations": 0
+        },
+        "pendingDispatch": {
+          "at": 18024.398042,
+          "source": "Electron.webContents.sendInputEvent",
+          "types": [
+            "mouseMove",
+            "mouseDown",
+            "mouseUp"
+          ],
+          "nativeFocus": {
+            "windowFocused": true,
+            "webContentsFocused": true,
+            "activationRequested": false,
+            "setupDurationMs": 0.016292000000248663
+          }
+        },
+        "heldAt": 18232.0965,
+        "pendingAfter": {
+          "clients": 9,
+          "timers": 2,
+          "pendingReads": 2,
+          "processes": 0,
+          "forwards": 0,
+          "sockets": 9,
+          "pendingProcessShells": 0,
+          "pendingSftpInitializations": 0
+        },
+        "snapshot": {
+          "files": [
+            {
+              "name": "transfer-a.bin",
+              "offset": 11042000,
+              "opens": 1
+            },
+            {
+              "name": "transfer-b.bin",
+              "offset": 10976464,
+              "opens": 1
+            }
+          ],
+          "ids": {
+            "transfer-a.bin": "0f7f6953-859a-486f-bdb8-ec4518f60b2a",
+            "transfer-b.bin": "5646f634-c9b6-4ff0-9281-5e100fc97029"
+          }
+        },
+        "originalAttemptsCompleted": true,
+        "ownedResourcesReleased": true
+      },
+      "completeTransfers": [
+        {
+          "name": "transfer-a.bin",
+          "bytes": 536870912,
+          "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+        },
+        {
+          "name": "transfer-b.bin",
+          "bytes": 536870912,
+          "sha256": "c60cb63ec63c84da84c258015f0b706deeb33b703284ba3e8962421d25a2381c"
+        }
+      ],
+      "cleanup": {
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    },
+    "visibleUnfocusedDocker": {
+      "status": "passed",
+      "mode": "unfocused-visible-docker-supplement",
+      "correctness": {
+        "passed": true,
+        "keyboardFocus": "Benchmark 3 native textarea",
+        "keyboardFocusRetained": true,
+        "usageVisible": true,
+        "commands": [
+          {
+            "type": "exec",
+            "at": 27189.568333,
+            "command": "docker stats '8e525684e3b8' --no-stream --format '{{json .}}'"
+          },
+          {
+            "type": "exec",
+            "at": 30225.94025,
+            "command": "docker stats '8e525684e3b8' --no-stream --format '{{json .}}'"
+          }
+        ],
+        "transferReadsDuringFocus": [
+          {
+            "name": "transfer-a.bin",
+            "count": 237,
+            "firstOffset": 16187392,
+            "lastOffset": 21363104
+          },
+          {
+            "name": "transfer-b.bin",
+            "count": 237,
+            "firstOffset": 16153808,
+            "lastOffset": 21299200
+          }
+        ]
+      },
+      "originalTransfersRemainActiveAndIdentical": true,
+      "cleanup": {
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    },
+    "hiddenWorkspaceDocker": {
+      "status": "passed",
+      "correctness": {
+        "freshProfileHostCreation": true,
+        "listingAnchors": [
+          "file-000000.txt",
+          "file-005000.txt",
+          "file-009999.txt"
+        ],
+        "dockerWholeSessionVisibility": true
+      },
+      "hiddenTaskProgress": [
+        {
+          "kind": "logs",
+          "receivedBytes": 228000,
+          "at": 24317.185375
+        },
+        {
+          "kind": "console",
+          "receivedBytes": 54600,
+          "at": 34147.264792
+        }
+      ],
+      "containerRemoved": true,
+      "cleanup": {
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true
+      }
+    },
+    "mongoLocalization": {
+      "status": "passed",
+      "assertions": 78,
+      "coverage": {
+        "exercised": [
+          "MongoDBJsonEditor constructor catch: database.jsonWorkerFailed in DE and EN",
+          "MongoDBDocumentEditor real loadValue rejection propagates that localized Error.message in DE and EN",
+          "new-document Create disabled, existing-document Save/Copy/Format/Delete disabled and unavailable JSON hidden",
+          "public EN -> DE -> EN toggle, unchanged mounted editor, then fresh localized failures",
+          "restored real worker successfully loads another seeded document"
+        ],
+        "notExercised": {
+          "documentFormatterEmpty": "Requires a malformed formatter reply, not worker-constructor unavailability.",
+          "documentDisplayFailed": "Requires a non-Error CodeMirror replacement failure, not worker-constructor unavailability.",
+          "documentEditorUnavailable": "Requires a missing React editor ref; no safe public action makes that ref absent.",
+          "documentLoadFailed": "Requires loadValue to reject a non-Error; its actual worker-unavailable path deliberately rejects a localized Error."
+        }
+      },
+      "selectedUI": [
+        {
+          "phase": "initial-real-English-selection",
+          "selectedId": "010000000000000000000000",
+          "editorVisible": true
+        },
+        {
+          "language": "de",
+          "component": "MongoDBJsonEditor",
+          "surface": "validation-banner",
+          "exactText": "Die JSON-Prüfung ist fehlgeschlagen",
+          "createDisabled": true
+        },
+        {
+          "language": "de",
+          "component": "MongoDBDocumentEditor",
+          "surface": "processing-error-banner",
+          "selectedId": "010000000000000000000001",
+          "exactText": "Die JSON-Prüfung ist fehlgeschlagen",
+          "saveDisabled": true,
+          "unavailableJSONHidden": true
+        },
+        {
+          "language": "de",
+          "component": "MongoDBDocumentEditor",
+          "surface": "processing-error-banner",
+          "selectedId": "010000000000000000000002",
+          "exactText": "Die JSON-Prüfung ist fehlgeschlagen",
+          "saveDisabled": true,
+          "unavailableJSONHidden": true
+        },
+        {
+          "language": "en",
+          "component": "MongoDBJsonEditor",
+          "surface": "validation-banner",
+          "exactText": "JSON validation worker failed",
+          "createDisabled": true
+        },
+        {
+          "language": "en",
+          "component": "MongoDBDocumentEditor",
+          "surface": "processing-error-banner",
+          "selectedId": "010000000000000000000001",
+          "exactText": "JSON validation worker failed",
+          "saveDisabled": true,
+          "unavailableJSONHidden": true
+        },
+        {
+          "language": "en",
+          "component": "MongoDBDocumentEditor",
+          "surface": "processing-error-banner",
+          "selectedId": "010000000000000000000002",
+          "exactText": "JSON validation worker failed",
+          "saveDisabled": true,
+          "unavailableJSONHidden": true
+        }
+      ],
+      "workerFault": {
+        "restored": true,
+        "stillOwned": true,
+        "targetThrows": 2,
+        "otherWorkerConstructionsForwarded": 0,
+        "matchedWorkerBasenames": [
+          "mongodb-json-validation.worker-Bh7hJWFw.js",
+          "mongodb-json-validation.worker-Bh7hJWFw.js"
+        ]
+      },
+      "source": {
+        "commit": "d440fb04351686aa44eecc25bb2c351f02d738b6",
+        "sha256": {
+          "src/components/db-explorer/MongoDBJsonEditor.tsx": "d873726a0bdbc14c8a18e27f922d98edb2b77b9736a9a1bb8b6c9997f9f4f7b5",
+          "src/components/db-explorer/MongoDBDocumentEditor.tsx": "2e6491dd99af877cef69077e6a4ec8ea1150aadee2cbe81745c04e8e97bfcb8f",
+          "src/i18n/locales/en/common.json": "63a3a2287614437592415d6e5cfe0d619b9f3e89f70bb881a5d65652e7910833",
+          "src/i18n/locales/de/common.json": "9a2749e3c0f4291e0108a5998af02b60c8ed3c7cb7ab777c5b4341c7b6cac5b1",
+          "scripts/performance/mongodb-fixture.cjs": "74238bdc3e862e15436a2a31564310a06c110acf3a25142859ec30c031b42beb",
+          "scripts/performance/run.cjs": "a774c091a48a2fc7ac6f585a63df12fbc43f0d4cec646db1775b345b46fcedf7"
+        },
+        "proofSha256": "d059ff78b44e925505677c931b1147e48dc5de041756b105b61102a8429b87d3"
+      },
+      "cleanup": {
+        "workerConstructorRestored": true,
+        "electronExited": true,
+        "sshClosed": true,
+        "temporaryProfileRemoved": true,
+        "mongoClosed": true
+      }
+    }
+  },
+  "reviews": {
+    "standards": {
+      "documentedP2Resolved": 1,
+      "nonblockingP3JudgmentsRetained": 2,
+      "disposition": "Mongo English-only application fallback errors localized; existing API/S3 drag and SSH hold-gate duplication intentionally not refactored."
+    },
+    "spec": {
+      "actionableFindings": 0,
+      "scope": "71 atomic product paths, 8 baseline adaptations, runner/setup/startup/failure cleanup against clarified performance-only cutover."
+    }
+  },
+  "rawEvidence": {
+    "root": "/var/folders/c7/vw3dzpg13vx6lf3bqh2scpf80000gn/T/ownshell-performance-e00wjch9/artifacts/local-only-final-2026-11-07",
+    "coreFileSha256": {
+      "mixed-exclusive/everyday/report.json": "e23699f912548cef7b6e6350f8455eff74e38a1d1ca488884429e0c831d1bb00",
+      "mixed-exclusive/stress/report.json": "75cd2399269fdcc8a3e7aabd2e4b6cd1c9d30284805706b2fc45b8f561c3e096",
+      "mixed-exclusive/everyday/fixture-events.json": "d0dd2de7ed8a1a47109a6c861c6d29ad809b08b57df64c129ede043afa082101",
+      "mixed-exclusive/stress/fixture-events.json": "bec45ecc310eae32025cd42defde8d130676219efb39a22a098b335469cab51e",
+      "mixed-exclusive/everyday/electron.log": "d06760319102a69b7f8772182296ae673cca71a2a562793ba23f6c6c8dde6479",
+      "mixed-exclusive/stress/electron.log": "175c166971a3590fe8a828990f612f6d1d4c00bcd9bf616d8e2b12b2f88414fe",
+      "startup/startup-summary.json": "4995e6a05b33c26d7ef246e80316827ef3dc50276bfe8da43ad2010322fb85e0",
+      "startup/everyday/fresh-1/report.json": "b3f51b0fd2c64887e02ee16b1f5051cf3958c087f79736f10b9016185a0dcf8e",
+      "startup/everyday/fresh-2/report.json": "e6cc26260e3395c07b6824d39df4adcd52e4acbd314e8591db38f4e562993d87",
+      "startup/everyday/fresh-3/report.json": "9b7063e95d3e4ea84c01e3d5cdfbaeba60dc35255ed24798ee569bb09fa94223",
+      "close-failure/close-failure-result.json": "b63949723664630831da61168036a494fdb7fdd652646674455c0384573df4aa",
+      "close-failure/everyday/close-failure/report.json": "4a192a7c5addc65e25a4fbd7eeb94bf5c88ecb969b4f1003294a0fad5f2ba5ff",
+      "editor-encoding/everyday/report.json": "d75805bd1a59fec74474d827232e7cece9007ad0222340836a381e09e8018be8",
+      "sftp-worker-owner/everyday/report.json": "1f8e1635ce5a723ab3081b2bb733b1d125ade839d7f7df98304328fc4f3c9de5",
+      "workspace-visibility/everyday/report.json": "7aa16a21e93dbb9e069f84a3ecd4fc21621c5ca69dc051f714988e826743fbf0",
+      "hidden-workspace/everyday/report.json": "4ad778fd85865e7659f8486bff2dfc0959503369035227020cfdd21a4e0c8e97",
+      "mongo-localization-single-pane/local-mongo-localization-proof.json": "2b3937c7c610b060f64455f1722dacb509cb044f18773e58160885e530350727",
+      "mongo-localization-single-pane/everyday/mongo-localization-proof/report.json": "b7d57e21424183f04637442549d5ac862ac24b0ff6a986d04e2c160804796368"
+    },
+    "wholeCollection": {
+      "sha256": "b003eb9eeacd1a732d38e94086f61b12502b1f4670adcca007eebff4a8536885",
+      "method": "SHA-256 of immutable BSD tar byte stream, including successful and excluded failed runs; no archive file created. Metadata/order-sensitive, not a portable content-only tree digest.",
+      "command": "/usr/bin/tar -cf - -C /var/folders/c7/vw3dzpg13vx6lf3bqh2scpf80000gn/T/ownshell-performance-e00wjch9/artifacts/local-only-final-2026-11-07 . | /usr/bin/shasum -a 256"
+    }
+  },
+  "excludedRuns": [
+    {
+      "path": "../local-only-cutover-2026-11-07-source455df12/smoke",
+      "outcome": "Initial local checkbox setup timeout; no latency acceptance. Cleanup succeeded. Root cause not established."
+    },
+    {
+      "path": "mixed",
+      "outcome": "Stopped after first typing sample, second expected AB timed out. Ten native keyboard events vs four expected for A/B; six additional events unclassified. Foreground activation also occurs in the accepted exclusive run; no causal product/focus fix claimed."
+    },
+    {
+      "path": "native-edit-diagnostic",
+      "outcome": "Throwaway probe omitted measurement app/page/directory arguments; no valid native typing measurement. Corrected probe is separate."
+    },
+    {
+      "path": "native-edit-diagnostic-corrected",
+      "outcome": "Two-key diagnostic passed with AB and exactly four expected native events. Diagnostic only, not complete mixed-profile acceptance."
+    },
+    {
+      "path": "mongo-localization",
+      "outcome": "Throwaway probe incorrectly required a resizable data-panel ancestor in the intentional SinglePane layout. Public real Mongo connection succeeded; localization branch not reached. Its static coverage labels are planned, not exercised coverage. Corrected single-pane proof is separate."
+    }
+  ],
+  "limitations": [
+    "Unpackaged Electron with production renderer assets and the existing development-license exemption, not shipped/activated macOS proof.",
+    "Exclusive desktop input was explicitly reserved for accepted GUI runs. Unexpected-event origin in the earlier aborted run remains unproven.",
+    "No before/after gain claim across Secure Node and local-only builds or across capture modes.",
+    "Fresh startup uses isolated local profiles, not flushed OS disk caches; no absolute startup goal.",
+    "Focused Docker supplements do not establish fresh twenty-cycle/cache-expiry or native OS corner-drag results. Older bee808e evidence remains historical, not relabeled.",
+    "Four additional Mongo fallback branches are source-reviewed only; actual constructor-unavailability and localized propagated processing errors were exercised in DE and EN.",
+    "No deploy, release, upload, notarization, packaging or installed-app data migration performed."
+  ]
+}

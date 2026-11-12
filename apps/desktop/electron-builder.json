@@ -1,0 +1,123 @@
+{
+  "appId": "com.ownshell.app",
+  "productName": "OwnShell",
+  "copyright": "Copyright © 2026 OwnShell Contributors",
+  "asar": true,
+  "directories": {
+    "buildResources": "build",
+    "output": "release"
+  },
+  "afterPack": "scripts/after-pack.cjs",
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json",
+    "!**/.turbo/**/*",
+    "!**/node_modules/**/.turbo/**/*",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.tsx",
+    "!**/*.test.*",
+    "!**/*.spec.*",
+    "!**/__tests__/**/*",
+    "!**/node_modules/**/{test,tests,__tests__,docs,doc,example,examples,benchmark,benchmarks}/**/*",
+    "!**/node_modules/node-pty/{deps,prebuilds,scripts,src}/**/*",
+    "!**/node_modules/cpu-features/{bin,deps,scripts}/**/*",
+    "!**/node_modules/cpu-features/build/deps/**/*",
+    "!**/node_modules/cpu-features/buildcheck.js",
+    "!**/node_modules/better-sqlite3/deps/**/*",
+    "!**/node_modules/ssh2/util/**/*",
+    "!**/node_modules/ssh2/install.js",
+    "!**/node_modules/**/.eslintrc*",
+    "!**/node_modules/**/.eslintignore",
+    "!**/node_modules/**/*.md",
+    "!**/node_modules/**/*.{c,cc,cpp,h,hpp,m,mm,o,a,gyp,gypi,mk,sln,vcxproj,filters}",
+    "!**/node_modules/**/Makefile",
+    "!**/node_modules/**/CMakeLists.txt",
+    "!**/node_modules/**/README*",
+    "!**/node_modules/**/CHANGELOG*",
+    "!scripts/**/*",
+    "!electron/**/*",
+    "!src/**/*"
+  ],
+  "asarUnpack": [
+    "dist-electron/ssh-worker.js",
+    "node_modules/ssh2/lib/**/*.js",
+    "node_modules/ssh2/lib/protocol/crypto/build/Release/sshcrypto.node",
+    "node_modules/ssh2/package.json",
+    "node_modules/asn1/lib/**/*.js",
+    "node_modules/asn1/package.json",
+    "node_modules/safer-buffer/safer.js",
+    "node_modules/safer-buffer/dangerous.js",
+    "node_modules/safer-buffer/package.json",
+    "node_modules/bcrypt-pbkdf/index.js",
+    "node_modules/bcrypt-pbkdf/package.json",
+    "node_modules/tweetnacl/nacl-fast.js",
+    "node_modules/tweetnacl/package.json",
+    "node_modules/cpu-features/lib/**/*.js",
+    "node_modules/cpu-features/build/Release/cpufeatures.node",
+    "node_modules/cpu-features/package.json",
+    "node_modules/better-sqlite3/lib/**/*.js",
+    "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+    "node_modules/better-sqlite3/package.json",
+    "node_modules/node-pty/lib/**/*.js",
+    "node_modules/node-pty/build/Release/pty.node",
+    "node_modules/node-pty/build/Release/spawn-helper",
+    "node_modules/node-pty/package.json"
+  ],
+  "nodeGypRebuild": false,
+  "npmRebuild": true,
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["arm64"]
+      }
+    ],
+    "category": "public.app-category.developer-tools",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "extendInfo": {
+      "NSAppTransportSecurity": {
+        "NSAllowsArbitraryLoads": false,
+        "NSAllowsLocalNetworking": true,
+        "NSExceptionDomains": {
+          "localhost": {
+            "NSIncludesSubdomains": false,
+            "NSTemporaryExceptionAllowsInsecureHTTPLoads": true
+          },
+          "127.0.0.1": {
+            "NSIncludesSubdomains": false,
+            "NSTemporaryExceptionAllowsInsecureHTTPLoads": true
+          }
+        }
+      }
+    },
+    "notarize": true
+  },
+  "dmg": {
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://release.ownshell.app",
+    "channel": "latest"
+  }
+}

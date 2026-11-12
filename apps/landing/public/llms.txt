@@ -1,0 +1,53 @@
+# OwnShell
+
+OwnShell is a local-first macOS DevOps workspace for developers, sysadmins and solo operators who manage servers and infrastructure without handing workspace data to a cloud dashboard.
+
+## Product Summary
+
+OwnShell combines native OpenSSH terminals, SFTP, S3-compatible storage, S3 CORS editing, Docker tools, database clients, REST API requests and an encrypted local vault in one desktop app.
+
+## Key Capabilities
+
+- Native OpenSSH terminal with panes, SSH keys, jump hosts and tunnel quick-start.
+- SFTP file browser for remote server files.
+- S3 browser for AWS S3 and MinIO-compatible buckets.
+- S3 CORS configuration editor for bucket rules.
+- Docker container, logs and compose tools over SSH.
+- Database client for Postgres, MySQL, Redis and MongoDB.
+- REST API client with collections, headers, authentication, request bodies and environments.
+- Local encrypted vault for credentials and `.env` management.
+- Privacy-first: no tracking, no analytics and no cloud sync for workspace data.
+
+## Common Search Intents
+
+- S3 CORS editor for macOS.
+- S3 browser with CORS configuration.
+- REST API client with local environments.
+- OpenSSH desktop client with SFTP and Docker tools.
+- Local-first DevOps workspace.
+- Termius alternative with S3, database and API tools.
+
+## Pricing
+
+Launch pricing is available for the first 100 active users:
+
+- Monthly: EUR 18 per month, or EUR 16.20 for the first paid month with launch code CZOTU1MG.
+- Annual: EUR 180 per year, or EUR 162.00 for the first paid year with launch code CZOTU1MG.
+
+All plans include a 14-day free trial. The launch code is limited to the first 100 redemptions.
+
+## Canonical URLs
+
+- Homepage: https://ownshell.app/
+- Features: https://ownshell.app/#features
+- Security: https://ownshell.app/#security
+- Pricing: https://ownshell.app/#pricing
+- Privacy: https://ownshell.app/privacy
+- Terms: https://ownshell.app/terms
+- Legal notice: https://ownshell.app/impressum
+
+## Contact
+
+Provider: Rene Schober, Salzburg, Austria.
+
+Legal notice: https://ownshell.app/impressum

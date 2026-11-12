@@ -1,0 +1,30 @@
+{
+  "name": "@ownshell/core",
+  "version": "1.9.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "kysely": "0.28.17"
+  },
+  "devDependencies": {
+    "@ownshell/config": "*",
+    "@types/node": "22.15.3",
+    "kysely": "0.28.17",
+    "typescript": "5.8.3"
+  }
+}

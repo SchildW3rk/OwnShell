@@ -1,0 +1,336 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+/* OwnShell Theme - Matching Desktop App */
+@theme {
+  /* Primary Brand Colors */
+  --color-primary: #06b6d4;
+  --color-primary-hover: #0891b2;
+
+  /* Background Colors */
+  --color-background: #1e1e1e;
+  --color-background-secondary: #252526;
+  --color-background-tertiary: #2d2d30;
+
+  /* Border */
+  --color-border: #3e3e42;
+
+  /* Text Colors */
+  --color-text-primary: #cccccc;
+  --color-text-secondary: #969696;
+  --color-text-accent: #22d3ee;
+
+  /* Status Colors */
+  --color-danger: #f48771;
+  --color-success: #0dbc79;
+
+  /* Landing Page Specific */
+  --color-page-bg: #0a0a0f;
+
+  /* Fonts */
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.1), transparent 34rem),
+    radial-gradient(circle at 78% 16%, rgba(56, 189, 248, 0.08), transparent 30rem),
+    radial-gradient(circle at 12% 24%, rgba(6, 182, 212, 0.08), transparent 24rem),
+    var(--color-page-bg);
+  color: var(--color-text-primary);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(6, 182, 212, 0.13), transparent 24rem),
+    radial-gradient(circle at 50% 72%, rgba(56, 189, 248, 0.09), transparent 30rem),
+    #070709;
+}
+
+.hero-bg__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 74%);
+}
+
+.hero-bg__glow {
+  position: absolute;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 999px;
+  background: rgba(6, 182, 212, 0.16);
+  opacity: 0.32;
+  filter: blur(90px);
+  transform: translateZ(0);
+}
+
+.hero-bg__glow--left {
+  left: 6%;
+  top: 14%;
+}
+
+.hero-bg__glow--right {
+  right: 8%;
+  bottom: 12%;
+}
+
+.hero-tool-block {
+  position: absolute;
+  display: flex;
+  min-height: 7.25rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--hero-tool-accent) 28%, transparent);
+  border-radius: 18px;
+  padding: 1.2rem 1.35rem;
+  color: var(--hero-tool-accent);
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--hero-tool-accent) 18%, transparent), transparent 56%),
+    linear-gradient(180deg, rgba(20, 25, 28, 0.74), rgba(8, 10, 12, 0.74));
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.38),
+    0 0 44px color-mix(in srgb, var(--hero-tool-accent) 12%, transparent);
+  transform-origin: center;
+  will-change: transform, opacity;
+  backdrop-filter: blur(10px);
+}
+
+.hero-tool-block span {
+  font-size: clamp(1.8rem, 2.6vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.62;
+}
+
+.hero-tool-block small {
+  color: #b8b8b8;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  opacity: 0.48;
+}
+
+.hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(7, 7, 9, 0.2), rgba(7, 7, 9, 0.66) 56%, rgba(7, 7, 9, 0.94) 100%),
+    linear-gradient(180deg, rgba(10, 10, 15, 0.18), rgba(10, 10, 15, 0.9));
+}
+
+.hero-noise {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.26;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
+}
+
+.feature-flight {
+  position: relative;
+  min-height: 520vh;
+  border-bottom: 1px solid #2b2b2e;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(56, 189, 248, 0.1), transparent 28rem),
+    radial-gradient(circle at 82% 48%, rgba(6, 182, 212, 0.11), transparent 34rem),
+    linear-gradient(180deg, #070709 0%, #0b0b0f 48%, #070709 100%);
+}
+
+.feature-flight__sticky {
+  position: sticky;
+  top: 0;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding: 7rem 0 4rem;
+}
+
+.feature-flight__intro {
+  position: relative;
+  z-index: 3;
+}
+
+@media (min-width: 1024px) {
+  .feature-flight__layout {
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  }
+}
+
+.capability-scene {
+  position: relative;
+  min-height: 640px;
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+.capability-scene__grid {
+  position: absolute;
+  inset: 7% 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(6, 182, 212, 0.08), transparent 60%);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
+  transform: rotateX(62deg) translateY(8rem);
+  transform-origin: center;
+  opacity: 0.62;
+}
+
+.capability-scene__rail {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.capability-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(560px, 100%);
+  min-height: 320px;
+  margin-left: max(-280px, -50%);
+  margin-top: -160px;
+  padding: 1.35rem;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 34%, #3e3e42);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--card-accent) 18%, transparent), transparent 48%),
+    radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--card-accent) 8%, transparent), transparent 52%),
+    linear-gradient(180deg, rgba(29, 29, 31, 0.94), rgba(13, 13, 16, 0.96));
+  box-shadow:
+    0 36px 110px rgba(0, 0, 0, 0.5),
+    0 0 64px color-mix(in srgb, var(--card-accent) 16%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transform-style: preserve-3d;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.capability-card__topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  color: color-mix(in srgb, var(--card-accent) 76%, white);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.capability-card__icon {
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 44%, #3e3e42);
+  border-radius: 12px;
+  color: var(--card-accent);
+  background: color-mix(in srgb, var(--card-accent) 12%, #151515);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--card-accent) 18%, transparent);
+}
+
+.capability-card__command {
+  max-width: 55%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  color: #cfcfcf;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.capability-card__bullet {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.72rem 0.78rem;
+  color: #d7d7d7;
+  font-size: 0.86rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.feature-flight__mobile-list {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .feature-flight {
+    min-height: auto;
+  }
+
+  .feature-flight__sticky {
+    position: relative;
+    overflow: visible;
+    padding: 5rem 0;
+  }
+
+  .capability-scene {
+    display: none;
+  }
+
+  .feature-flight__mobile-list {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .capability-card--mobile {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .capability-card {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .capability-card__command {
+    max-width: 62%;
+    font-size: 0.66rem;
+  }
+}

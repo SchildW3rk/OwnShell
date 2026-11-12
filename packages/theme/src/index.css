@@ -1,0 +1,35 @@
+/**
+ * @ownshell/theme
+ * 
+ * Shared Design System for OwnShell Apps
+ * 
+ * This package provides:
+ * - CSS color variables for Light and Dark mode
+ * - Tailwind CSS v4 theme mapping via @theme inline
+ * 
+ * Usage in your app's CSS:
+ * 
+ *   @import 'tailwindcss';
+ *   @import '@ownshell/theme';
+ * 
+ * Then use classes like:
+ *   - bg-background, text-foreground
+ *   - bg-card, text-card-foreground
+ *   - bg-primary, text-primary-foreground
+ *   - bg-secondary, text-secondary-foreground
+ *   - bg-muted, text-muted-foreground
+ *   - bg-accent, text-accent-foreground
+ *   - bg-destructive, text-destructive-foreground
+ *   - bg-success, text-success-foreground
+ *   - border-border, border-input
+ *   - ring-ring
+ * 
+ * Dark mode is activated by setting data-theme="dark" on any parent element:
+ *   <html data-theme="dark">
+ */
+
+/* CSS Variables for Light/Dark Mode */
+@import './colors.css';
+
+/* Tailwind Theme Mapping */
+@import './tailwind.css';

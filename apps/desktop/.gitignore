@@ -1,0 +1,26 @@
+# Desktop app specific ignores
+# (Root .gitignore handles most cases)
+
+# Electron build artifacts
+dist/
+dist-electron/
+release/
+release-builds/
+
+# User data directory (if running in dev mode)
+userData/
+
+# Electron packager output
+out/
+
+# SQLite databases (local user data)
+*.db
+*.db-shm
+*.db-wal
+
+# Development environment
+.env.local
+
+# Vite cache
+.vite/
+node_modules/.vite/
