@@ -1,9 +1,6 @@
-import type {
-  HttpMethod,
-  RequestAuthType,
-  RequestBodyType,
-  VaultEnvironmentsTable,
-} from '@ownshell/core';
+import type { HttpMethod, RequestAuthType, RequestBodyType } from '@ownshell/core';
+
+export type RawContentType = 'text' | 'json' | 'xml' | 'html';
 
 export interface HttpRequestConfig {
   method: HttpMethod;
@@ -12,8 +9,11 @@ export interface HttpRequestConfig {
   headers: string;
   body: string;
   bodyType: RequestBodyType;
+  rawContentType?: RawContentType;
   authType: RequestAuthType;
   authConfig: string;
+  /** Collection the request lives in; used to resolve `inherit` auth. */
+  collectionId?: string | null;
   networkHostId: string | null;
   environmentId: string | null;
 }
@@ -22,9 +22,15 @@ export interface HttpResponse {
   status: number;
   statusText: string;
   headers: Record<string, string>;
+  /** Decoded text body; empty when the body is binary. */
   body: string;
+  /** Raw bytes for binary bodies (images, PDFs, octet-stream, ...). */
+  bodyBytes?: Uint8Array;
   time: number;
   size: number;
+  /** Set for failures the UI can explain (see ApiRequestErrorCode). */
+  errorCode?: string;
+  errorDetail?: string;
   timings?: {
     prepareMs: number;
     headersMs: number;
@@ -47,10 +53,3 @@ export interface AuthConfig {
   value?: string;
   addTo?: 'header' | 'query';
 }
-
-export interface EnvironmentVariable {
-  key: string;
-  value_encrypted: string;
-}
-
-export type HttpEnvironment = VaultEnvironmentsTable | null;

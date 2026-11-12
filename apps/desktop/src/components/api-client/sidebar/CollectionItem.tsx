@@ -8,11 +8,14 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  KeyRound,
   MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { CollectionAuthDialog } from './CollectionAuthDialog';
 import { ContextMenu } from './ContextMenu';
 import { RequestItem } from './RequestItem';
 import type { ApiCollectionTreeItem, ContextMenuItem } from './types';
@@ -49,7 +52,9 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   depth = 0,
 }) => {
   const isExpanded = expandedIds.has(collection.id);
+  const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -58,22 +63,27 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
 
   const contextMenuItems: ContextMenuItem[] = [
     {
-      label: 'New Request',
+      label: t('api.newRequest'),
       icon: <FileJson className="w-4 h-4" />,
       onClick: () => onCreateRequest(collection.id),
     },
     {
-      label: 'New Folder',
+      label: t('api.newFolder'),
       icon: <FolderPlus className="w-4 h-4" />,
       onClick: () => onCreateCollection(collection.id),
     },
     {
-      label: 'Rename',
+      label: t('api.collectionAuth.menu'),
+      icon: <KeyRound className="w-4 h-4" />,
+      onClick: () => setShowAuthDialog(true),
+    },
+    {
+      label: t('common.rename'),
       icon: <Pencil className="w-4 h-4" />,
       onClick: () => onEditCollection(collection),
     },
     {
-      label: 'Delete',
+      label: t('common.delete'),
       icon: <Trash2 className="w-4 h-4" />,
       onClick: () => onDeleteCollection(collection.id),
       variant: 'danger',
@@ -121,7 +131,7 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
               onCreateRequest(collection.id);
             }}
             className="no-drag h-5 w-5 p-0"
-            title="New Request"
+            title={t('api.newRequest')}
           >
             <Plus className="w-3.5 h-3.5" />
           </Button>
@@ -173,6 +183,10 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
             />
           ))}
         </div>
+      )}
+
+      {showAuthDialog && (
+        <CollectionAuthDialog collection={collection} onClose={() => setShowAuthDialog(false)} />
       )}
 
       {contextMenu && (

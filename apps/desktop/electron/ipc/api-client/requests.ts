@@ -2,6 +2,7 @@ import type {
   ApiRequestUpdate,
   Database,
   HttpMethod,
+  RawRequestContentType,
   RequestAuthType,
   RequestBodyType,
 } from '@ownshell/core';
@@ -112,6 +113,7 @@ async function handleCreateRequest(
       headers: data.headers ?? '[]',
       body: data.body ?? '',
       body_type: data.body_type ?? 'none',
+      raw_content_type: data.raw_content_type ?? 'text',
       auth_type: data.auth_type ?? 'none',
       auth_config: data.auth_config ?? '{}',
       network_host_id: data.network_host_id ?? null,
@@ -209,6 +211,7 @@ async function handleDuplicateRequest(
       headers: original.headers,
       body: original.body,
       body_type: original.body_type,
+      raw_content_type: original.raw_content_type,
       auth_type: original.auth_type,
       auth_config: original.auth_config,
       network_host_id: original.network_host_id,
@@ -242,6 +245,7 @@ interface RequestInput {
   headers?: string;
   body?: string;
   body_type?: RequestBodyType;
+  raw_content_type?: RawRequestContentType;
   auth_type?: RequestAuthType;
   auth_config?: string;
   network_host_id?: string | null;

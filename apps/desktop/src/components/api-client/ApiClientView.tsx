@@ -13,9 +13,11 @@ import { Columns, Rows, Globe, ChevronDown, FileJson } from 'lucide-react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import { cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import {
   VaultEnvironmentsTable,
   HttpMethod,
+  RawRequestContentType,
   RequestBodyType,
   RequestAuthType,
 } from '@ownshell/core';
@@ -43,6 +45,17 @@ import { ResponseViewer, HttpResponse } from './ResponseViewer';
 // Types
 // ============================================
 
+/** Failed sends carry `{ "error": message }` as body (see the execute IPC handler). */
+function getErrorMessage(response: HttpResponse): string {
+  try {
+    const parsed = JSON.parse(response.body) as { error?: unknown };
+    if (typeof parsed.error === 'string') return parsed.error;
+  } catch {
+    // fall through to the status text
+  }
+  return response.statusText;
+}
+
 type LayoutMode = 'horizontal' | 'vertical';
 
 interface RequestDraft {
@@ -54,6 +67,7 @@ interface RequestDraft {
   headers: KeyValueItem[];
   body: BodyValue;
   bodyType: RequestBodyType;
+  rawContentType: RawRequestContentType;
   authType: RequestAuthType;
   authConfig: string;
   activeTab: RequestTab;
@@ -94,6 +108,7 @@ export const ApiClientView: React.FC = () => {
   const [draftHeaders, setDraftHeaders] = useState<KeyValueItem[]>([]);
   const [draftBody, setDraftBody] = useState<BodyValue>('');
   const [draftBodyType, setDraftBodyType] = useState<RequestBodyType>('none');
+  const [draftRawContentType, setDraftRawContentType] = useState<RawRequestContentType>('text');
   const [draftAuthType, setDraftAuthType] = useState<RequestAuthType>('none');
   const [draftAuthConfig, setDraftAuthConfig] = useState('{}');
 
@@ -111,13 +126,14 @@ export const ApiClientView: React.FC = () => {
     headers: draftHeaders,
     body: draftBody,
     bodyType: draftBodyType,
+    rawContentType: draftRawContentType,
     authType: draftAuthType,
     authConfig: draftAuthConfig,
     activeTab,
     editorMemory,
   }), [
     draftMethod, draftUrl, draftNetworkHostId, draftEnvironmentId, draftParams,
-    draftHeaders, draftBody, draftBodyType, draftAuthType, draftAuthConfig, activeTab, editorMemory,
+    draftHeaders, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig, activeTab, editorMemory,
   ]);
 
   // Environment dropdown
@@ -153,6 +169,7 @@ export const ApiClientView: React.FC = () => {
         headers: parseKeyValueItems(selectedRequest.headers),
         body: selectedRequest.body,
         bodyType: selectedRequest.body_type,
+        rawContentType: selectedRequest.raw_content_type ?? 'text',
         authType: selectedRequest.auth_type,
         authConfig: selectedRequest.auth_config,
         activeTab: 'params' as RequestTab,
@@ -168,6 +185,7 @@ export const ApiClientView: React.FC = () => {
     setDraftHeaders(draft.headers);
     setDraftBody(draft.body);
     setDraftBodyType(draft.bodyType);
+    setDraftRawContentType(draft.rawContentType);
     setDraftAuthType(draft.authType);
     setDraftAuthConfig(draft.authConfig);
     setActiveTab(draft.activeTab);
@@ -215,12 +233,13 @@ export const ApiClientView: React.FC = () => {
           headers: serializeKeyValueItems(draftHeaders),
           body,
           body_type: draftBodyType,
+          raw_content_type: draftRawContentType,
           auth_type: draftAuthType,
           auth_config: draftAuthConfig,
         },
       });
-    } catch (error) {
-      console.error('Failed to save request:', error);
+    } catch {
+      // The mutation hook already shows an error toast.
     }
     return body;
   }, [
@@ -233,6 +252,7 @@ export const ApiClientView: React.FC = () => {
     draftHeaders,
     draftBody,
     draftBodyType,
+    draftRawContentType,
     draftAuthType,
     draftAuthConfig,
     updateRequestMutation,
@@ -266,13 +286,20 @@ export const ApiClientView: React.FC = () => {
         headers: serializeKeyValueItems(draftHeaders),
         body,
         bodyType: draftBodyType,
+        rawContentType: draftRawContentType,
         authType: draftAuthType,
         authConfig: draftAuthConfig,
+        collectionId: selectedRequest?.collection_id ?? null,
         networkHostId: draftNetworkHostId,
         environmentId: draftEnvironmentId,
       });
 
-      publish({ ...result, ipcRoundTripMs: performance.now() - ipcStarted } as HttpResponse);
+      publish({ ...result, ipcRoundTripMs: performance.now() - ipcStarted });
+      if (result.errorCode) {
+        toast.error(t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '' }));
+      } else if (result.status === 0) {
+        toast.error(t('api.errors.requestFailed', { error: getErrorMessage(result) }));
+      }
 
       // Update last_executed_at
       if (selectedRequestId) {
@@ -285,6 +312,9 @@ export const ApiClientView: React.FC = () => {
       }
     } catch (error) {
       console.error('Request failed:', error);
+      toast.error(
+        t('api.errors.requestFailed', { error: error instanceof Error ? error.message : String(error) })
+      );
       publish({
         status: 0,
         statusText: 'Error',
@@ -307,12 +337,15 @@ export const ApiClientView: React.FC = () => {
     draftHeaders,
     draftBody,
     draftBodyType,
+    draftRawContentType,
     draftAuthType,
     draftAuthConfig,
     draftNetworkHostId,
     draftEnvironmentId,
     selectedRequestId,
+    selectedRequest?.collection_id,
     handleSave,
+    t,
     updateRequestMutation,
   ]);
 
@@ -530,6 +563,8 @@ export const ApiClientView: React.FC = () => {
                 bodyType={draftBodyType}
                 body={draftBody}
                 memory={editorMemory}
+                rawContentType={draftRawContentType}
+                onRawContentTypeChange={setDraftRawContentType}
                 onBodyTypeChange={setDraftBodyType}
                 onBodyChange={setDraftBody}
               />

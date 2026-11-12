@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,7 @@ import type { BodyEditorMemory, BodyValue, RawContentType } from './types';
 
 const CONTENT_TYPES: Array<{ value: RawContentType; label: string }> = [
   { value: 'text', label: 'Text' },
+  { value: 'json', label: 'JSON' },
   { value: 'xml', label: 'XML' },
   { value: 'html', label: 'HTML' },
 ];
@@ -15,11 +16,18 @@ interface RawEditorProps {
   value: BodyValue;
   onChange: (value: BodyValue) => void;
   memory: BodyEditorMemory;
+  contentType: RawContentType;
+  onContentTypeChange: (type: RawContentType) => void;
 }
 
-export const RawEditor: React.FC<RawEditorProps> = ({ value, onChange, memory }) => {
+export const RawEditor: React.FC<RawEditorProps> = ({
+  value,
+  onChange,
+  memory,
+  contentType,
+  onContentTypeChange,
+}) => {
   const { t } = useTranslation();
-  const [contentType, setContentType] = useState<RawContentType>(memory.rawContentType ?? 'text');
 
   return (
     <div className="flex flex-col h-full">
@@ -31,10 +39,7 @@ export const RawEditor: React.FC<RawEditorProps> = ({ value, onChange, memory })
           <button
             key={type.value}
             type="button"
-            onClick={() => {
-              memory.rawContentType = type.value;
-              setContentType(type.value);
-            }}
+            onClick={() => onContentTypeChange(type.value)}
             className={cn(
               'px-2 py-1 text-xs rounded transition-colors',
               contentType === type.value
@@ -52,7 +57,7 @@ export const RawEditor: React.FC<RawEditorProps> = ({ value, onChange, memory })
           value={value}
           onChange={onChange}
           memory={memory}
-          language={contentType === 'xml' || contentType === 'html' ? 'xml' : 'text'}
+          language={contentType === 'xml' || contentType === 'html' ? 'xml' : contentType === 'json' ? 'json' : 'text'}
           placeholder={t('api.body.rawPlaceholder', 'Enter raw body content...')}
         />
       </div>

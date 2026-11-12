@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { ApiRequestsTable } from '@ownshell/core';
 import { Button, cn } from '@ownshell/ui';
 import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ContextMenu } from './ContextMenu';
 import { methodColors, methodShort } from './method-badges';
 import type { ContextMenuItem } from './types';
@@ -27,16 +28,17 @@ export const RequestItem: React.FC<RequestItemProps> = ({
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
+  const { t } = useTranslation();
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
     setContextMenu({ x: event.clientX, y: event.clientY });
   };
 
   const contextMenuItems: ContextMenuItem[] = [
-    { label: 'Edit', icon: <Pencil className="w-4 h-4" />, onClick: onEdit },
-    { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: onDuplicate },
+    { label: t('common.edit'), icon: <Pencil className="w-4 h-4" />, onClick: onEdit },
+    { label: t('common.duplicate'), icon: <Copy className="w-4 h-4" />, onClick: onDuplicate },
     {
-      label: 'Delete',
+      label: t('common.delete'),
       icon: <Trash2 className="w-4 h-4" />,
       onClick: onDelete,
       variant: 'danger',

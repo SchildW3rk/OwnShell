@@ -8,8 +8,22 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ApiCollectionsTable, ApiRequestsTable, HttpMethod } from '@ownshell/core';
+import {
+  ApiCollectionsTable,
+  ApiRequestsTable,
+  HttpMethod,
+  RawRequestContentType,
+  RequestAuthType,
+} from '@ownshell/core';
+import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import { queryKeys } from '@/lib/queryClient';
+
+/** Mutations must not fail silently: every failed save/update/delete shows a toast. */
+function useMutationErrorToast() {
+  const { t } = useTranslation();
+  return (error: Error) => toast.error(t('api.errors.changeFailed', { error: error.message }));
+}
 
 // ==================== COLLECTION HOOKS ====================
 
@@ -39,8 +53,10 @@ export function useApiCollection(id: string | null) {
  */
 export function useCreateApiCollection() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: (data: {
       name: string;
       parent_id?: string | null;
@@ -58,8 +74,10 @@ export function useCreateApiCollection() {
  */
 export function useUpdateApiCollection() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: ({
       id,
       data,
@@ -70,6 +88,8 @@ export function useUpdateApiCollection() {
         parent_id?: string | null;
         description?: string | null;
         sort_order?: number;
+        auth_type?: RequestAuthType;
+        auth_config?: string;
       };
     }) => window.electronAPI.apiClient.collections.update(id, data),
     onSuccess: (_result, variables) => {
@@ -84,8 +104,10 @@ export function useUpdateApiCollection() {
  */
 export function useDeleteApiCollection() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: (id: string) => window.electronAPI.apiClient.collections.delete(id),
     onSuccess: () => {
       // Invalidate both collections and requests (cascade delete)
@@ -133,8 +155,10 @@ export function useApiRequestsByCollection(collectionId: string | null) {
  */
 export function useCreateApiRequest() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: (data: {
       name: string;
       collection_id?: string | null;
@@ -144,6 +168,7 @@ export function useCreateApiRequest() {
       headers?: string;
       body?: string;
       body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+      raw_content_type?: RawRequestContentType;
       auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
       auth_config?: string;
       network_host_id?: string | null;
@@ -166,8 +191,10 @@ export function useCreateApiRequest() {
  */
 export function useUpdateApiRequest() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: ({
       id,
       data,
@@ -182,6 +209,7 @@ export function useUpdateApiRequest() {
         headers?: string;
         body?: string;
         body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+        raw_content_type?: RawRequestContentType;
         auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
         auth_config?: string;
         network_host_id?: string | null;
@@ -202,8 +230,10 @@ export function useUpdateApiRequest() {
  */
 export function useDeleteApiRequest() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: (id: string) => window.electronAPI.apiClient.requests.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() });
@@ -216,8 +246,10 @@ export function useDeleteApiRequest() {
  */
 export function useDuplicateApiRequest() {
   const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
 
   return useMutation({
+    onError,
     mutationFn: (id: string) => window.electronAPI.apiClient.requests.duplicate(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() });

@@ -14,6 +14,11 @@ export type RequestBodyType = 'none' | 'json' | 'form-data' | 'form-urlencoded' 
 export type RequestAuthType = 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
 
 /**
+ * Content type of a raw request body
+ */
+export type RawRequestContentType = 'text' | 'json' | 'xml' | 'html';
+
+/**
  * API Collections table (v1.18.0)
  * Folders for organizing API requests (supports nesting)
  */
@@ -23,6 +28,8 @@ export interface ApiCollectionsTable {
   name: string; // Display name, e.g., "User APIs", "Auth Endpoints"
   description: string | null; // Optional description
   sort_order: number; // For drag & drop ordering
+  auth_type: RequestAuthType; // 'inherit' = use parent folder's auth (root: none)
+  auth_config: string; // JSON, same shape as api_requests.auth_config
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
 }
@@ -33,6 +40,8 @@ export interface NewApiCollection {
   name: string;
   description?: string | null;
   sort_order?: number;
+  auth_type?: RequestAuthType;
+  auth_config?: string;
   created_at: number;
   updated_at: number;
 }
@@ -42,6 +51,8 @@ export interface ApiCollectionUpdate {
   name?: string;
   description?: string | null;
   sort_order?: number;
+  auth_type?: RequestAuthType;
+  auth_config?: string;
   updated_at: number;
 }
 
@@ -59,6 +70,7 @@ export interface ApiRequestsTable {
   headers: string; // JSON: [{ key, value, enabled }]
   body: string; // Raw body content
   body_type: RequestBodyType; // Body content type
+  raw_content_type: RawRequestContentType; // Content-Type for body_type 'raw'
   auth_type: RequestAuthType; // Authentication type
   auth_config: string; // JSON: { token, username, password, key, value, addTo }
   network_host_id: string | null; // FK to hosts (for SSH tunneling) - null = direct
@@ -79,6 +91,7 @@ export interface NewApiRequest {
   headers?: string;
   body?: string;
   body_type?: RequestBodyType;
+  raw_content_type?: RawRequestContentType;
   auth_type?: RequestAuthType;
   auth_config?: string;
   network_host_id?: string | null;
@@ -98,6 +111,7 @@ export interface ApiRequestUpdate {
   headers?: string;
   body?: string;
   body_type?: RequestBodyType;
+  raw_content_type?: RawRequestContentType;
   auth_type?: RequestAuthType;
   auth_config?: string;
   network_host_id?: string | null;

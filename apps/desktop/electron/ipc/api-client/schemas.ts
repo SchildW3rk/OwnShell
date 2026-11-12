@@ -8,12 +8,15 @@ export const httpMethodSchema = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE',
 export const bodyTypeSchema = z.enum(['none', 'json', 'form-data', 'form-urlencoded', 'raw', 'binary']);
 export const authTypeSchema = z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']);
 export const jsonConfigStringSchema = z.string().max(1024 * 1024);
+export const rawContentTypeSchema = z.enum(['text', 'json', 'xml', 'html']);
 
 export const collectionSchema = z.object({
   name: z.string().min(1).max(255),
   parent_id: nullableIdSchema.optional(),
   description: z.string().max(1024 * 1024).nullable().optional(),
   sort_order: sortOrderSchema.optional(),
+  auth_type: authTypeSchema.optional(),
+  auth_config: jsonConfigStringSchema.optional(),
 });
 export const collectionUpdateSchema = collectionSchema.partial();
 export const collectionUpdateArgsSchema = z.tuple([idSchema, collectionUpdateSchema]);
@@ -28,6 +31,7 @@ export const requestSchema = z.object({
   headers: jsonConfigStringSchema.optional(),
   body: z.string().max(10 * 1024 * 1024).optional(),
   body_type: bodyTypeSchema.optional(),
+  raw_content_type: rawContentTypeSchema.optional(),
   auth_type: authTypeSchema.optional(),
   auth_config: jsonConfigStringSchema.optional(),
   network_host_id: nullableIdSchema.optional(),
@@ -45,8 +49,10 @@ export const executeRequestSchema = z.object({
   headers: jsonConfigStringSchema,
   body: z.string().max(10 * 1024 * 1024),
   bodyType: bodyTypeSchema,
+  rawContentType: rawContentTypeSchema.optional(),
   authType: authTypeSchema,
   authConfig: jsonConfigStringSchema,
+  collectionId: nullableIdSchema.optional(),
   networkHostId: nullableIdSchema,
   environmentId: nullableIdSchema,
 });

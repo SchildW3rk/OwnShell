@@ -25,6 +25,8 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
   bodyType,
   body,
   memory,
+  rawContentType,
+  onRawContentTypeChange,
   onBodyTypeChange,
   onBodyChange,
 }) => {
@@ -51,7 +53,15 @@ export const BodyEditor: React.FC<BodyEditorProps> = ({
           <FormUrlEncodedEditor value={body.toString()} onChange={onBodyChange} />
         )}
 
-        {bodyType === 'raw' && <RawEditor value={body} onChange={onBodyChange} memory={memory} />}
+        {bodyType === 'raw' && (
+          <RawEditor
+            value={body}
+            onChange={onBodyChange}
+            memory={memory}
+            contentType={rawContentType}
+            onContentTypeChange={onRawContentTypeChange}
+          />
+        )}
 
         {bodyType === 'binary' && <BinaryEditor value={body.toString()} onChange={onBodyChange} />}
       </div>

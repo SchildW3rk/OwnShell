@@ -433,4 +433,22 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
   } catch (error) {
     logger.warn('Migration 014 skipped or failed', error);
   }
+
+  try {
+    const addColumnIfMissing = (tableName: string, columnName: string, definition: string) => {
+      const tableInfo = sqlite.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+        name: string;
+      }>;
+      if (tableInfo.length > 0 && !tableInfo.some((col) => col.name === columnName)) {
+        sqlite.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition};`);
+      }
+    };
+
+    addColumnIfMissing('api_collections', 'auth_type', "auth_type TEXT NOT NULL DEFAULT 'inherit'");
+    addColumnIfMissing('api_collections', 'auth_config', "auth_config TEXT NOT NULL DEFAULT '{}'");
+    addColumnIfMissing('api_requests', 'raw_content_type', "raw_content_type TEXT NOT NULL DEFAULT 'text'");
+    logger.info('Migration 015 completed: API collection auth and raw content type');
+  } catch (error) {
+    logger.warn('Migration 015 skipped or failed', error);
+  }
 }

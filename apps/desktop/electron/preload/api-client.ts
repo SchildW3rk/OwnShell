@@ -1,4 +1,5 @@
 import type { IpcRenderer } from 'electron';
+import type { HttpResponse } from '../http/types';
 
 export function createApiClientApi(ipcRenderer: IpcRenderer) {
   return {
@@ -11,6 +12,8 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         parent_id?: string | null;
         description?: string | null;
         sort_order?: number;
+        auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+        auth_config?: string;
       }) => ipcRenderer.invoke('api:collections:create', data),
       update: (
         id: string,
@@ -19,6 +22,8 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           parent_id?: string | null;
           description?: string | null;
           sort_order?: number;
+          auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
+          auth_config?: string;
         }
       ) => ipcRenderer.invoke('api:collections:update', id, data),
       delete: (id: string) => ipcRenderer.invoke('api:collections:delete', id),
@@ -38,6 +43,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         headers?: string;
         body?: string;
         body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+        raw_content_type?: 'text' | 'json' | 'xml' | 'html';
         auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
         auth_config?: string;
         network_host_id?: string | null;
@@ -55,6 +61,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
           headers?: string;
           body?: string;
           body_type?: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+          raw_content_type?: 'text' | 'json' | 'xml' | 'html';
           auth_type?: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
           auth_config?: string;
           network_host_id?: string | null;
@@ -77,11 +84,18 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
         headers: string;
         body: string;
         bodyType: 'none' | 'json' | 'form-data' | 'form-urlencoded' | 'raw' | 'binary';
+        rawContentType?: 'text' | 'json' | 'xml' | 'html';
         authType: 'none' | 'bearer' | 'basic' | 'api-key' | 'inherit';
         authConfig: string;
+        collectionId?: string | null;
         networkHostId: string | null;
         environmentId: string | null;
-      }) => ipcRenderer.invoke('api:requests:execute', config),
+      }): Promise<HttpResponse> => ipcRenderer.invoke('api:requests:execute', config),
+    },
+    files: {
+      /** Opens a file dialog; returns null when cancelled. The main process re-validates the file on send. */
+      pick: (): Promise<{ path: string; name: string; size: number; contentType: string } | null> =>
+        ipcRenderer.invoke('api:files:pick'),
     },
   };
 }

@@ -24,7 +24,7 @@ interface AuthEditorProps {
   authConfig: string;
   onAuthTypeChange: (type: RequestAuthType) => void;
   onAuthConfigChange: (config: string) => void;
-  /** Whether this is a collection-level auth (hides "inherit" option) */
+  /** Collection/folder-level auth: "inherit" means the parent folder's auth */
   isCollection?: boolean;
 }
 
@@ -59,13 +59,8 @@ const AUTH_TYPES: Array<{
 const AuthTypeSelector: React.FC<{
   value: RequestAuthType;
   onChange: (type: RequestAuthType) => void;
-  isCollection?: boolean;
-}> = ({ value, onChange, isCollection }) => {
+}> = ({ value, onChange }) => {
   const { t } = useTranslation();
-
-  const availableTypes = isCollection
-    ? AUTH_TYPES.filter((type) => type.value !== 'inherit')
-    : AUTH_TYPES;
 
   return (
     <div className="flex flex-col gap-1 p-4 border-b border-border bg-secondary/50">
@@ -73,7 +68,7 @@ const AuthTypeSelector: React.FC<{
         {t('api.auth.type', 'Authentication Type')}
       </span>
       <div className="flex flex-wrap gap-2">
-        {availableTypes.map((type) => {
+        {AUTH_TYPES.map((type) => {
           const Icon = type.icon;
           return (
             <button
@@ -338,7 +333,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({
   return (
     <div className="flex flex-col h-full">
       {/* Auth Type Selector */}
-      <AuthTypeSelector value={authType} onChange={onAuthTypeChange} isCollection={isCollection} />
+      <AuthTypeSelector value={authType} onChange={onAuthTypeChange} />
 
       {/* Auth Config Editor */}
       <div className="flex-1 min-h-0 overflow-auto">
@@ -366,10 +361,7 @@ export const AuthEditor: React.FC<AuthEditorProps> = ({
             <div className="text-center">
               <ArrowDownFromLine className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
-                {t(
-                  'api.auth.inherit',
-                  'This request will inherit authentication from its parent collection'
-                )}
+                {t(isCollection ? 'api.auth.inheritCollection' : 'api.auth.inherit')}
               </p>
             </div>
           </div>

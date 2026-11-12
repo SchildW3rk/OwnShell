@@ -31,6 +31,8 @@ interface KeyValueEditorProps {
   valuePlaceholder?: string;
   /** Whether to show bulk actions */
   showBulkActions?: boolean;
+  /** Replaces the value input of a row (e.g. file rows in form-data). */
+  renderValue?: (item: KeyValueItem) => React.ReactNode;
 }
 
 // ============================================
@@ -40,7 +42,7 @@ interface KeyValueEditorProps {
 /**
  * Render value with {{variable}} highlighting
  */
-const VariableHighlightInput: React.FC<{
+export const VariableHighlightInput: React.FC<{
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -87,6 +89,7 @@ interface KeyValueRowProps {
   valuePlaceholder: string;
   onUpdate: (updates: Partial<KeyValueItem>) => void;
   onDelete: () => void;
+  renderValue?: (item: KeyValueItem) => React.ReactNode;
 }
 
 const KeyValueRow = React.memo<KeyValueRowProps>(function KeyValueRow({
@@ -95,6 +98,7 @@ const KeyValueRow = React.memo<KeyValueRowProps>(function KeyValueRow({
   valuePlaceholder,
   onUpdate,
   onDelete,
+  renderValue,
 }) {
   return (
     <div className={cn('group flex items-center gap-2 py-1', !item.enabled && 'opacity-50')}>
@@ -127,12 +131,16 @@ const KeyValueRow = React.memo<KeyValueRowProps>(function KeyValueRow({
       />
 
       {/* Value Input with Variable Highlighting */}
-      <VariableHighlightInput
-        value={item.value}
-        onChange={(value) => onUpdate({ value })}
-        placeholder={valuePlaceholder}
-        disabled={!item.enabled}
-      />
+      {renderValue ? (
+        renderValue(item)
+      ) : (
+        <VariableHighlightInput
+          value={item.value}
+          onChange={(value) => onUpdate({ value })}
+          placeholder={valuePlaceholder}
+          disabled={!item.enabled}
+        />
+      )}
 
       {/* Delete Button */}
       <Button
@@ -157,6 +165,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
   keyPlaceholder = 'Key',
   valuePlaceholder = 'Value',
   showBulkActions = true,
+  renderValue,
 }) => {
   const { t } = useTranslation();
 
@@ -263,6 +272,7 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
                 valuePlaceholder={valuePlaceholder}
                 onUpdate={(updates) => handleUpdateRow(item.id, updates)}
                 onDelete={() => handleDeleteRow(item.id)}
+                renderValue={renderValue}
               />
             ))}
           </div>

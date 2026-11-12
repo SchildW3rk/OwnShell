@@ -1,4 +1,4 @@
-import type { Database, ApiCollectionUpdate } from '@ownshell/core';
+import type { Database, ApiCollectionUpdate, RequestAuthType } from '@ownshell/core';
 import type { IpcMainInvokeEvent } from 'electron';
 import type { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
@@ -65,6 +65,8 @@ async function handleCreateCollection(
     parent_id?: string | null;
     description?: string | null;
     sort_order?: number;
+    auth_type?: RequestAuthType;
+    auth_config?: string;
   }
 ) {
   try {
@@ -83,6 +85,8 @@ async function handleCreateCollection(
       name: data.name,
       description: data.description ?? null,
       sort_order: sortOrder,
+      auth_type: data.auth_type ?? 'inherit',
+      auth_config: data.auth_config ?? '{}',
       created_at: now,
       updated_at: now,
     };
@@ -106,6 +110,8 @@ async function handleUpdateCollection(
     parent_id?: string | null;
     description?: string | null;
     sort_order?: number;
+    auth_type?: RequestAuthType;
+    auth_config?: string;
   }
 ) {
   try {

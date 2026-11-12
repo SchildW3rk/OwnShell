@@ -5,7 +5,7 @@
  * HTML preview tabs.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Check,
@@ -41,6 +41,21 @@ function detectContentType(response: HttpResponse | null): ResponseContentType {
   return 'text';
 }
 
+function headerContentType(response: HttpResponse | null): string {
+  if (!response?.headers) return '';
+  return response.headers['content-type'] || response.headers['Content-Type'] || '';
+}
+
+const BINARY_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+  'application/zip': 'zip',
+  'application/gzip': 'gz',
+};
+
 function formatBody(body: string | undefined, contentType: ResponseContentType) {
   const started = performance.now();
   let parsedAt = started;
@@ -49,7 +64,11 @@ function formatBody(body: string | undefined, contentType: ResponseContentType) 
       const parsed = JSON.parse(body);
       parsedAt = performance.now();
       const formatted = JSON.stringify(parsed, null, 2);
-      return { body: formatted, parseMs: parsedAt - started, formatMs: performance.now() - parsedAt };
+      return {
+        body: formatted,
+        parseMs: parsedAt - started,
+        formatMs: performance.now() - parsedAt,
+      };
     } catch {
       return { body, parseMs: performance.now() - started, formatMs: 0 };
     }
@@ -69,6 +88,21 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
   );
   const formattedBody = preparation.body;
   const canPreview = contentType === 'html';
+  const bodyBytes = response?.bodyBytes;
+  const binaryType = headerContentType(response).split(';')[0].trim().toLowerCase();
+  const hasBody = Boolean(response?.body || bodyBytes?.length);
+
+  // Images are shown inline; other binary bodies can only be saved.
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!bodyBytes || !binaryType.startsWith('image/')) {
+      setImageUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([bodyBytes as BlobPart], { type: binaryType }));
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [bodyBytes, binaryType]);
 
   const handleCopy = useCallback(async () => {
     if (!response?.body) return;
@@ -83,11 +117,15 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
   }, [response?.body, formattedBody]);
 
   const handleDownload = useCallback(() => {
-    if (!response?.body) return;
+    if (!hasBody) return;
 
     const extensionMap: Record<string, string> = { json: 'json', xml: 'xml', html: 'html' };
-    const ext = extensionMap[contentType] || 'txt';
-    const blob = new Blob([formattedBody], { type: 'text/plain' });
+    const ext = bodyBytes
+      ? BINARY_EXTENSIONS[binaryType] || 'bin'
+      : extensionMap[contentType] || 'txt';
+    const blob = bodyBytes
+      ? new Blob([bodyBytes as BlobPart], { type: binaryType || 'application/octet-stream' })
+      : new Blob([formattedBody], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -96,7 +134,7 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [response?.body, formattedBody, contentType]);
+  }, [hasBody, bodyBytes, binaryType, formattedBody, contentType]);
 
   if (isLoading) {
     return (
@@ -213,21 +251,23 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
           })}
         </div>
 
-        {activeTab === 'body' && response.body && (
+        {activeTab === 'body' && hasBody && (
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 mr-1 text-green-500" />
-                  {t('api.copied', 'Copied!')}
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5 mr-1" />
-                  {t('api.copy', 'Copy')}
-                </>
-              )}
-            </Button>
+            {!bodyBytes && (
+              <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7 text-xs">
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 mr-1 text-green-500" />
+                    {t('api.copied', 'Copied!')}
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    {t('api.copy', 'Copy')}
+                  </>
+                )}
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={handleDownload} className="h-7 text-xs">
               <Download className="w-3.5 h-3.5 mr-1" />
               {t('api.download', 'Save')}
@@ -239,7 +279,21 @@ export const ResponseViewer: React.FC<ResponseViewerProps> = ({ response, isLoad
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {activeTab === 'body' && (
           <div className="flex-1 min-h-0 p-2">
-            {response.body ? (
+            {imageUrl ? (
+              <div className="h-full overflow-auto flex items-center justify-center">
+                <img src={imageUrl} alt="" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : bodyBytes?.length ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {t('api.response.binaryBody', { type: binaryType || 'application/octet-stream' })}
+                </p>
+                <Button variant="secondary" size="sm" onClick={handleDownload}>
+                  <Download className="w-3.5 h-3.5 mr-1" />
+                  {t('api.download')}
+                </Button>
+              </div>
+            ) : response.body ? (
               <CodeViewer content={formattedBody} language={contentType} />
             ) : (
               <div className="flex items-center justify-center h-full">

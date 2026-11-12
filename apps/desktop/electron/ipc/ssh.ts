@@ -223,7 +223,7 @@ const activeSessions: ActiveSSHSessionStore = {
 // In-flight promise per host, so concurrent callers share one connection instead of each opening one.
 const backgroundConnectionCache = new Map<string, Promise<string>>();
 
-async function getOrCreateBackgroundSession(hostId: string): Promise<string> {
+export async function getOrCreateBackgroundSession(hostId: string): Promise<string> {
   const cached = backgroundConnectionCache.get(hostId);
   if (cached) {
     const sessionId = await cached; // a failed attempt fails every waiter; the creator evicts it
