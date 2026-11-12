@@ -1,11 +1,23 @@
 import type { IpcRenderer } from 'electron';
+import type { ApiRequestHistoryTable } from '@ownshell/core';
+import type { ImportCounts } from '../http/api-import';
+import type { PublicVariable, VariableInput } from '../http/api-variables';
+import type { ImportErrorCode, ImportWarningCode, PostmanEnvironmentImport } from '../http/postman-import';
 import type { HttpRequestConfig, HttpResponse } from '../http/types';
 
 type RequestSettingsColumns = {
   timeout_seconds?: number | null;
   follow_redirects?: 0 | 1 | null;
   verify_tls?: 0 | 1 | null;
+  /** Request-level variables, JSON [{ key, value, enabled }]. */
+  variables?: string;
 };
+
+export type ApiImportResult =
+  | (ImportCounts & { kind: 'collection'; warnings: Partial<Record<ImportWarningCode, number>> })
+  | PostmanEnvironmentImport
+  | { errorCode: ImportErrorCode }
+  | null;
 
 export function createApiClientApi(ipcRenderer: IpcRenderer) {
   return {
@@ -92,7 +104,7 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
       exportCurl: (
         config: HttpRequestConfig,
         resolveVariables: boolean
-      ): Promise<{ command?: string; errorCode?: string; errorDetail?: string }> =>
+      ): Promise<{ command?: string; errorCode?: string; errorDetail?: string; errorScopes?: string[] }> =>
         ipcRenderer.invoke('api:requests:export-curl', { config, resolveVariables }),
     },
     /** Saves new sort_order values for collections and requests in one transaction. */
@@ -100,6 +112,24 @@ export function createApiClientApi(ipcRenderer: IpcRenderer) {
       collections: Array<{ id: string; sort_order: number }>;
       requests: Array<{ id: string; sort_order: number }>;
     }): Promise<void> => ipcRenderer.invoke('api:items:reorder', changes),
+    variables: {
+      /** Global API variables; secret values are never returned. */
+      getGlobal: (): Promise<PublicVariable[]> => ipcRenderer.invoke('api:variables:get-global'),
+      /** Replaces the variables of a folder, or the global ones when `collectionId` is null. */
+      set: (collectionId: string | null, variables: VariableInput[]): Promise<void> =>
+        ipcRenderer.invoke('api:variables:set', { collectionId, variables }),
+    },
+    history: {
+      list: (): Promise<ApiRequestHistoryTable[]> => ipcRenderer.invoke('api:history:list'),
+      clear: (): Promise<void> => ipcRenderer.invoke('api:history:clear'),
+    },
+    transfer: {
+      /** Picks a Postman collection or environment file; null when cancelled. */
+      importPostman: (): Promise<ApiImportResult> => ipcRenderer.invoke('api:import:postman'),
+      importOwnShell: (): Promise<ApiImportResult> => ipcRenderer.invoke('api:import:ownshell'),
+      exportOwnShell: (collectionId: string): Promise<{ filePath: string } | null> =>
+        ipcRenderer.invoke('api:export:ownshell', collectionId),
+    },
     files: {
       /** Opens a file dialog; returns null when cancelled. The main process re-validates the file on send. */
       pick: (): Promise<{ path: string; name: string; size: number; contentType: string } | null> =>

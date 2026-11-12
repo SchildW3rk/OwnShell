@@ -12,8 +12,12 @@ export interface HttpRequestConfig {
   rawContentType?: RawContentType;
   authType: RequestAuthType;
   authConfig: string;
-  /** Collection the request lives in; used to resolve `inherit` auth. */
+  /** Collection the request lives in; used to resolve `inherit` auth and folder variables. */
   collectionId?: string | null;
+  /** Saved request this send belongs to (history). */
+  requestId?: string | null;
+  /** Request-level variables, JSON [{ key, value, enabled }]. */
+  variables?: string;
   networkHostId: string | null;
   environmentId: string | null;
   /** 1..600, default 30. */
@@ -42,6 +46,8 @@ export interface HttpResponse {
   /** Set for failures the UI can explain (see ApiRequestErrorCode). */
   errorCode?: string;
   errorDetail?: string;
+  /** MISSING_VARIABLES: the scopes that were searched, in lookup order. */
+  errorScopes?: string[];
   redirectNotice?: RedirectNotice;
   timings?: {
     prepareMs: number;

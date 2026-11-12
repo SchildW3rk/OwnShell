@@ -31,6 +31,12 @@ import {
   NewHostTunnel,
   NewSnippet,
 } from '@ownshell/core';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  decryptVariables,
+  encryptVariables,
+  GLOBAL_VARIABLES_SETTING,
+} from '../http/api-variables';
 import { cryptoManager } from '../security/crypto';
 import { logger } from '../logger';
 import {
@@ -405,7 +411,9 @@ export class BackupManager {
         projects,
         apiCollections,
         apiRequests,
+        apiGlobalVariables,
       } = vaultData;
+      const encrypt = (value: string) => cryptoManager.encryptData(value);
 
       if (vaultCredentials) {
         logger.info('Restoring vault credentials', { count: vaultCredentials.length });
@@ -458,12 +466,24 @@ export class BackupManager {
       if (apiRequests) await trx.deleteFrom('api_requests').execute();
       if (apiCollections) {
         await trx.deleteFrom('api_collections').execute();
-        for (const collection of apiCollections) {
-          await trx.insertInto('api_collections').values(collection).execute();
+        for (const { variables, ...collection } of apiCollections) {
+          await trx
+            .insertInto('api_collections')
+            .values({ ...collection, variables: encryptVariables(variables, encrypt, uuidv4) })
+            .execute();
         }
       }
       for (const request of apiRequests ?? []) {
         await trx.insertInto('api_requests').values(request).execute();
+      }
+      if (apiGlobalVariables) {
+        // The one app_settings row a backup carries; master password settings stay untouched.
+        const value = encryptVariables(apiGlobalVariables, encrypt, uuidv4);
+        await trx
+          .insertInto('app_settings')
+          .values({ key: GLOBAL_VARIABLES_SETTING, value, updated_at: Date.now() })
+          .onConflict((oc) => oc.column('key').doUpdateSet({ value, updated_at: Date.now() }))
+          .execute();
       }
 
       logger.info('Vault restore complete');
@@ -572,8 +592,20 @@ export class BackupManager {
       vaultEnvironments,
       dbConnections,
       projects: await this.db.selectFrom('projects').selectAll().execute(),
-      apiCollections: await this.db.selectFrom('api_collections').selectAll().execute(),
+      apiCollections: (await this.db.selectFrom('api_collections').selectAll().execute()).map(
+        (collection) => ({ ...collection, variables: decryptVariables(collection.variables, decrypt) })
+      ),
       apiRequests: await this.db.selectFrom('api_requests').selectAll().execute(),
+      apiGlobalVariables: decryptVariables(
+        (
+          await this.db
+            .selectFrom('app_settings')
+            .select('value')
+            .where('key', '=', GLOBAL_VARIABLES_SETTING)
+            .executeTakeFirst()
+        )?.value,
+        decrypt
+      ),
     };
   }
 }

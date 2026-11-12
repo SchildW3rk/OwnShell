@@ -24,7 +24,10 @@ type RequestSettingsColumns = {
   timeout_seconds?: number | null;
   follow_redirects?: 0 | 1 | null;
   verify_tls?: 0 | 1 | null;
+  variables?: string;
 };
+
+type VariableInput = Parameters<typeof window.electronAPI.apiClient.variables.set>[1][number];
 
 /** Mutations must not fail silently: every failed save/update/delete shows a toast. */
 function useMutationErrorToast() {
@@ -284,6 +287,70 @@ export function useReorderApiItems() {
         queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() }),
       ]),
   });
+}
+
+// ==================== VARIABLES & HISTORY ====================
+
+const globalVariablesKey = ['api', 'global-variables'] as const;
+const historyKey = ['api', 'history'] as const;
+
+/** Global API variables (secret values are never returned). */
+export function useGlobalApiVariables() {
+  return useQuery({
+    queryKey: globalVariablesKey,
+    queryFn: () => window.electronAPI.apiClient.variables.getGlobal(),
+  });
+}
+
+/** Saves the variables of a folder (collectionId) or the global ones (null). */
+export function useSaveApiVariables() {
+  const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
+
+  return useMutation({
+    onError,
+    mutationFn: ({ collectionId, variables }: { collectionId: string | null; variables: VariableInput[] }) =>
+      window.electronAPI.apiClient.variables.set(collectionId, variables),
+    onSuccess: (_result, { collectionId }) =>
+      queryClient.invalidateQueries({
+        queryKey: collectionId ? queryKeys.apiClient.collections.all() : globalVariablesKey,
+      }),
+  });
+}
+
+export function useApiHistory(enabled = true) {
+  return useQuery({
+    queryKey: historyKey,
+    queryFn: () => window.electronAPI.apiClient.history.list(),
+    enabled,
+  });
+}
+
+/** Call after a send so an open history list shows it. */
+export function useInvalidateApiHistory() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: historyKey });
+}
+
+export function useClearApiHistory() {
+  const queryClient = useQueryClient();
+  const onError = useMutationErrorToast();
+
+  return useMutation({
+    onError,
+    mutationFn: () => window.electronAPI.apiClient.history.clear(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: historyKey }),
+  });
+}
+
+/** Refreshes the tree after an import. */
+export function useInvalidateApiTree() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.collections.all() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.apiClient.requests.all() }),
+    ]);
 }
 
 // ==================== COMBINED HOOKS ====================

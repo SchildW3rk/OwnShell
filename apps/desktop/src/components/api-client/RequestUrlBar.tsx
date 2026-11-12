@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { HttpMethod, HostsTable } from '@ownshell/core';
 import { looksLikeCurl } from './curl-import';
 import { SHORTCUT_LABELS } from './shortcuts';
+import { VariableInput } from './variables/VariableInput';
 
 // ============================================
 // Method Colors
@@ -138,10 +139,10 @@ export const RequestUrlBar: React.FC<RequestUrlBarProps> = ({
 
       {/* URL Input */}
       <div className="flex-1 relative">
-        <input
+        <VariableInput
           type="text"
           value={url}
-          onChange={(e) => onUrlChange(e.target.value)}
+          onValueChange={onUrlChange}
           onKeyDown={handleKeyDown}
           onPaste={(event) => {
             const text = event.clipboardData.getData('text');

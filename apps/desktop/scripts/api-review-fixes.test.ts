@@ -138,6 +138,17 @@ test('curl export with placeholders: auth secrets and credential headers are not
   assert.ok(kept.includes("'Accept: text/plain'"), kept);
 });
 
+test('curl export with placeholders: URL user info, query and param credentials are redacted', async () => {
+  const command = toCurlCommand(
+    await prepareRequestWithPlaceholders(
+      { ...base, url: 'https://u:SECRET@host.test/?token=SECRET&q=1', params: kv({ api_key: 'SECRET' }) },
+      {}
+    )
+  );
+  assert.doesNotMatch(command, /SECRET/, command);
+  assert.match(command, /q=1/);
+});
+
 test('curl export: deadline and redirect limit match a send', async () => {
   const command = toCurlCommand(await prepareRequestWithPlaceholders(base, {}));
   assert.match(command, /-L \\\n {2}--max-redirs 10 \\\n {2}--max-time 30$/);

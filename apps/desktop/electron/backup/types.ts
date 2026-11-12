@@ -183,6 +183,15 @@ const vaultProjectSchema = z.object({
   updated_at: timestamp,
 });
 
+// API variables with secret values decrypted (re-encrypted on restore). Added in migration 017.
+const vaultApiVariableSchema = z.object({
+  id: z.string().optional(),
+  key: z.string(),
+  value: z.string(),
+  enabled: z.boolean(),
+  secret: z.boolean(),
+});
+
 const vaultApiCollectionSchema = z.object({
   id,
   parent_id: nullableId,
@@ -192,6 +201,7 @@ const vaultApiCollectionSchema = z.object({
   // Added in migration 015; older backups default to inheriting auth.
   auth_type: z.enum(['none', 'bearer', 'basic', 'api-key', 'inherit']).default('inherit'),
   auth_config: z.string().default('{}'),
+  variables: z.array(vaultApiVariableSchema).default([]),
   created_at: timestamp,
   updated_at: timestamp,
 });
@@ -216,6 +226,8 @@ const vaultApiRequestSchema = z.object({
   timeout_seconds: z.number().int().min(1).max(600).nullable().default(null),
   follow_redirects: z.number().int().min(0).max(1).nullable().default(null),
   verify_tls: z.number().int().min(0).max(1).nullable().default(null),
+  // Request-level variables (no secrets), added in migration 017.
+  variables: z.string().default('[]'),
   created_at: timestamp,
   updated_at: timestamp,
   last_executed_at: z.number().nullable(),
@@ -247,6 +259,9 @@ export const vaultDataSchema = z.object({
   projects: z.array(vaultProjectSchema).optional(),
   apiCollections: z.array(vaultApiCollectionSchema).optional(),
   apiRequests: z.array(vaultApiRequestSchema).optional(),
+  // Missing in older backups: the current global API variables are kept. The request
+  // history is never part of a backup.
+  apiGlobalVariables: z.array(vaultApiVariableSchema).optional(),
 });
 
 export type VaultData = z.infer<typeof vaultDataSchema>;

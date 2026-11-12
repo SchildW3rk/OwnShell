@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 // Types
 // ============================================
 
-export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'settings';
+export type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'variables' | 'settings';
 
 interface RequestTabsProps {
   activeTab: RequestTab;
@@ -25,6 +25,7 @@ interface RequestTabsProps {
   headerCount?: number;
   hasBody?: boolean;
   hasAuth?: boolean;
+  variableCount?: number;
   /** TLS verification is off: the settings tab shows a warning dot. */
   settingsWarning?: boolean;
 }
@@ -40,6 +41,7 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
   headerCount = 0,
   hasBody = false,
   hasAuth = false,
+  variableCount = 0,
   settingsWarning = false,
 }) => {
   const { t } = useTranslation();
@@ -70,6 +72,11 @@ export const RequestTabs: React.FC<RequestTabsProps> = ({
       id: 'body',
       label: t('api.tabs.body', 'Body'),
       indicator: hasBody,
+    },
+    {
+      id: 'variables',
+      label: t('api.tabs.variables'),
+      count: variableCount,
     },
     {
       id: 'settings',

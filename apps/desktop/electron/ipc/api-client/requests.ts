@@ -155,6 +155,7 @@ async function handleCreateRequest(
       timeout_seconds: data.timeout_seconds ?? null,
       follow_redirects: data.follow_redirects ?? null,
       verify_tls: data.verify_tls ?? null,
+      variables: data.variables ?? '[]',
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -256,6 +257,7 @@ async function handleDuplicateRequest(
       timeout_seconds: original.timeout_seconds,
       follow_redirects: original.follow_redirects,
       verify_tls: original.verify_tls,
+      variables: original.variables,
       created_at: now,
       updated_at: now,
       last_executed_at: null,
@@ -293,6 +295,7 @@ interface RequestInput {
   timeout_seconds?: number | null;
   follow_redirects?: 0 | 1 | null;
   verify_tls?: 0 | 1 | null;
+  variables?: string;
 }
 
 interface RequestUpdateInput extends Partial<RequestInput> {

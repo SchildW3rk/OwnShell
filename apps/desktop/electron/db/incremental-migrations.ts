@@ -464,4 +464,30 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
   } catch (error) {
     logger.warn('Migration 016 skipped or failed', error);
   }
+
+  try {
+    for (const table of ['api_collections', 'api_requests']) {
+      const columns = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+      if (columns.length > 0 && !columns.some((col) => col.name === 'variables')) {
+        sqlite.exec(`ALTER TABLE ${table} ADD COLUMN variables TEXT NOT NULL DEFAULT '[]';`);
+      }
+    }
+    // No bodies, headers or resolved secrets: url is the {{placeholder}} template.
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS api_request_history (
+        id TEXT PRIMARY KEY NOT NULL,
+        request_id TEXT,
+        method TEXT NOT NULL,
+        url TEXT NOT NULL,
+        status INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL,
+        response_size INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_api_request_history_created_at ON api_request_history(created_at DESC);
+    `);
+    logger.info('Migration 017 completed: API variables and request history');
+  } catch (error) {
+    logger.warn('Migration 017 skipped or failed', error);
+  }
 }

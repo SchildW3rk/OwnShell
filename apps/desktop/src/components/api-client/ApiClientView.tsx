@@ -24,7 +24,13 @@ import {
 
 import { useApiStore } from '../../stores/useApiStore';
 import { useHostStore } from '../../stores/useHostStore';
-import { useApiRequest, useUpdateApiRequest } from '../../hooks/api/useApiQueries';
+import {
+  useApiCollections,
+  useApiRequest,
+  useGlobalApiVariables,
+  useInvalidateApiHistory,
+  useUpdateApiRequest,
+} from '../../hooks/api/useApiQueries';
 import { useVaultEnvironments } from '../../hooks/vault/useVaultQueries';
 
 import { RequestUrlBar } from './RequestUrlBar';
@@ -48,12 +54,23 @@ import {
 import { parseCurlWithToast, showCurlImportNotices } from './sidebar/ImportCurlDialog';
 import { OVERLAY_SELECTOR, SHORTCUT_LABELS, getShortcutAction } from './shortcuts';
 import { createSendFlow } from './send-flow';
+import { VariableSuggestionsContext } from './variables/VariableInput';
+import { BUILT_IN_NAMES, collectVariableSuggestions } from './variables/variable-suggestions';
 
 // ============================================
 // Types
 // ============================================
 
 /** Failed sends carry `{ "error": message }` as body (see the execute IPC handler). */
+/** Toast text for a failed send; missing variables also name the scopes that were searched. */
+function sendErrorMessage(
+  result: { errorCode?: string; errorDetail?: string; errorScopes?: string[] },
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  const scopes = (result.errorScopes ?? []).map((scope) => t(`api.variables.scope.${scope}`)).join(' → ');
+  return t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '', scopes });
+}
+
 function getErrorMessage(response: HttpResponse): string {
   try {
     const parsed = JSON.parse(response.body) as { error?: unknown };
@@ -73,6 +90,7 @@ interface RequestDraft {
   environmentId: string | null;
   params: KeyValueItem[];
   headers: KeyValueItem[];
+  variables: KeyValueItem[];
   body: BodyValue;
   bodyType: RequestBodyType;
   rawContentType: RawRequestContentType;
@@ -110,7 +128,10 @@ export const ApiClientView: React.FC = () => {
   const { selectedRequestId } = useApiStore();
   const { data: selectedRequest } = useApiRequest(selectedRequestId);
   const { data: environments = [] } = useVaultEnvironments();
+  const { data: collections = [] } = useApiCollections();
+  const { data: globalVariables = [] } = useGlobalApiVariables();
   const updateRequestMutation = useUpdateApiRequest();
+  const invalidateHistory = useInvalidateApiHistory();
 
   // Layout state
   const [layout, setLayout] = useState<LayoutMode>('horizontal');
@@ -126,6 +147,7 @@ export const ApiClientView: React.FC = () => {
   );
   const [draftParams, setDraftParams] = useState<KeyValueItem[]>([]);
   const [draftHeaders, setDraftHeaders] = useState<KeyValueItem[]>([]);
+  const [draftVariables, setDraftVariables] = useState<KeyValueItem[]>([]);
   const [draftBody, setDraftBody] = useState<BodyValue>('');
   const [draftBodyType, setDraftBodyType] = useState<RequestBodyType>('none');
   const [draftRawContentType, setDraftRawContentType] = useState<RawRequestContentType>('text');
@@ -147,6 +169,7 @@ export const ApiClientView: React.FC = () => {
     environmentId: draftEnvironmentId,
     params: draftParams,
     headers: draftHeaders,
+    variables: draftVariables,
     body: draftBody,
     bodyType: draftBodyType,
     rawContentType: draftRawContentType,
@@ -157,7 +180,7 @@ export const ApiClientView: React.FC = () => {
     editorMemory,
   }), [
     draftMethod, draftUrl, draftNetworkHostId, draftEnvironmentId, draftParams,
-    draftHeaders, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig,
+    draftHeaders, draftVariables, draftBody, draftBodyType, draftRawContentType, draftAuthType, draftAuthConfig,
     draftSettings, activeTab, editorMemory,
   ]);
 
@@ -194,6 +217,7 @@ export const ApiClientView: React.FC = () => {
         environmentId: selectedRequest.environment_id,
         params: parseKeyValueItems(selectedRequest.params),
         headers: parseKeyValueItems(selectedRequest.headers),
+        variables: parseKeyValueItems(selectedRequest.variables ?? '[]'),
         body: selectedRequest.body,
         bodyType: selectedRequest.body_type,
         rawContentType: selectedRequest.raw_content_type ?? 'text',
@@ -215,6 +239,7 @@ export const ApiClientView: React.FC = () => {
     setDraftEnvironmentId(draft.environmentId);
     setDraftParams(draft.params);
     setDraftHeaders(draft.headers);
+    setDraftVariables(draft.variables);
     setDraftBody(draft.body);
     setDraftBodyType(draft.bodyType);
     setDraftRawContentType(draft.rawContentType);
@@ -233,7 +258,7 @@ export const ApiClientView: React.FC = () => {
   const selectedEnv = environments.find((e) => e.id === draftEnvironmentId);
   const envLabel = selectedEnv
     ? `${selectedEnv.project} / ${selectedEnv.name}`
-    : t('api.noEnvironment', 'No Environment');
+    : t('api.noEnvironment');
 
   // Count enabled items for tabs
   const paramCount = useMemo(
@@ -245,6 +270,31 @@ export const ApiClientView: React.FC = () => {
     () => draftHeaders.filter((h) => h.enabled && h.key.trim()).length,
     [draftHeaders]
   );
+
+  const variableCount = useMemo(
+    () => draftVariables.filter((v) => v.enabled && v.key.trim()).length,
+    [draftVariables]
+  );
+
+  // `{{` autocomplete: every name this request can resolve, with the scope that wins.
+  const variableSuggestions = useMemo(() => {
+    const chain: typeof collections = [];
+    const seen = new Set<string>();
+    let id = selectedRequest?.collection_id ?? null;
+    while (id && !seen.has(id)) {
+      seen.add(id);
+      const folder = collections.find((collection) => collection.id === id);
+      if (!folder) break;
+      chain.push(folder);
+      id = folder.parent_id;
+    }
+    return collectVariableSuggestions({
+      request: draftVariables,
+      chain,
+      environmentVariables: environments.find((env) => env.id === draftEnvironmentId)?.variables,
+      globals: globalVariables,
+    });
+  }, [selectedRequest?.collection_id, collections, draftVariables, environments, draftEnvironmentId, globalVariables]);
 
   const hasBody = draftBodyType !== 'none' && hasBodyContent(draftBody);
   const hasAuth = draftAuthType !== 'none';
@@ -264,6 +314,7 @@ export const ApiClientView: React.FC = () => {
           environment_id: draftEnvironmentId,
           params: serializeKeyValueItems(draftParams),
           headers: serializeKeyValueItems(draftHeaders),
+          variables: serializeKeyValueItems(draftVariables),
           body,
           body_type: draftBodyType,
           raw_content_type: draftRawContentType,
@@ -285,6 +336,7 @@ export const ApiClientView: React.FC = () => {
     draftEnvironmentId,
     draftParams,
     draftHeaders,
+    draftVariables,
     draftBody,
     draftBodyType,
     draftRawContentType,
@@ -307,6 +359,8 @@ export const ApiClientView: React.FC = () => {
       authType: draftAuthType,
       authConfig: draftAuthConfig,
       collectionId: selectedRequest?.collection_id ?? null,
+      requestId: selectedRequestId,
+      variables: serializeKeyValueItems(draftVariables),
       networkHostId: draftNetworkHostId,
       environmentId: draftEnvironmentId,
       timeoutSeconds: draftSettings.timeoutSeconds,
@@ -323,6 +377,8 @@ export const ApiClientView: React.FC = () => {
       draftAuthType,
       draftAuthConfig,
       selectedRequest?.collection_id,
+      selectedRequestId,
+      draftVariables,
       draftNetworkHostId,
       draftEnvironmentId,
       draftSettings,
@@ -345,7 +401,7 @@ export const ApiClientView: React.FC = () => {
           resolveVariables
         );
         if (!result.command) {
-          toast.error(t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '' }));
+          toast.error(sendErrorMessage(result, t));
           return;
         }
         await navigator.clipboard.writeText(result.command);
@@ -416,8 +472,9 @@ export const ApiClientView: React.FC = () => {
         return;
       }
       publish({ ...result, ipcRoundTripMs: performance.now() - ipcStarted });
+      void invalidateHistory();
       if (result.errorCode) {
-        toast.error(t(`api.errors.${result.errorCode}`, { detail: result.errorDetail ?? '' }));
+        toast.error(sendErrorMessage(result, t));
       } else if (result.status === 0) {
         toast.error(t('api.errors.requestFailed', { error: getErrorMessage(result) }));
       }
@@ -451,7 +508,7 @@ export const ApiClientView: React.FC = () => {
         return { ...current, [requestId]: { ...execution, loading: false } };
       });
     }
-  }, [draftUrl, execution?.loading, selectedRequestId, buildConfig, handleSave, sendFlow, t, updateRequestMutation]);
+  }, [draftUrl, execution?.loading, selectedRequestId, buildConfig, handleSave, sendFlow, t, updateRequestMutation, invalidateHistory]);
 
   // Only while focus is inside this view; capture phase so editors (CodeMirror) do not act on them first.
   const handleShortcut = useCallback(
@@ -491,7 +548,7 @@ export const ApiClientView: React.FC = () => {
             <FileJson className="w-10 h-10 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">
-            {t('api.selectRequest', 'Select a Request')}
+            {t('api.selectRequest')}
           </h3>
           <p className="text-sm text-muted-foreground max-w-xs">
             {t(
@@ -505,300 +562,318 @@ export const ApiClientView: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0" onKeyDownCapture={handleShortcut}>
-      {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 h-10 border-b border-border bg-background">
-        {/* Left: Request Name */}
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-medium text-foreground truncate max-w-[300px]">
-            {selectedRequest?.name}
-          </h2>
-          {!draftSettings.verifyTls && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('settings')}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] font-medium text-amber-600 dark:text-amber-400"
-              title={t('api.settings.tlsOffWarning')}
-            >
-              <ShieldAlert className="w-3 h-3" />
-              {t('api.settings.tlsOffBadge')}
-            </button>
-          )}
-        </div>
-
-        {/* Right: Save + Copy as curl + Environment + Layout Toggle */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void handleSave().then(({ saved }) => saved && toast.success(t('api.saved')))}
-            className="p-1.5 rounded-md border border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title={`${t('common.save')} (${SHORTCUT_LABELS.save})`}
-            aria-label={t('common.save')}
-          >
-            <Save className="w-4 h-4" />
-          </button>
-          <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowCurlMenu(false)}>
-            <button
-              type="button"
-              onClick={() => setShowCurlMenu(!showCurlMenu)}
-              aria-expanded={showCurlMenu}
-              disabled={!draftUrl.trim()}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors disabled:opacity-50"
-              title={t('api.curl.copyMenu')}
-            >
-              <Terminal className="w-4 h-4 text-muted-foreground" />
-              <span>curl</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </button>
-            {showCurlMenu && (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={() => setShowCurlMenu(false)}
-                  tabIndex={-1}
-                  aria-label={t('common.close')}
-                />
-                <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[240px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCurlMenu(false);
-                      void handleCopyCurl(false);
-                    }}
-                    title={t('api.curl.placeholdersHint')}
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
-                  >
-                    {t('api.curl.copyPlaceholders')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCurlMenu(false);
-                      setConfirmResolvedCurl(true);
-                    }}
-                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
-                  >
-                    {t('api.curl.copyResolved')}
-                  </button>
-                </div>
-              </>
+    <VariableSuggestionsContext.Provider value={variableSuggestions}>
+      <div className="h-full flex flex-col min-h-0" onKeyDownCapture={handleShortcut}>
+        {/* Header Bar */}
+        <div className="flex items-center justify-between px-4 h-10 border-b border-border bg-background">
+          {/* Left: Request Name */}
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium text-foreground truncate max-w-[300px]">
+              {selectedRequest?.name}
+            </h2>
+            {!draftSettings.verifyTls && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('settings')}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-[11px] font-medium text-amber-600 dark:text-amber-400"
+                title={t('api.settings.tlsOffWarning')}
+              >
+                <ShieldAlert className="w-3 h-3" />
+                {t('api.settings.tlsOffBadge')}
+              </button>
             )}
           </div>
 
-          {/* Environment Selector */}
-          <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowEnvDropdown(false)}>
+          {/* Right: Save + Copy as curl + Environment + Layout Toggle */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowEnvDropdown(!showEnvDropdown)}
-              aria-expanded={showEnvDropdown}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors"
+              onClick={() => void handleSave().then(({ saved }) => saved && toast.success(t('api.saved')))}
+              className="p-1.5 rounded-md border border-border bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              title={`${t('common.save')} (${SHORTCUT_LABELS.save})`}
+              aria-label={t('common.save')}
             >
-              <Globe className="w-4 h-4 text-muted-foreground" />
-              <span className="max-w-[150px] truncate">{envLabel}</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              <Save className="w-4 h-4" />
             </button>
-
-            {showEnvDropdown && (
-              <>
-                <button
-                  type="button"
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={() => setShowEnvDropdown(false)}
-                  tabIndex={-1}
-                  aria-label="Close dropdown"
-                />
-                <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
-                  {/* No Environment */}
+            <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowCurlMenu(false)}>
+              <button
+                type="button"
+                onClick={() => setShowCurlMenu(!showCurlMenu)}
+                aria-expanded={showCurlMenu}
+                disabled={!draftUrl.trim()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors disabled:opacity-50"
+                title={t('api.curl.copyMenu')}
+              >
+                <Terminal className="w-4 h-4 text-muted-foreground" />
+                <span>curl</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </button>
+              {showCurlMenu && (
+                <>
                   <button
                     type="button"
-                    onClick={() => {
-                      setDraftEnvironmentId(null);
-                      setShowEnvDropdown(false);
-                    }}
-                    className={cn(
-                      'w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors',
-                      !draftEnvironmentId && 'bg-primary/20'
-                    )}
-                  >
-                    {t('api.noEnvironment', 'No Environment')}
-                  </button>
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setShowCurlMenu(false)}
+                    tabIndex={-1}
+                    aria-label={t('common.close')}
+                  />
+                  <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[240px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCurlMenu(false);
+                        void handleCopyCurl(false);
+                      }}
+                      title={t('api.curl.placeholdersHint')}
+                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
+                    >
+                      {t('api.curl.copyPlaceholders')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCurlMenu(false);
+                        setConfirmResolvedCurl(true);
+                      }}
+                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors"
+                    >
+                      {t('api.curl.copyResolved')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
-                  {environments.length > 0 && <div className="my-1 border-t border-border" />}
+            {/* Environment Selector */}
+            <div className="relative" onKeyDown={(e) => e.key === 'Escape' && setShowEnvDropdown(false)}>
+              <button
+                type="button"
+                onClick={() => setShowEnvDropdown(!showEnvDropdown)}
+                aria-expanded={showEnvDropdown}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-secondary text-sm hover:bg-accent transition-colors"
+              >
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <span className="max-w-[150px] truncate">{envLabel}</span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </button>
 
-                  {/* Group by project */}
-                  {Object.entries(
-                    environments.reduce(
-                      (acc, env) => {
-                        if (!acc[env.project]) acc[env.project] = [];
-                        acc[env.project].push(env);
-                        return acc;
-                      },
-                      {} as Record<string, VaultEnvironmentsTable[]>
-                    )
-                  ).map(([project, envs]) => (
-                    <div key={project}>
-                      <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        {project}
+              {showEnvDropdown && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setShowEnvDropdown(false)}
+                    tabIndex={-1}
+                    aria-label={t('common.closeMenu')}
+                  />
+                  <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                    {/* No Environment */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftEnvironmentId(null);
+                        setShowEnvDropdown(false);
+                      }}
+                      className={cn(
+                        'w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors',
+                        !draftEnvironmentId && 'bg-primary/20'
+                      )}
+                    >
+                      {t('api.noEnvironment')}
+                    </button>
+
+                    {environments.length > 0 && <div className="my-1 border-t border-border" />}
+
+                    {/* Group by project */}
+                    {Object.entries(
+                      environments.reduce(
+                        (acc, env) => {
+                          if (!acc[env.project]) acc[env.project] = [];
+                          acc[env.project].push(env);
+                          return acc;
+                        },
+                        {} as Record<string, VaultEnvironmentsTable[]>
+                      )
+                    ).map(([project, envs]) => (
+                      <div key={project}>
+                        <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                          {project}
+                        </div>
+                        {envs.map((env) => (
+                          <button
+                            key={env.id}
+                            type="button"
+                            onClick={() => {
+                              setDraftEnvironmentId(env.id);
+                              setShowEnvDropdown(false);
+                            }}
+                            className={cn(
+                              'w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors',
+                              draftEnvironmentId === env.id && 'bg-primary/20'
+                            )}
+                          >
+                            {env.name}
+                          </button>
+                        ))}
                       </div>
-                      {envs.map((env) => (
-                        <button
-                          key={env.id}
-                          type="button"
-                          onClick={() => {
-                            setDraftEnvironmentId(env.id);
-                            setShowEnvDropdown(false);
-                          }}
-                          className={cn(
-                            'w-full px-3 py-1.5 text-sm text-left hover:bg-primary/10 transition-colors',
-                            draftEnvironmentId === env.id && 'bg-primary/20'
-                          )}
-                        >
-                          {env.name}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
 
-          {/* Layout Toggle */}
-          <div className="flex items-center border border-border rounded-md">
-            <button
-              type="button"
-              onClick={() => setLayout('horizontal')}
-              className={cn(
-                'p-1.5 transition-colors',
-                layout === 'horizontal'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-              title={t('api.layoutHorizontal', 'Horizontal Layout')}
-            >
-              <Columns className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setLayout('vertical')}
-              className={cn(
-                'p-1.5 transition-colors',
-                layout === 'vertical'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-              title={t('api.layoutVertical', 'Vertical Layout')}
-            >
-              <Rows className="w-4 h-4" />
-            </button>
+            {/* Layout Toggle */}
+            <div className="flex items-center border border-border rounded-md">
+              <button
+                type="button"
+                onClick={() => setLayout('horizontal')}
+                className={cn(
+                  'p-1.5 transition-colors',
+                  layout === 'horizontal'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                title={t('api.layoutHorizontal')}
+              >
+                <Columns className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayout('vertical')}
+                className={cn(
+                  'p-1.5 transition-colors',
+                  layout === 'vertical'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                title={t('api.layoutVertical')}
+              >
+                <Rows className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* URL Bar */}
-      <RequestUrlBar
-        method={draftMethod}
-        url={draftUrl}
-        networkHostId={draftNetworkHostId}
-        hosts={sshHosts}
-        isLoading={isLoading}
-        onMethodChange={setDraftMethod}
-        onUrlChange={setDraftUrl}
-        onNetworkHostChange={setDraftNetworkHostId}
-        onSend={handleSend}
-        onCancel={handleCancel}
-        onPasteCurl={handlePasteCurl}
-      />
-
-      <ConfirmDialog
-        isOpen={confirmResolvedCurl}
-        title={t('api.curl.copyResolved')}
-        message={t('api.curl.resolvedWarning')}
-        confirmLabel={t('api.curl.copyAnyway')}
-        cancelLabel={t('common.cancel')}
-        onConfirm={() => {
-          setConfirmResolvedCurl(false);
-          void handleCopyCurl(true);
-        }}
-        onCancel={() => setConfirmResolvedCurl(false)}
-      />
-
-      {/* Split Layout: Request Editor + Response Viewer */}
-      <Group
-        orientation={layout === 'horizontal' ? 'horizontal' : 'vertical'}
-        className="flex-1 min-h-0 h-full"
-      >
-        {/* Request Editor Panel */}
-        <Panel defaultSize={50} minSize={20} className="flex flex-col min-h-0 bg-background">
-          {/* Tabs */}
-          <RequestTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            paramCount={paramCount}
-            headerCount={headerCount}
-            hasBody={hasBody}
-            hasAuth={hasAuth}
-            settingsWarning={!draftSettings.verifyTls}
-          />
-
-          {/* Tab Content */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {activeTab === 'params' && (
-              <KeyValueEditor
-                items={draftParams}
-                onChange={setDraftParams}
-                keyPlaceholder={t('api.params.key', 'Parameter')}
-                valuePlaceholder={t('api.params.value', 'Value')}
-              />
-            )}
-            {activeTab === 'auth' && (
-              <AuthEditor
-                authType={draftAuthType}
-                authConfig={draftAuthConfig}
-                onAuthTypeChange={setDraftAuthType}
-                onAuthConfigChange={setDraftAuthConfig}
-              />
-            )}
-            {activeTab === 'headers' && (
-              <KeyValueEditor
-                items={draftHeaders}
-                onChange={setDraftHeaders}
-                keyPlaceholder={t('api.headers.key', 'Header')}
-                valuePlaceholder={t('api.headers.value', 'Value')}
-              />
-            )}
-            {activeTab === 'body' && (
-              <BodyEditor
-                bodyType={draftBodyType}
-                body={draftBody}
-                memory={editorMemory}
-                rawContentType={draftRawContentType}
-                onRawContentTypeChange={setDraftRawContentType}
-                onBodyTypeChange={setDraftBodyType}
-                onBodyChange={setDraftBody}
-              />
-            )}
-            {activeTab === 'settings' && (
-              <RequestSettingsEditor settings={draftSettings} onChange={setDraftSettings} />
-            )}
-          </div>
-        </Panel>
-
-        {/* Resize Handle */}
-        <Separator
-          className={
-            layout === 'horizontal'
-              ? 'w-1 bg-border hover:bg-primary transition-colors cursor-col-resize'
-              : 'h-1 bg-border hover:bg-primary transition-colors cursor-row-resize'
-          }
+        {/* URL Bar */}
+        <RequestUrlBar
+          method={draftMethod}
+          url={draftUrl}
+          networkHostId={draftNetworkHostId}
+          hosts={sshHosts}
+          isLoading={isLoading}
+          onMethodChange={setDraftMethod}
+          onUrlChange={setDraftUrl}
+          onNetworkHostChange={setDraftNetworkHostId}
+          onSend={handleSend}
+          onCancel={handleCancel}
+          onPasteCurl={handlePasteCurl}
         />
 
-        {/* Response Viewer Panel */}
-        <Panel defaultSize={50} minSize={20} className="flex flex-col min-h-0 bg-background">
-          <ResponseViewer response={response} isLoading={isLoading} />
-        </Panel>
-      </Group>
-    </div>
+        <ConfirmDialog
+          isOpen={confirmResolvedCurl}
+          title={t('api.curl.copyResolved')}
+          message={t('api.curl.resolvedWarning')}
+          confirmLabel={t('api.curl.copyAnyway')}
+          cancelLabel={t('common.cancel')}
+          onConfirm={() => {
+            setConfirmResolvedCurl(false);
+            void handleCopyCurl(true);
+          }}
+          onCancel={() => setConfirmResolvedCurl(false)}
+        />
+
+        {/* Split Layout: Request Editor + Response Viewer */}
+        <Group
+          orientation={layout === 'horizontal' ? 'horizontal' : 'vertical'}
+          className="flex-1 min-h-0 h-full"
+        >
+          {/* Request Editor Panel */}
+          <Panel defaultSize={50} minSize={20} className="flex flex-col min-h-0 bg-background">
+            {/* Tabs */}
+            <RequestTabs
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              paramCount={paramCount}
+              headerCount={headerCount}
+              hasBody={hasBody}
+              hasAuth={hasAuth}
+              variableCount={variableCount}
+              settingsWarning={!draftSettings.verifyTls}
+            />
+
+            {/* Tab Content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeTab === 'params' && (
+                <KeyValueEditor
+                  items={draftParams}
+                  onChange={setDraftParams}
+                  keyPlaceholder={t('api.params.key')}
+                  valuePlaceholder={t('api.params.value')}
+                />
+              )}
+              {activeTab === 'auth' && (
+                <AuthEditor
+                  authType={draftAuthType}
+                  authConfig={draftAuthConfig}
+                  onAuthTypeChange={setDraftAuthType}
+                  onAuthConfigChange={setDraftAuthConfig}
+                />
+              )}
+              {activeTab === 'headers' && (
+                <KeyValueEditor
+                  items={draftHeaders}
+                  onChange={setDraftHeaders}
+                  keyPlaceholder={t('api.headers.key')}
+                  valuePlaceholder={t('api.headers.value')}
+                />
+              )}
+              {activeTab === 'body' && (
+                <BodyEditor
+                  bodyType={draftBodyType}
+                  body={draftBody}
+                  memory={editorMemory}
+                  rawContentType={draftRawContentType}
+                  onRawContentTypeChange={setDraftRawContentType}
+                  onBodyTypeChange={setDraftBodyType}
+                  onBodyChange={setDraftBody}
+                />
+              )}
+              {activeTab === 'variables' && (
+                <div className="flex h-full min-h-0 flex-col">
+                  <p className="flex-shrink-0 px-4 pt-3 text-xs text-muted-foreground">
+                    {t('api.variables.precedenceHint', BUILT_IN_NAMES)}
+                  </p>
+                  <div className="min-h-0 flex-1">
+                    <KeyValueEditor
+                      items={draftVariables}
+                      onChange={setDraftVariables}
+                      keyPlaceholder={t('api.variables.name')}
+                      valuePlaceholder={t('api.params.value')}
+                    />
+                  </div>
+                </div>
+              )}
+              {activeTab === 'settings' && (
+                <RequestSettingsEditor settings={draftSettings} onChange={setDraftSettings} />
+              )}
+            </div>
+          </Panel>
+
+          {/* Resize Handle */}
+          <Separator
+            className={
+              layout === 'horizontal'
+                ? 'w-1 bg-border hover:bg-primary transition-colors cursor-col-resize'
+                : 'h-1 bg-border hover:bg-primary transition-colors cursor-row-resize'
+            }
+          />
+
+          {/* Response Viewer Panel */}
+          <Panel defaultSize={50} minSize={20} className="flex flex-col min-h-0 bg-background">
+            <ResponseViewer response={response} isLoading={isLoading} />
+          </Panel>
+        </Group>
+      </div>
+    </VariableSuggestionsContext.Provider>
   );
 };

@@ -1,4 +1,4 @@
-import type { ApiCollectionsTable, ApiRequestsTable } from './api-client';
+import type { ApiCollectionsTable, ApiRequestHistoryTable, ApiRequestsTable } from './api-client';
 import type { DBConnectionsTable, DBQueryHistoryTable } from './db-connections';
 import type {
   HostsTable,
@@ -28,6 +28,7 @@ export interface Database {
   vault_environments: VaultEnvironmentsTable;
   api_collections: ApiCollectionsTable;
   api_requests: ApiRequestsTable;
+  api_request_history: ApiRequestHistoryTable;
   sidebar_folders: SidebarFoldersTable;
   projects: ProjectsTable;
 }

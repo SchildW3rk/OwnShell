@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@ownshell/ui';
-import { FileJson, FolderPlus, Plus, Terminal } from 'lucide-react';
+import { FileJson, FileUp, FolderPlus, Plus, Terminal, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface NewItemMenuProps {
@@ -9,6 +9,8 @@ interface NewItemMenuProps {
   onCreateRequest: () => void;
   onCreateCollection: () => void;
   onImportCurl: () => void;
+  onImportPostman: () => void;
+  onImportOwnShell: () => void;
 }
 
 export const NewItemMenu: React.FC<NewItemMenuProps> = ({
@@ -17,6 +19,8 @@ export const NewItemMenu: React.FC<NewItemMenuProps> = ({
   onCreateRequest,
   onCreateCollection,
   onImportCurl,
+  onImportPostman,
+  onImportOwnShell,
 }) => {
   const { t } = useTranslation();
 
@@ -27,7 +31,7 @@ export const NewItemMenu: React.FC<NewItemMenuProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[140px] z-50">
+        <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[200px] z-50">
           <button
             type="button"
             onClick={onCreateRequest}
@@ -51,6 +55,22 @@ export const NewItemMenu: React.FC<NewItemMenuProps> = ({
           >
             <Terminal className="w-4 h-4" />
             {t('api.curl.importMenu')}
+          </button>
+          <button
+            type="button"
+            onClick={onImportPostman}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-primary/10"
+          >
+            <Upload className="w-4 h-4" />
+            {t('api.transfer.importPostman')}
+          </button>
+          <button
+            type="button"
+            onClick={onImportOwnShell}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-primary/10"
+          >
+            <FileUp className="w-4 h-4" />
+            {t('api.transfer.importOwnShell')}
           </button>
         </div>
       )}

@@ -30,6 +30,7 @@ export interface ApiCollectionsTable {
   sort_order: number; // For drag & drop ordering
   auth_type: RequestAuthType; // 'inherit' = use parent folder's auth (root: none)
   auth_config: string; // JSON, same shape as api_requests.auth_config
+  variables: string; // JSON: [{ id, key, value, enabled, secret, value_encrypted? }] (migration 017)
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
 }
@@ -42,6 +43,7 @@ export interface NewApiCollection {
   sort_order?: number;
   auth_type?: RequestAuthType;
   auth_config?: string;
+  variables?: string;
   created_at: number;
   updated_at: number;
 }
@@ -53,6 +55,7 @@ export interface ApiCollectionUpdate {
   sort_order?: number;
   auth_type?: RequestAuthType;
   auth_config?: string;
+  variables?: string;
   updated_at: number;
 }
 
@@ -79,6 +82,7 @@ export interface ApiRequestsTable {
   timeout_seconds: number | null; // 1..600, null = 30 (migration 016)
   follow_redirects: number | null; // 0/1, null = follow
   verify_tls: number | null; // 0/1, null = verify
+  variables: string; // JSON: [{ key, value, enabled }] request-level variables (migration 017)
   created_at: number; // Unix timestamp in milliseconds
   updated_at: number; // Unix timestamp in milliseconds
   last_executed_at: number | null; // Track last execution
@@ -103,6 +107,7 @@ export interface NewApiRequest {
   timeout_seconds?: number | null;
   follow_redirects?: number | null;
   verify_tls?: number | null;
+  variables?: string;
   created_at: number;
   updated_at: number;
   last_executed_at?: number | null;
@@ -126,6 +131,22 @@ export interface ApiRequestUpdate {
   timeout_seconds?: number | null;
   follow_redirects?: number | null;
   verify_tls?: number | null;
+  variables?: string;
   updated_at: number;
   last_executed_at?: number | null;
+}
+
+/**
+ * API request history (migration 017): the last executions, without bodies, headers
+ * or resolved secrets. `url` is the template with {{placeholders}}.
+ */
+export interface ApiRequestHistoryTable {
+  id: string;
+  request_id: string | null;
+  method: HttpMethod;
+  url: string;
+  status: number; // 0 = failed before a response
+  duration_ms: number;
+  response_size: number;
+  created_at: number; // Unix timestamp in milliseconds
 }

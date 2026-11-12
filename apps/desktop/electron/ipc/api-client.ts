@@ -11,11 +11,13 @@ import { logger } from '../logger';
 import { registerApiCollectionHandlers } from './api-client/collections';
 import { registerApiExecutionHandlers } from './api-client/execute';
 import { registerApiRequestHandlers } from './api-client/requests';
+import { registerApiTransferHandlers } from './api-client/transfer';
 
 export function setupApiClientHandlers(db: Kysely<Database>): void {
   registerApiCollectionHandlers(db);
   registerApiRequestHandlers(db);
   registerApiExecutionHandlers(db);
+  registerApiTransferHandlers(db);
 
   logger.info('API Client IPC handlers registered successfully');
 }

@@ -12,6 +12,7 @@ import React, { useCallback } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import { Button, cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
+import { VariableInput } from './variables/VariableInput';
 
 // ============================================
 // Types
@@ -54,10 +55,10 @@ export const VariableHighlightInput: React.FC<{
 
   return (
     <div className="relative flex-1">
-      <input
+      <VariableInput
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onValueChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
@@ -116,10 +117,10 @@ const KeyValueRow = React.memo<KeyValueRowProps>(function KeyValueRow({
       />
 
       {/* Key Input */}
-      <input
+      <VariableInput
         type="text"
         value={item.key}
-        onChange={(e) => onUpdate({ key: e.target.value })}
+        onValueChange={(key) => onUpdate({ key })}
         placeholder={keyPlaceholder}
         disabled={!item.enabled}
         className={cn(

@@ -4,11 +4,41 @@ import { json } from '@codemirror/lang-json';
 import { xml } from '@codemirror/lang-xml';
 import { EditorView, basicSetup } from 'codemirror';
 import { cn } from '@ownshell/ui';
+import { useTranslation } from 'react-i18next';
 
 import { useAppearanceStore } from '../../../stores/useAppearanceStore';
 import { useThemeStore } from '../../../stores/useThemeStore';
 import { getCodeMirrorTheme } from '../../../utils/codemirror-theme';
 import type { BodyEditorMemory, BodyValue } from './types';
+import { useVariableSuggestions } from '../variables/VariableInput';
+import { filterVariableSuggestions, type VariableSuggestion } from '../variables/variable-suggestions';
+
+/** The parts of @codemirror/autocomplete's CompletionContext used here (basicSetup provides it). */
+interface CompletionContextLike {
+  state: EditorState;
+  pos: number;
+  matchBefore(expr: RegExp): { from: number; to: number; text: string } | null;
+}
+
+/** `{{` completion source, read through refs so new suggestions do not rebuild the editor. */
+function variableCompletionSource(
+  suggestions: React.MutableRefObject<VariableSuggestion[]>,
+  label: React.MutableRefObject<(item: VariableSuggestion) => string>
+) {
+  return (context: CompletionContextLike) => {
+    const match = context.matchBefore(/\{\{\s*[^{}\s]*/);
+    if (!match) return null;
+    const query = /[^{}\s]*$/.exec(match.text)?.[0] ?? '';
+    const closed = context.state.sliceDoc(context.pos, context.pos + 2) === '}}';
+    const options = filterVariableSuggestions(suggestions.current, query).map((item) => ({
+      label: item.name,
+      detail: label.current(item),
+      type: 'variable',
+      apply: closed ? item.name : `${item.name}}}`,
+    }));
+    return options.length ? { from: context.pos - query.length, options, validFor: /^[^{}\s]*$/ } : null;
+  };
+}
 
 interface CodeEditorProps {
   value: BodyValue;
@@ -33,6 +63,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const resolvedTheme = useThemeStore((state) => state.getResolvedTheme());
   const editorFontFamily = useAppearanceStore((state) => state.editorFontFamily);
   const editorFontSize = useAppearanceStore((state) => state.editorFontSize);
+  const { t } = useTranslation();
+  const suggestionsRef = React.useRef<VariableSuggestion[]>([]);
+  suggestionsRef.current = useVariableSuggestions();
+  const labelRef = React.useRef<(item: VariableSuggestion) => string>(() => '');
+  // Secret values are never shown, only the scope.
+  labelRef.current = (item) =>
+    `${t(`api.variables.scope.${item.scope}`)}${item.secret ? ` · ${t('api.variables.secretValue')}` : ''}`;
 
   const extensions = useMemo(() => {
     const baseExtensions = [
@@ -63,6 +100,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         }
       }),
       EditorView.contentAttributes.of({ 'data-placeholder': placeholder || '' }),
+      EditorState.languageData.of(() => [
+        { autocomplete: variableCompletionSource(suggestionsRef, labelRef) },
+      ]),
     ];
 
     if (language === 'json') {

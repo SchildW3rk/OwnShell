@@ -13,6 +13,7 @@ import React, { useMemo, useCallback } from 'react';
 import { Key, User, Lock, Hash, ArrowDownFromLine, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@ownshell/ui';
 import { useTranslation } from 'react-i18next';
+import { VariableInput } from './variables/VariableInput';
 import { RequestAuthType } from '@ownshell/core';
 
 // ============================================
@@ -113,11 +114,11 @@ const PasswordInput: React.FC<{
         </label>
       )}
       <div className="relative">
-        <input
+        <VariableInput
           id={id}
           type={showPassword ? 'text' : 'password'}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onValueChange={onChange}
           placeholder={placeholder}
           className={cn(
             'w-full px-3 py-2 pr-10 bg-secondary border border-border rounded-md text-sm',
@@ -155,11 +156,11 @@ const BearerTokenEditor: React.FC<{
         </label>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground px-2">Bearer</span>
-          <input
+          <VariableInput
             id="auth-bearer-token"
             type="text"
             value={config.token || ''}
-            onChange={(e) => onChange({ ...config, token: e.target.value })}
+            onValueChange={(token) => onChange({ ...config, token })}
             placeholder={t('api.auth.bearer.tokenPlaceholder', 'Enter token or {{variable}}')}
             className={cn(
               'flex-1 px-3 py-2 bg-secondary border border-border rounded-md text-sm',
@@ -194,11 +195,11 @@ const BasicAuthEditor: React.FC<{
         <label htmlFor="auth-basic-username" className="text-xs text-muted-foreground">
           {t('api.auth.basic.username', 'Username')}
         </label>
-        <input
+        <VariableInput
           id="auth-basic-username"
           type="text"
           value={config.username || ''}
-          onChange={(e) => onChange({ ...config, username: e.target.value })}
+          onValueChange={(username) => onChange({ ...config, username })}
           placeholder={t('api.auth.basic.usernamePlaceholder', 'Enter username or {{variable}}')}
           className={cn(
             'w-full px-3 py-2 bg-secondary border border-border rounded-md text-sm',
@@ -243,11 +244,11 @@ const ApiKeyEditor: React.FC<{
         <label htmlFor="auth-apikey-name" className="text-xs text-muted-foreground">
           {t('api.auth.apiKey.key', 'Key Name')}
         </label>
-        <input
+        <VariableInput
           id="auth-apikey-name"
           type="text"
           value={config.key || ''}
-          onChange={(e) => onChange({ ...config, key: e.target.value })}
+          onValueChange={(key) => onChange({ ...config, key })}
           placeholder={t('api.auth.apiKey.keyPlaceholder', 'e.g., X-API-Key, api_key')}
           className={cn(
             'w-full px-3 py-2 bg-secondary border border-border rounded-md text-sm',

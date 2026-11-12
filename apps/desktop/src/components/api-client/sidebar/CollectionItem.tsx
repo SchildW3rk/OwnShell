@@ -5,6 +5,8 @@ import {
   ArrowDown,
   ArrowDownAZ,
   ArrowUp,
+  Braces,
+  Download,
   ChevronDown,
   ChevronRight,
   FileJson,
@@ -18,7 +20,9 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import { CollectionAuthDialog } from './CollectionAuthDialog';
+import { VariablesDialog } from './VariablesDialog';
 import { ContextMenu } from './ContextMenu';
 import { RequestItem } from './RequestItem';
 import type { ApiCollectionTreeItem, ContextMenuItem } from './types';
@@ -62,6 +66,16 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showVariablesDialog, setShowVariablesDialog] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      const result = await window.electronAPI.apiClient.transfer.exportOwnShell(collection.id);
+      if (result) toast.success(t('api.transfer.exportedRedacted', { path: result.filePath }));
+    } catch (error) {
+      toast.error(t('api.transfer.exportFailed', { error: error instanceof Error ? error.message : String(error) }));
+    }
+  };
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -83,6 +97,16 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
       label: t('api.collectionAuth.menu'),
       icon: <KeyRound className="w-4 h-4" />,
       onClick: () => setShowAuthDialog(true),
+    },
+    {
+      label: t('api.variables.menu'),
+      icon: <Braces className="w-4 h-4" />,
+      onClick: () => setShowVariablesDialog(true),
+    },
+    {
+      label: t('api.transfer.exportMenu'),
+      icon: <Download className="w-4 h-4" />,
+      onClick: () => void handleExport(),
     },
     {
       label: t('common.rename'),
@@ -210,6 +234,15 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
         </div>
       )}
 
+      {showVariablesDialog && (
+        <VariablesDialog
+          title={t('api.variables.folderTitle', { name: collection.name })}
+          collectionId={collection.id}
+          variables={parsePublicVariables(collection.variables)}
+          onClose={() => setShowVariablesDialog(false)}
+        />
+      )}
+
       {showAuthDialog && (
         <CollectionAuthDialog collection={collection} onClose={() => setShowAuthDialog(false)} />
       )}
@@ -225,3 +258,13 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
     </div>
   );
 };
+
+/** api_collections.variables as sent to the renderer (secret values already removed). */
+function parsePublicVariables(json: string | undefined) {
+  try {
+    const parsed = JSON.parse(json || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}

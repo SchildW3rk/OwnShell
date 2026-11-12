@@ -43,6 +43,7 @@ export const requestSchema = z.object({
   timeout_seconds: timeoutSecondsSchema.nullable().optional(),
   follow_redirects: flagSchema.nullable().optional(),
   verify_tls: flagSchema.nullable().optional(),
+  variables: jsonConfigStringSchema.optional(),
 });
 export const requestUpdateSchema = requestSchema.partial().extend({
   last_executed_at: z.number().finite().int().nonnegative().nullable().optional(),
@@ -59,6 +60,8 @@ export const executeRequestSchema = z.object({
   authType: authTypeSchema,
   authConfig: jsonConfigStringSchema,
   collectionId: nullableIdSchema.optional(),
+  requestId: nullableIdSchema.optional(),
+  variables: jsonConfigStringSchema.optional(),
   networkHostId: nullableIdSchema,
   environmentId: nullableIdSchema,
   timeoutSeconds: timeoutSecondsSchema.optional(),
@@ -75,3 +78,19 @@ const sortEntriesSchema = z.array(z.object({ id: idSchema, sort_order: sortOrder
 export const reorderSchema = z
   .object({ collections: sortEntriesSchema, requests: sortEntriesSchema })
   .refine((v) => v.collections.length + v.requests.length <= 5000, 'Too many items in one reorder');
+
+const variableKeySchema = z.string().max(255);
+export const variableInputSchema = z.object({
+  id: z.string().min(1).max(64).optional(),
+  key: variableKeySchema,
+  // Omitted on a secret: keep the stored value.
+  value: z.string().max(1024 * 1024).optional(),
+  enabled: z.boolean(),
+  secret: z.boolean(),
+});
+export const variablesInputSchema = z.array(variableInputSchema).max(1000);
+/** Folder variables (id) or the global variables (null). */
+export const setVariablesSchema = z.object({
+  collectionId: nullableIdSchema,
+  variables: variablesInputSchema,
+});

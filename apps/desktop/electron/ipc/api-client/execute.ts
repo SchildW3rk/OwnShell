@@ -10,7 +10,6 @@ import {
   ApiRequestError,
   prepareRequest,
   prepareRequestWithPlaceholders,
-  type AuthSource,
 } from '../../http/prepare-request';
 import {
   createPickedFiles,
@@ -19,8 +18,8 @@ import {
   type PickedFiles,
 } from '../../http/request-files';
 import { logger } from '../../logger';
-import { cryptoManager } from '../../security/crypto';
 import { safeHandle } from '../safe-ipc';
+import { loadCollectionChain, loadVariableScopes, saveHistory } from './request-context';
 import {
   cancelRequestSchema,
   executeRequestSchema,
@@ -37,7 +36,14 @@ export function registerApiExecutionHandlers(db: Kysely<Database>): void {
     const controller = new AbortController();
     if (key) running.set(key, controller);
     try {
-      return await handleExecuteRequest(db, pickedFiles, config, controller.signal);
+      const response = await handleExecuteRequest(db, pickedFiles, config, controller.signal);
+      if (response.errorCode !== 'CANCELLED') {
+        // A history write error must never turn a send into a failure.
+        await saveHistory(db, config, response).catch((error) =>
+          logger.warn('Failed to record API request history', error)
+        );
+      }
+      return response;
     } finally {
       if (key && running.get(key) === controller) running.delete(key);
     }
@@ -50,7 +56,7 @@ export function registerApiExecutionHandlers(db: Kysely<Database>): void {
       return { command: await exportCurl(db, config, resolveVariables) };
     } catch (error) {
       if (!(error instanceof ApiRequestError)) throw error;
-      return { errorCode: error.code, errorDetail: error.detail };
+      return { errorCode: error.code, errorDetail: error.detail, errorScopes: error.scopes };
     }
   });
   safeHandle('api:files:pick', noPayloadSchema, async (event) => {
@@ -76,23 +82,20 @@ async function exportCurl(
   config: HttpRequestConfig,
   resolveVariables: boolean
 ): Promise<string> {
-  const authChain =
-    config.authType === 'inherit' ? await loadCollectionAuthChain(db, config.collectionId) : [];
+  const chain = await loadCollectionChain(db, config.collectionId);
   const options = {
     timeoutSeconds: config.timeoutSeconds,
     followRedirects: config.followRedirects,
     verifyTls: config.verifyTls,
   };
   if (!resolveVariables) {
-    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain }), options);
+    return toCurlCommand(await prepareRequestWithPlaceholders(config, { authChain: chain }), options);
   }
-  const { variables, locked } = config.environmentId
-    ? await getDecryptedVariables(db, config.environmentId)
-    : { variables: {}, locked: false };
+  const { scopes, locked } = await loadVariableScopes(db, config, chain);
   const prepared = await prepareRequest(config, {
-    variables,
+    scopes,
     variablesLocked: locked,
-    authChain,
+    authChain: chain,
     // Exported by path; nothing is read.
     loadFile: async (filePath) => ({
       data: Buffer.alloc(0),
@@ -101,61 +104,6 @@ async function exportCurl(
     }),
   });
   return toCurlCommand({ ...prepared, url: prepared.url.href }, options);
-}
-
-async function getDecryptedVariables(
-  db: Kysely<Database>,
-  environmentId: string
-): Promise<{ variables: Record<string, string>; locked: boolean }> {
-  if (!cryptoManager.isUnlocked()) return { variables: {}, locked: true };
-
-  const environment = await db
-    .selectFrom('vault_environments')
-    .select('variables')
-    .where('id', '=', environmentId)
-    .executeTakeFirst();
-  if (!environment) {
-    logger.warn('Environment not found for API request', { environmentId });
-    return { variables: {}, locked: false };
-  }
-
-  const encryptedVars = JSON.parse(environment.variables) as Array<{
-    key: string;
-    value_encrypted: string;
-  }>;
-  const variables: Record<string, string> = {};
-  for (const variable of encryptedVars) {
-    try {
-      variables[variable.key] = cryptoManager.decryptData(variable.value_encrypted);
-    } catch {
-      // Left unresolved on purpose: prepareRequest reports it as a missing variable.
-      logger.error('Failed to decrypt environment variable', { key: variable.key });
-    }
-  }
-  return { variables, locked: false };
-}
-
-/** Auth of the collection chain, nearest first, stopping at the first non-inherit entry. */
-async function loadCollectionAuthChain(
-  db: Kysely<Database>,
-  collectionId: string | null | undefined
-): Promise<AuthSource[]> {
-  const chain: AuthSource[] = [];
-  const seen = new Set<string>();
-  let id = collectionId ?? null;
-  while (id && !seen.has(id)) {
-    seen.add(id);
-    const row = await db
-      .selectFrom('api_collections')
-      .select(['parent_id', 'auth_type', 'auth_config'])
-      .where('id', '=', id)
-      .executeTakeFirst();
-    if (!row) break;
-    chain.push(row);
-    if (row.auth_type !== 'inherit') break;
-    id = row.parent_id;
-  }
-  return chain;
 }
 
 async function handleExecuteRequest(
@@ -167,16 +115,13 @@ async function handleExecuteRequest(
   const started = performance.now();
   let host: string | undefined;
   try {
-    const { variables, locked } = config.environmentId
-      ? await getDecryptedVariables(db, config.environmentId)
-      : { variables: {}, locked: false };
-    const authChain =
-      config.authType === 'inherit' ? await loadCollectionAuthChain(db, config.collectionId) : [];
+    const chain = await loadCollectionChain(db, config.collectionId);
+    const { scopes, locked } = await loadVariableScopes(db, config, chain);
 
     const prepared = await prepareRequest(config, {
-      variables,
+      scopes,
       variablesLocked: locked,
-      authChain,
+      authChain: chain,
       loadFile: (filePath, maxBytes) => loadRequestFile(filePath, pickedFiles, maxBytes),
     });
     host = prepared.url.host;
@@ -224,6 +169,7 @@ async function handleExecuteRequest(
       size: 0,
       errorCode: code,
       errorDetail: error instanceof ApiRequestError ? error.detail : undefined,
+      errorScopes: error instanceof ApiRequestError ? error.scopes : undefined,
     };
   }
 }

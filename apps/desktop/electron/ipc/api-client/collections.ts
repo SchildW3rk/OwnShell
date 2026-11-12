@@ -1,25 +1,78 @@
-import type { Database, ApiCollectionUpdate, RequestAuthType } from '@ownshell/core';
+import {
+  SettingsQueries,
+  type ApiCollectionsTable,
+  type ApiCollectionUpdate,
+  type Database,
+  type RequestAuthType,
+} from '@ownshell/core';
 import type { IpcMainInvokeEvent } from 'electron';
 import type { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  buildStoredVariables,
+  GLOBAL_VARIABLES_SETTING,
+  toPublicVariables,
+  type VariableInput,
+} from '../../http/api-variables';
 import { logger } from '../../logger';
+import { cryptoManager } from '../../security/crypto';
 import { safeHandle, safeHandleArgs } from '../safe-ipc';
 import {
   collectionSchema,
   collectionUpdateArgsSchema,
   idSchema,
   noPayloadSchema,
+  setVariablesSchema,
 } from './schemas';
+
+/** The renderer never gets encrypted secret values, only whether a secret is set. */
+function publicCollection<T extends Pick<ApiCollectionsTable, 'variables'> | undefined>(row: T): T {
+  return row && { ...row, variables: JSON.stringify(toPublicVariables(row.variables)) };
+}
+
+/** Replaces the variables of a folder (collectionId) or the global variables (null). */
+export async function saveVariables(
+  db: Kysely<Database>,
+  collectionId: string | null,
+  variables: VariableInput[]
+): Promise<void> {
+  const encrypt = (value: string) => {
+    if (!cryptoManager.isUnlocked()) throw new Error('App is locked - cannot encrypt variables');
+    return cryptoManager.encryptData(value);
+  };
+  if (collectionId) {
+    const row = await db
+      .selectFrom('api_collections')
+      .select('variables')
+      .where('id', '=', collectionId)
+      .executeTakeFirst();
+    if (!row) throw new Error('Folder not found');
+    await db
+      .updateTable('api_collections')
+      .set({ variables: buildStoredVariables(variables, row.variables, encrypt, uuidv4), updated_at: Date.now() })
+      .where('id', '=', collectionId)
+      .execute();
+    return;
+  }
+  const settings = new SettingsQueries(db);
+  const existing = await settings.get(GLOBAL_VARIABLES_SETTING);
+  await settings.set({
+    key: GLOBAL_VARIABLES_SETTING,
+    value: buildStoredVariables(variables, existing, encrypt, uuidv4),
+    updated_at: Date.now(),
+  });
+}
 
 export function registerApiCollectionHandlers(db: Kysely<Database>): void {
   safeHandle('api:collections:get-all', noPayloadSchema, async () => {
     try {
-      return await db
+      const rows = await db
         .selectFrom('api_collections')
         .selectAll()
         .orderBy('sort_order', 'asc')
         .orderBy('created_at', 'asc')
         .execute();
+      return rows.map(publicCollection);
     } catch (error) {
       logger.error('Failed to get API collections', error);
       throw error;
@@ -38,6 +91,13 @@ export function registerApiCollectionHandlers(db: Kysely<Database>): void {
   safeHandle('api:collections:delete', idSchema, async (_event, id) =>
     handleDeleteCollection(db, _event, id)
   );
+  safeHandle('api:variables:get-global', noPayloadSchema, async () =>
+    toPublicVariables(await new SettingsQueries(db).get(GLOBAL_VARIABLES_SETTING))
+  );
+  safeHandle('api:variables:set', setVariablesSchema, async (_event, { collectionId, variables }) => {
+    await saveVariables(db, collectionId, variables);
+    logger.info('API variables saved', { scope: collectionId ? 'folder' : 'global', count: variables.length });
+  });
 }
 
 async function handleGetCollectionById(
@@ -46,11 +106,9 @@ async function handleGetCollectionById(
   id: string
 ) {
   try {
-    return await db
-      .selectFrom('api_collections')
-      .selectAll()
-      .where('id', '=', id)
-      .executeTakeFirst();
+    return publicCollection(
+      await db.selectFrom('api_collections').selectAll().where('id', '=', id).executeTakeFirst()
+    );
   } catch (error) {
     logger.error('Failed to get API collection', { id, error });
     throw error;
@@ -87,6 +145,7 @@ async function handleCreateCollection(
       sort_order: sortOrder,
       auth_type: data.auth_type ?? 'inherit',
       auth_config: data.auth_config ?? '{}',
+      variables: '[]',
       created_at: now,
       updated_at: now,
     };
@@ -129,7 +188,7 @@ async function handleUpdateCollection(
       .executeTakeFirst();
 
     logger.info('API collection updated', { id, name: data.name });
-    return updated;
+    return publicCollection(updated);
   } catch (error) {
     logger.error('Failed to update API collection', { id, error });
     throw error;

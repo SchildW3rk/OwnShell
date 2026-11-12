@@ -448,7 +448,8 @@
     "browse": "Browse",
     "rename": "Rename",
     "duplicate": "Duplicate",
-    "unknownError": "Unknown error"
+    "unknownError": "Unknown error",
+    "closeMenu": "Close menu"
   },
   "permissions": {
     "title": "Edit Permissions",
@@ -1367,7 +1368,8 @@
       "auth": "Auth",
       "headers": "Headers",
       "body": "Body",
-      "settings": "Settings"
+      "settings": "Settings",
+      "variables": "Variables"
     },
     "params": {
       "key": "Parameter",
@@ -1477,8 +1479,8 @@
     "noItems": "No items yet",
     "errors": {
       "changeFailed": "Could not save changes: {{error}}",
-      "MISSING_VARIABLES": "Unknown variables: {{detail}}. Define them in the selected environment.",
-      "VAULT_LOCKED": "OwnShell is locked, so environment variables cannot be resolved ({{detail}}). Unlock and send again.",
+      "MISSING_VARIABLES": "Unknown variables: {{detail}}. Searched: {{scopes}}. Define them in one of these scopes.",
+      "VAULT_LOCKED": "OwnShell is locked, so secret variables cannot be resolved ({{detail}}). Unlock and send again.",
       "INVALID_URL": "The URL is invalid. Use a full http:// or https:// URL.",
       "FILE_ERROR": "The file {{detail}} cannot be read. Select it again.",
       "BODY_TOO_LARGE": "The request body exceeds the 50 MB limit.",
@@ -1533,6 +1535,73 @@
       "copyFailed": "Could not copy: {{error}}",
       "copiedPlaceholders": "curl command copied. Auth secrets are replaced by placeholders; the body is copied as is.",
       "placeholdersHint": "Variables and auth secrets (tokens, passwords, API keys, credential headers) become placeholders. Bodies are exported as is."
+    },
+    "variables": {
+      "menu": "Variables…",
+      "folderTitle": "Variables: {{name}}",
+      "globalTitle": "Global variables",
+      "name": "Name",
+      "precedenceHint": "Lookup order: request → folders (nearest first) → collection → environment → global. Built-in: {{uuid}}, {{timestamp}}, {{iso}}.",
+      "makeSecret": "Mark as secret (stored encrypted, never shown)",
+      "makePlain": "Make plain (the secret value is not revealed)",
+      "secretKept": "Secret stored – type to replace",
+      "secretValue": "secret",
+      "suggestions": "Variables",
+      "scope": {
+        "request": "Request",
+        "folder": "Folder",
+        "collection": "Collection",
+        "environment": "Environment",
+        "global": "Global",
+        "dynamic": "Built-in"
+      }
+    },
+    "history": {
+      "title": "History",
+      "filter": "Filter history",
+      "clear": "Clear history",
+      "clearConfirm": "Delete all history entries? Saved requests are not affected.",
+      "empty": "No requests sent yet",
+      "openHint": "Open as a new request (the saved request no longer exists)",
+      "failed": "Failed",
+      "openSavedHint": "Open the saved request. Right-click to create a new request from this URL.",
+      "openSaved": "Open saved request",
+      "createFromUrl": "Create request from URL"
+    },
+    "transfer": {
+      "importPostman": "Import Postman…",
+      "importOwnShell": "Import OwnShell file…",
+      "exportMenu": "Export as OwnShell file…",
+      "exported": "Exported to {{path}}",
+      "exportFailed": "Export failed: {{error}}",
+      "importFailed": "Import failed: {{error}}",
+      "summaryTitle": "Import complete",
+      "summaryCounts": "Imported into a new folder: {{requests}} requests, {{folders}} folders, {{variables}} variables.",
+      "skippedTitle": "Not imported or changed",
+      "warnings": {
+        "SCRIPTS": "Pre-request and test scripts (not supported): {{count}}",
+        "AUTH_UNSUPPORTED": "Unsupported auth types, set to no auth: {{count}}",
+        "GRAPHQL": "GraphQL bodies, converted to JSON: {{count}}",
+        "FILE_PARTS": "Form-data files – select them again before sending: {{count}}",
+        "BINARY_FILE": "Binary file bodies – select the file again: {{count}}",
+        "METHOD_UNSUPPORTED": "Requests with unsupported methods, skipped: {{count}}",
+        "BODY_UNSUPPORTED": "Unsupported body types, left empty: {{count}}"
+      },
+      "errors": {
+        "TOO_LARGE": "The file is larger than 20 MB.",
+        "INVALID_JSON": "The file is not valid JSON.",
+        "NOT_POSTMAN": "This is not a Postman collection or environment.",
+        "UNSUPPORTED_VERSION": "This file version is not supported (Postman v2.0/v2.1, OwnShell format 1).",
+        "TOO_MANY_ITEMS": "The file has too many items or folders nested too deeply.",
+        "INVALID_FILE": "The file content is not in the expected format."
+      },
+      "environmentTitle": "Import Postman environment",
+      "environmentSummary": "Environment “{{name}}” with {{count}} variables. It is created as a vault environment; all values are stored encrypted.",
+      "environmentProject": "Vault project",
+      "environmentSkipped": "Skipped (disabled, duplicate or not a valid variable name): {{names}}",
+      "createEnvironment": "Create environment",
+      "environmentCreated": "Vault environment “{{name}}” created",
+      "exportedRedacted": "Exported to {{path}}. Credentials in recognised fields are replaced by placeholders; other literal values are exported as is."
     }
   },
   "changelog": {

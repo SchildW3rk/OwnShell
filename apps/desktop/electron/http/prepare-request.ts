@@ -7,7 +7,7 @@
  * rules stay identical. Pure apart from the injected `loadFile`.
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { HttpMethod, RequestAuthType, RequestBodyType } from '@ownshell/core';
 import { MAX_RESPONSE_BODY_BYTES } from './fetch-timeout';
@@ -30,7 +30,9 @@ export class ApiRequestError extends Error {
   constructor(
     readonly code: ApiRequestErrorCode,
     message: string,
-    readonly detail?: string
+    readonly detail?: string,
+    /** For missing variables: the scopes that were searched, in lookup order. */
+    readonly scopes?: VariableScopeName[]
   ) {
     super(message);
     this.name = 'ApiRequestError';
@@ -60,10 +62,30 @@ export interface LoadedFile {
   contentType: string;
 }
 
-export interface PrepareContext {
+/**
+ * Variable lookup order, highest precedence first:
+ * request → folder chain (nearest first) → collection root → environment (vault) → global.
+ */
+export type VariableScopeName = 'request' | 'folder' | 'collection' | 'environment' | 'global';
+
+export interface VariableScope {
+  scope: VariableScopeName;
   variables: Record<string, string>;
-  /** Environment selected but the vault is locked, so its variables could not be decrypted. */
+}
+
+/** Built-in dynamic values; anything else starting with `$` is an unknown variable. */
+export const DYNAMIC_VARIABLES = ['$uuid', '$timestamp', '$isoTimestamp'] as const;
+
+export interface PrepareContext {
+  /** Environment variables; shorthand for `scopes: [{ scope: 'environment', variables }]`. */
+  variables?: Record<string, string>;
+  /** Every scope in lookup order (highest precedence first); replaces `variables`. */
+  scopes?: VariableScope[];
+  /** A scope's secrets could not be decrypted because the vault is locked. */
   variablesLocked?: boolean;
+  /** Injected for tests; default: the current time and random UUIDs. */
+  now?: () => Date;
+  uuid?: () => string;
   /** Auth of the parent collections, nearest first. */
   authChain?: AuthSource[];
   /** Must not return more than `maxBytes` bytes (throw BODY_TOO_LARGE instead). */
@@ -149,17 +171,63 @@ function deleteHeader(headers: Record<string, string>, name: string): void {
 }
 
 /** Header names whose values are credentials (redacted in a placeholder export). */
-const SENSITIVE_HEADER = /^(authorization|proxy-authorization|cookie)$|api[-_]?key|token|secret|password|session/i;
+export const SENSITIVE_HEADER = /^(authorization|proxy-authorization|cookie)$|api[-_]?key|token|secret|password|session/i;
 
 /**
  * Placeholder export: a value typed in directly is replaced by `{{name}}`; one that only
  * references variables (optionally after an auth scheme like "Bearer ") is kept as is.
  */
-function placeholderFor(value: string, name: string): string {
+export function placeholderFor(value: string, name: string): string {
   const hasVariable = /\{\{[^}]+\}\}/.test(value);
   const literal = value.replace(/\{\{[^}]+\}\}/g, '');
   // "token" alone is a secret, "Token {{X}}" is a scheme plus a variable.
   return hasVariable && /^\s*((bearer|basic|token)\s+)?$/i.test(literal) ? value : `{{${name}}}`;
+}
+
+/** Query/param names whose values are credentials (redacted in exports and history). */
+export const SENSITIVE_PARAM = /token|secret|passw(or)?d|api[-_]?key|signature|session|^(pwd|key|auth|sig)$/i;
+
+/** Placeholder for a credential-like param value; other values stay as they are. */
+export function redactParam(name: string, value: string): string {
+  return SENSITIVE_PARAM.test(name.trim()) ? placeholderFor(value, name.trim()) : value;
+}
+
+/**
+ * Best-effort redaction of a URL template for exports and history: drops the whole user
+ * info and the fragment, and replaces literal credential-like query values by `{{name}}`.
+ * Other literal values are kept.
+ */
+export function redactUrl(url: string): string {
+  const hashStart = url.indexOf('#');
+  // User info sits in the authority (before the first / ? #), with or without a scheme:
+  // `https://u:p@h`, `//u:p@h`, `u:p@h/path`.
+  const withoutUser = (hashStart < 0 ? url : url.slice(0, hashStart)).replace(
+    /^((?:[a-z][\w+.-]*:)?\/\/)?[^/?#]*@/i,
+    '$1'
+  );
+  const queryStart = withoutUser.indexOf('?');
+  if (queryStart < 0) return withoutUser;
+  const query = withoutUser
+    .slice(queryStart + 1)
+    .split('&')
+    .map((pair) => {
+      const separator = pair.indexOf('=');
+      if (separator < 0) return pair;
+      const rawName = pair.slice(0, separator);
+      const value = decodeQueryPart(pair.slice(separator + 1));
+      const kept = redactParam(decodeQueryPart(rawName), value);
+      return kept === value ? pair : `${rawName}={{${rawName}}}`;
+    })
+    .join('&');
+  return `${withoutUser.slice(0, queryStart)}?${query}`;
+}
+
+function decodeQueryPart(text: string): string {
+  try {
+    return decodeURIComponent(text.replace(/\+/g, ' '));
+  } catch {
+    return text;
+  }
 }
 
 // RFC 7578 / WHATWG: quotes and line breaks in names must not break the part header.
@@ -216,7 +284,8 @@ export async function prepareRequestWithPlaceholders(
     .toString()
     .replace(/%7B%7B(.*?)%7D%7D/g, (_match, name: string) => `{{${decodeURIComponent(name)}}}`);
   const url = extra ? `${urlText}${urlText.includes('?') ? '&' : '?'}${extra}` : urlText;
-  return { ...rest, url };
+  // Placeholder output is for export/history: also drop URL credentials and literal secrets in the query.
+  return { ...rest, url: redactUrl(url) };
 }
 
 async function assembleRequest(
@@ -225,11 +294,24 @@ async function assembleRequest(
   keepPlaceholders: boolean
 ): Promise<AssembledRequest> {
   const missing = new Set<string>();
+  const scopes = context.scopes ?? [{ scope: 'environment' as const, variables: context.variables ?? {} }];
+  // One time per request, so every {{$timestamp}} in it agrees.
+  const now = (context.now ?? (() => new Date()))();
+  const dynamic = (name: string): string | undefined => {
+    if (name === '$uuid') return (context.uuid ?? randomUUID)();
+    if (name === '$timestamp') return String(Math.floor(now.getTime() / 1000));
+    if (name === '$isoTimestamp') return now.toISOString();
+    return undefined;
+  };
   const interpolate = (text: string): string =>
     text.replace(/\{\{([^}]+)\}\}/g, (match, rawName: string) => {
+      if (keepPlaceholders) return match;
       const name = rawName.trim();
-      if (Object.prototype.hasOwnProperty.call(context.variables, name)) return context.variables[name];
-      if (!keepPlaceholders) missing.add(name);
+      const scope = scopes.find((entry) => Object.prototype.hasOwnProperty.call(entry.variables, name));
+      if (scope) return scope.variables[name];
+      const value = dynamic(name);
+      if (value !== undefined) return value;
+      missing.add(name);
       return match;
     });
 
@@ -373,7 +455,8 @@ async function assembleRequest(
     if (context.variablesLocked) {
       throw new ApiRequestError('VAULT_LOCKED', 'Unlock OwnShell to resolve environment variables', names);
     }
-    throw new ApiRequestError('MISSING_VARIABLES', `Unknown variables: ${names}`, names);
+    const searched = [...new Set(scopes.map((entry) => entry.scope))];
+    throw new ApiRequestError('MISSING_VARIABLES', `Unknown variables: ${names}`, names, searched);
   }
 
   if (body && body.length > MAX_REQUEST_BODY_BYTES) {

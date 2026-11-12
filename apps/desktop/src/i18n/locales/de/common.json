@@ -448,7 +448,8 @@
     "browse": "Durchsuchen",
     "rename": "Umbenennen",
     "duplicate": "Duplizieren",
-    "unknownError": "Unbekannter Fehler"
+    "unknownError": "Unbekannter Fehler",
+    "closeMenu": "Menü schließen"
   },
   "permissions": {
     "title": "Berechtigungen bearbeiten",
@@ -1367,7 +1368,8 @@
       "auth": "Auth",
       "headers": "Header",
       "body": "Body",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "variables": "Variablen"
     },
     "params": {
       "key": "Parameter",
@@ -1477,8 +1479,8 @@
     "noItems": "Noch keine Einträge",
     "errors": {
       "changeFailed": "Änderungen konnten nicht gespeichert werden: {{error}}",
-      "MISSING_VARIABLES": "Unbekannte Variablen: {{detail}}. Lege sie in der gewählten Umgebung an.",
-      "VAULT_LOCKED": "OwnShell ist gesperrt, daher können Umgebungsvariablen nicht aufgelöst werden ({{detail}}). Entsperre und sende erneut.",
+      "MISSING_VARIABLES": "Unbekannte Variablen: {{detail}}. Durchsucht: {{scopes}}. Lege sie in einem dieser Bereiche an.",
+      "VAULT_LOCKED": "OwnShell ist gesperrt, daher können geheime Variablen nicht aufgelöst werden ({{detail}}). Entsperre und sende erneut.",
       "INVALID_URL": "Die URL ist ungültig. Verwende eine vollständige http://- oder https://-URL.",
       "FILE_ERROR": "Die Datei {{detail}} kann nicht gelesen werden. Wähle sie erneut aus.",
       "BODY_TOO_LARGE": "Der Request-Body überschreitet das Limit von 50 MB.",
@@ -1533,6 +1535,73 @@
       "copyFailed": "Kopieren fehlgeschlagen: {{error}}",
       "copiedPlaceholders": "curl-Befehl kopiert. Auth-Geheimnisse sind durch Platzhalter ersetzt; der Body wird unverändert übernommen.",
       "placeholdersHint": "Variablen und Auth-Geheimnisse (Tokens, Passwörter, API-Keys, Zugangs-Header) werden zu Platzhaltern. Bodies werden unverändert exportiert."
+    },
+    "variables": {
+      "menu": "Variablen …",
+      "folderTitle": "Variablen: {{name}}",
+      "globalTitle": "Globale Variablen",
+      "name": "Name",
+      "precedenceHint": "Reihenfolge: Request → Ordner (nächster zuerst) → Collection → Umgebung → global. Eingebaut: {{uuid}}, {{timestamp}}, {{iso}}.",
+      "makeSecret": "Als geheim markieren (verschlüsselt gespeichert, nie angezeigt)",
+      "makePlain": "Nicht mehr geheim (der geheime Wert wird nicht angezeigt)",
+      "secretKept": "Geheimnis gespeichert – zum Ersetzen tippen",
+      "secretValue": "geheim",
+      "suggestions": "Variablen",
+      "scope": {
+        "request": "Request",
+        "folder": "Ordner",
+        "collection": "Collection",
+        "environment": "Umgebung",
+        "global": "Global",
+        "dynamic": "Eingebaut"
+      }
+    },
+    "history": {
+      "title": "Verlauf",
+      "filter": "Verlauf filtern",
+      "clear": "Verlauf leeren",
+      "clearConfirm": "Alle Verlaufseinträge löschen? Gespeicherte Requests bleiben erhalten.",
+      "empty": "Noch keine Requests gesendet",
+      "openHint": "Als neuen Request öffnen (der gespeicherte Request existiert nicht mehr)",
+      "failed": "Fehlgeschlagen",
+      "openSavedHint": "Gespeicherten Request öffnen. Rechtsklick, um aus dieser URL einen neuen Request zu erstellen.",
+      "openSaved": "Gespeicherten Request öffnen",
+      "createFromUrl": "Request aus URL erstellen"
+    },
+    "transfer": {
+      "importPostman": "Postman importieren …",
+      "importOwnShell": "OwnShell-Datei importieren …",
+      "exportMenu": "Als OwnShell-Datei exportieren …",
+      "exported": "Exportiert nach {{path}}",
+      "exportFailed": "Export fehlgeschlagen: {{error}}",
+      "importFailed": "Import fehlgeschlagen: {{error}}",
+      "summaryTitle": "Import abgeschlossen",
+      "summaryCounts": "In einen neuen Ordner importiert: {{requests}} Requests, {{folders}} Ordner, {{variables}} Variablen.",
+      "skippedTitle": "Nicht importiert oder angepasst",
+      "warnings": {
+        "SCRIPTS": "Pre-Request- und Test-Skripte (nicht unterstützt): {{count}}",
+        "AUTH_UNSUPPORTED": "Nicht unterstützte Auth-Typen, auf „keine Auth“ gesetzt: {{count}}",
+        "GRAPHQL": "GraphQL-Bodies, in JSON umgewandelt: {{count}}",
+        "FILE_PARTS": "Form-Data-Dateien – vor dem Senden erneut auswählen: {{count}}",
+        "BINARY_FILE": "Binäre Datei-Bodies – Datei erneut auswählen: {{count}}",
+        "METHOD_UNSUPPORTED": "Requests mit nicht unterstützter Methode, übersprungen: {{count}}",
+        "BODY_UNSUPPORTED": "Nicht unterstützte Body-Typen, leer gelassen: {{count}}"
+      },
+      "errors": {
+        "TOO_LARGE": "Die Datei ist größer als 20 MB.",
+        "INVALID_JSON": "Die Datei ist kein gültiges JSON.",
+        "NOT_POSTMAN": "Das ist keine Postman-Collection und keine Postman-Umgebung.",
+        "UNSUPPORTED_VERSION": "Diese Dateiversion wird nicht unterstützt (Postman v2.0/v2.1, OwnShell-Format 1).",
+        "TOO_MANY_ITEMS": "Die Datei enthält zu viele Einträge oder zu tief verschachtelte Ordner.",
+        "INVALID_FILE": "Der Dateiinhalt hat nicht das erwartete Format."
+      },
+      "environmentTitle": "Postman-Umgebung importieren",
+      "environmentSummary": "Umgebung „{{name}}“ mit {{count}} Variablen. Sie wird als Vault-Umgebung angelegt; alle Werte werden verschlüsselt gespeichert.",
+      "environmentProject": "Vault-Projekt",
+      "environmentSkipped": "Übersprungen (deaktiviert, doppelt oder kein gültiger Variablenname): {{names}}",
+      "createEnvironment": "Umgebung anlegen",
+      "environmentCreated": "Vault-Umgebung „{{name}}“ angelegt",
+      "exportedRedacted": "Exportiert nach {{path}}. Zugangsdaten in erkannten Feldern werden durch Platzhalter ersetzt; andere wörtliche Werte werden unverändert exportiert."
     }
   },
   "changelog": {
