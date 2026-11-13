@@ -14,6 +14,7 @@ The **Database** tab connects to **PostgreSQL**, **MySQL**, **SQLite**, **Redis*
   - **Require, don't verify**: encrypts but accepts any certificate. Marked with a warning, because anyone between you and the server could impersonate it.
 - Optionally add a **CA certificate** (paste the PEM or choose a file) for servers signed by a private CA. It is stored encrypted; the app shows only that a CA is set and its fingerprint.
 - Through an SSH host, the certificate is checked against the database host name, not the local tunnel address.
+- MySQL can only verify the certificate against a host name. With an IP address as host (also through an SSH host), use **Require, don't verify** or enter the name from the certificate.
 - PostgreSQL and MySQL connections saved with SSL on before these modes existed never verified the certificate. They keep working as **Require, don't verify** and show a one-time hint so you can switch them.
 
 ### SQLite files

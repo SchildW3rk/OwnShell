@@ -5,7 +5,7 @@
  * Uses the 'mysql2' library for database connections.
  */
 
-import { connect as netConnect } from 'node:net';
+import { connect as netConnect, isIP } from 'node:net';
 import { Pool, PoolConnection, RowDataPacket, ResultSetHeader, createPool } from 'mysql2/promise';
 import {
   BaseSQLAdapter,
@@ -16,7 +16,7 @@ import {
   TableSchema,
   QueryResult,
 } from './base-adapter';
-import { DBType, ColumnSchema, IndexInfo } from '@ownshell/core';
+import { DBConnectionError, DBType, ColumnSchema, IndexInfo } from '@ownshell/core';
 import { dbErrorCodes, logger } from '../../logger';
 import { assertKnownColumns, assertKnownTable } from '../identifier-whitelist';
 import { quoteBacktickIdentifier } from '../sql-identifiers';
@@ -50,10 +50,19 @@ export class MySQLAdapter extends BaseSQLAdapter {
       });
 
       const { ssl, tlsHost } = this.config;
+      // mysql2 sends no SNI for an IP and Node then checks the certificate against "localhost",
+      // not the IP. Refuse instead of verifying the wrong name.
+      const tlsName = ssl && tlsHost ? tlsHost : this.config.host;
+      if (ssl && ssl.rejectUnauthorized !== false && isIP(tlsName)) {
+        throw new DBConnectionError(
+          'MySQL certificate verification needs the server host name, not an IP address. Enter the name from the certificate, or choose "Require, don\'t verify".',
+          'MYSQL_TLS_IP_HOST'
+        );
+      }
       this.pool = createPool({
         // Through a tunnel mysql2 must see the original host: it derives SNI and the
         // certificate name check from `host`, while the socket goes to the tunnel.
-        host: ssl && tlsHost ? tlsHost : this.config.host,
+        host: tlsName,
         port: this.config.port,
         ...(ssl && tlsHost
           ? { stream: () => netConnect(this.config.port, this.config.host) }

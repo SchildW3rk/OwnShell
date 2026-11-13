@@ -14,6 +14,7 @@ Der Tab **Datenbank** verbindet sich mit **PostgreSQL**, **MySQL**, **SQLite**, 
   - **Erforderlich, nicht prüfen**: verschlüsselt, akzeptiert aber jedes Zertifikat. Wird mit einer Warnung markiert, weil sich jemand zwischen dir und dem Server als dieser ausgeben könnte.
 - Optional hinterlegst du ein **CA-Zertifikat** (PEM einfügen oder Datei wählen) für Server mit privater CA. Es wird verschlüsselt gespeichert; die App zeigt nur, dass eine CA gesetzt ist, und ihren Fingerprint.
 - Über einen SSH-Host wird das Zertifikat gegen den Hostnamen der Datenbank geprüft, nicht gegen die lokale Tunnel-Adresse.
+- MySQL kann das Zertifikat nur gegen einen Hostnamen prüfen. Mit einer IP-Adresse als Host (auch über einen SSH-Host) wähle **Erforderlich, nicht prüfen** oder trage den Namen aus dem Zertifikat ein.
 - PostgreSQL- und MySQL-Verbindungen, die vor diesen Modi mit SSL gespeichert wurden, haben das Zertifikat nie geprüft. Sie funktionieren weiter als **Erforderlich, nicht prüfen** und zeigen einmalig einen Hinweis, damit du sie umstellen kannst.
 
 ### SQLite-Dateien
