@@ -13,7 +13,8 @@ function assertConnected(connected: boolean): void {
 export async function execCommand(
   client: Client,
   connected: boolean,
-  command: string
+  command: string,
+  stdin?: string
 ): Promise<SSHExecResult> {
   assertConnected(connected);
 
@@ -31,6 +32,7 @@ export async function execCommand(
       let stdout = '';
       let stderr = '';
       let exitCode = 0;
+      if (stdin !== undefined) stream.end(stdin);
 
       stream.on('data', (data: Buffer) => {
         stdout += data.toString();
@@ -59,7 +61,8 @@ export async function execToFile(
   connected: boolean,
   command: string,
   localPath: string,
-  onProgress?: (bytesWritten: number) => void
+  onProgress?: (bytesWritten: number) => void,
+  stdin?: string
 ): Promise<{ exitCode: number; stderr: string }> {
   assertConnected(connected);
 
@@ -78,6 +81,7 @@ export async function execToFile(
       let bytesWritten = 0;
 
       const writeStream = fs.createWriteStream(localPath);
+      if (stdin !== undefined) stream.end(stdin);
 
       stream.on('data', (chunk: Buffer) => {
         bytesWritten += chunk.length;
@@ -121,7 +125,8 @@ export async function execFromFile(
   connected: boolean,
   command: string,
   localPath: string,
-  onProgress?: (bytesRead: number) => void
+  onProgress?: (bytesRead: number) => void,
+  stdinPrefix?: string
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   assertConnected(connected);
 
@@ -129,7 +134,11 @@ export async function execFromFile(
   const totalSize = stats.size;
 
   return new Promise((resolve, reject) => {
-    logger.info('Executing command with file input', { length: command.length, localPath, totalSize });
+    logger.info('Executing command with file input', {
+      length: command.length,
+      localPath,
+      totalSize,
+    });
 
     client.exec(command, (err, stream) => {
       if (err) {
@@ -152,6 +161,7 @@ export async function execFromFile(
         onProgress?.(bytesRead);
       });
 
+      if (stdinPrefix !== undefined) stream.write(stdinPrefix);
       readStream.pipe(stream);
 
       stream.on('data', (data: Buffer) => {

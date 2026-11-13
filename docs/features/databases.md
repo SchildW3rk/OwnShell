@@ -57,13 +57,15 @@ Database dumps use the official tools:
 | PostgreSQL | `pg_dump`, `psql` |
 | MySQL | `mysqldump`, `mysql` |
 | MongoDB | `mongodump`, `mongorestore` |
-| Redis | `redis-cli --rdb` |
+| Redis | `redis-cli --rdb` (export only) |
 | SQLite | built in, no tool needed |
 
 - Export to `.sql` or `.sql.gz` (schema only, data only, selected tables and `pg_dump` options).
 - Import `.sql` / `.sql.gz`, optionally after truncating or dropping existing tables.
 - SQLite exports a SQL dump (like `sqlite3 .dump`). An import runs in one transaction, so a failing import leaves the database unchanged.
-- PostgreSQL and MySQL dumps use the connection's SSL mode and CA certificate. Verifying without a CA uses the system trust store with PostgreSQL 16+ tools; MySQL tools need the CA certificate to verify. In Docker mode the tools reach the database inside the container and keep their defaults.
+- Redis exports an RDB snapshot. To restore it, stop Redis on the server and replace its `dump.rdb`; OwnShell does not import RDB files. `redis-cli` cannot check the server's host name, so a Redis export with SSL needs the mode **Require, don't verify**.
+- PostgreSQL, MySQL and Redis passwords reach the dump tools through stdin and environment variables, never through the command line, so other users on the server cannot read them with `ps`.
+- PostgreSQL, MySQL and Redis dumps use the connection's SSL mode and CA certificate. Verifying without a CA uses the system trust store with PostgreSQL 16+ tools; MySQL tools need the CA certificate to verify. In Docker mode the tools run inside the container (`docker exec`), reach the database on its loopback and keep their defaults; the port must be the one the database listens on inside the container.
 - For connections through an SSH host, the tools run **on the server** and the dump is streamed to your Mac, so they must be installed there. For direct connections they must be installed on your Mac. OwnShell tells you which tool is missing.
 
 ## Redis

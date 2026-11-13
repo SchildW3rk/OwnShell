@@ -136,8 +136,9 @@ export class SSH2Adapter implements ISSHClient {
     return this.connected;
   }
 
-  async exec(command: string): Promise<SSHExecResult> {
-    return execCommand(this.client, this.connected, command);
+  /** `stdin` is written and closed right away (used to pass secrets outside the command line). */
+  async exec(command: string, stdin?: string): Promise<SSHExecResult> {
+    return execCommand(this.client, this.connected, command, stdin);
   }
 
   /**
@@ -147,9 +148,10 @@ export class SSH2Adapter implements ISSHClient {
   async execToFile(
     command: string,
     localPath: string,
-    onProgress?: (bytesWritten: number) => void
+    onProgress?: (bytesWritten: number) => void,
+    stdin?: string
   ): Promise<{ exitCode: number; stderr: string }> {
-    return execToFile(this.client, this.connected, command, localPath, onProgress);
+    return execToFile(this.client, this.connected, command, localPath, onProgress, stdin);
   }
 
   /**
@@ -159,9 +161,10 @@ export class SSH2Adapter implements ISSHClient {
   async execFromFile(
     command: string,
     localPath: string,
-    onProgress?: (bytesRead: number) => void
+    onProgress?: (bytesRead: number) => void,
+    stdinPrefix?: string
   ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-    return execFromFile(this.client, this.connected, command, localPath, onProgress);
+    return execFromFile(this.client, this.connected, command, localPath, onProgress, stdinPrefix);
   }
 
   async shell(options?: ShellOptions): Promise<ISSHShell> {

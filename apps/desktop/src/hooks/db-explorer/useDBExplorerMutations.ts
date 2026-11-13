@@ -9,6 +9,12 @@ import { queryKeys } from '../../lib/queryClient';
 import toast from 'react-hot-toast';
 import { i18n } from '../../i18n';
 
+/** Translated text for a failed connect/test (main sends a stable code for known failures). */
+export function connectionErrorText(error: string | undefined, code?: string): string {
+  const fallback = error || i18n.t('db.connectionFailed');
+  return code ? i18n.t(`db.connectionErrors.${code}`, { defaultValue: fallback }) : fallback;
+}
+
 // ============================================
 // CONNECTION MUTATIONS
 // ============================================
@@ -156,7 +162,7 @@ export function useConnectDB() {
     mutationFn: async (params: { configId: string; sshSessionId?: string; silent?: boolean }) => {
       const result = await window.electronAPI.dbExplorer.connect(params);
       if (!result.success) {
-        throw new Error(result.error || 'Failed to connect');
+        throw new Error(connectionErrorText(result.error, result.code));
       }
       // Return plain connectionId for backward compatibility when not silent
       // Return object with connectionId when silent (for handleDatabaseSwitch)

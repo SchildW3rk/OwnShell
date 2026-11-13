@@ -14,7 +14,7 @@ import { buildClearCommand } from '../electron/db-explorer/dump/clear-command-bu
 
 const PEM = "-----BEGIN CERTIFICATE-----\nMIIB'x\n-----END CERTIFICATE-----";
 const cfg = (over: Partial<DumpConfig>): DumpConfig =>
-  ({ id: 'c', name: 'n', type: 'postgres', host: 'db.internal', port: 5432, database: 'shop', username: 'u', password: 'pw', connectionMode: 'ssh', sshTunnelEnabled: true, ...over }) as DBConnectionConfig & DumpConfig;
+  ({ id: 'c', name: 'n', type: 'postgres', host: 'db.internal', port: 5432, database: 'shop', username: 'u', connectionMode: 'ssh', sshTunnelEnabled: true, ...over }) as DBConnectionConfig & DumpConfig;
 
 test('SSH dump targets the configured database host, not the SSH server loopback', () => {
   assert.match(buildDumpCommand(cfg({}), 5432, {}), /pg_dump -h 'db\.internal'/);
@@ -37,7 +37,7 @@ test('postgres verify uses verify-full with the CA in a temp file, no-verify onl
   assert.match(verify, /trap '\\''rm -f "\$ca"'\\'' EXIT/);
   assert.match(buildDumpCommand(cfg({ sslMode: 'require' }), 5432, {}), /PGSSLMODE='verify-full' PGSSLROOTCERT='system' pg_dump/);
   const noVerify = buildRestoreCommand(cfg({ sslMode: 'require-no-verify', sslCa: PEM }), 5432, false);
-  assert.match(noVerify, /^PGPASSWORD='pw' PGSSLMODE='require' psql/);
+  assert.match(noVerify, /^PGSSLMODE='require' psql/);
   assert.doesNotMatch(noVerify, /ROOTCERT|BEGIN/);
   assert.deepEqual(
     { mode: buildEnvVars(cfg({ sslMode: 'require', sslCa: PEM }), '/tmp/x/ca.pem').PGSSLMODE, root: buildEnvVars(cfg({ sslMode: 'require', sslCa: PEM }), '/tmp/x/ca.pem').PGSSLROOTCERT },
@@ -57,7 +57,7 @@ test('mysql flags work for MySQL and MariaDB clients', () => {
 
 test('the CA wrapper is valid sh, writes the PEM byte for byte and removes the file', () => {
   const cmd = buildRestoreCommand(cfg({ sslMode: 'require', sslCa: PEM }), 5432, false).replace(
-    /PGPASSWORD=.*? psql .*?-q/,
+    /PGSSLMODE=.*? psql .*?-q/,
     'cat "$ca" > "$OUT"; echo "$ca" > "$OUT.path"'
   );
   const out = `${require('node:os').tmpdir()}/ownshell-ca-test-${process.pid}`;
@@ -151,4 +151,87 @@ test('MySQL tools always use TCP so localhost cannot fall back to an unencrypted
 test('local runner logs no raw arguments (docker exec carries MYSQL_PWD=…)', () => {
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../electron/db-explorer/dump/local-runner.ts'), 'utf8');
   assert.doesNotMatch(src, /logger\.\w+\([^)]*\{[^}]*\bargs\s*[,}]/);
+});
+
+test('Redis export: TLS flags, password via env (not -a), private temp file; import is refused', () => {
+  const { REDIS_IMPORT_UNSUPPORTED, buildLocalDumpCommand: localDump } = require('../electron/db-explorer/dump/command-builders');
+  const redis = cfg({ type: 'redis', port: 6380, password: 's3cret pw', sslMode: 'require-no-verify', sslCa: PEM });
+  const remote = buildDumpCommand(redis, 6380, {});
+  assert.match(remote, /read -r REDISCLI_AUTH/);
+  assert.doesNotMatch(remote, / -a |\/tmp\/ownshell-redis|s3cret/);
+  assert.match(remote, /--tls/);
+  assert.match(remote, /--insecure/);
+  assert.match(remote, /mktemp/);
+  // redis-cli checks only the CA chain, not the host name: "verify" is refused instead of weakened.
+  assert.throws(() => buildDumpCommand({ ...redis, sslMode: 'require' }, 6380, {}), /host name/);
+  assert.doesNotMatch(redactCommand(remote), /s3cret/);
+  assert.deepEqual(localDump(cfg({ type: 'redis', connectionMode: 'local', sslMode: 'require-no-verify' }), { compress: false }).args.slice(0, 2), ['--tls', '--insecure']);
+  assert.equal(buildEnvVars(redis).REDISCLI_AUTH, 's3cret pw');
+  assert.throws(() => buildRestoreCommand(redis, 6380, false), new RegExp(REDIS_IMPORT_UNSUPPORTED.slice(0, 20)));
+  assert.throws(() => buildLocalRestoreCommand(redis), /not supported/);
+});
+
+test('docker exec only names the password variable; the value comes from the spawn env', () => {
+  for (const type of ['postgres', 'mysql', 'redis'] as const) {
+    const { args } = require('../electron/db-explorer/dump/command-builders').buildLocalDumpCommand(
+      cfg({ type, connectionMode: 'local', executionMode: 'docker', dockerContainer: 'db', password: 'pw!x' }),
+      { compress: false }
+    );
+    assert.ok(!args.join(' ').includes('pw!x'), type);
+    assert.deepEqual(args.slice(2, 4), ['-e', { postgres: 'PGPASSWORD', mysql: 'MYSQL_PWD', redis: 'REDISCLI_AUTH' }[type]]);
+  }
+});
+
+test('known connection failures get a stable code for translation', () => {
+  const { describeConnectionError } = require('../electron/db-explorer/connection/errors');
+  const { DBConnectionError } = require('@ownshell/core');
+  assert.equal(describeConnectionError(new DBConnectionError('x', 'MYSQL_TLS_IP_HOST')).code, 'MYSQL_TLS_IP_HOST');
+  assert.equal(describeConnectionError(new Error('connect ECONNREFUSED 127.0.0.1:1')).code, 'CONNECTION_REFUSED');
+  assert.equal(describeConnectionError(new Error('unable to verify the first certificate')).code, undefined);
+  const aggregate = Object.assign(new AggregateError([new Error('connect ECONNREFUSED ::1:1'), new Error('connect ECONNREFUSED 127.0.0.1:1')], ''), { code: 'ECONNREFUSED' });
+  assert.equal(describeConnectionError(aggregate).code, 'CONNECTION_REFUSED');
+  assert.equal(describeConnectionError(new AggregateError([new Error('boom')], '')).message, 'boom');
+  for (const lang of ['en', 'de']) {
+    const keys = require(`../src/i18n/locales/${lang}/common.json`).db.connectionErrors;
+    for (const code of ['MYSQL_TLS_IP_HOST', 'CONNECTION_REFUSED', 'TIMEOUT', 'AUTH_FAILED', 'DATABASE_NOT_FOUND', 'SSL_ERROR', 'HOST_NOT_FOUND', 'ACCESS_DENIED']) {
+      assert.ok(keys[code], `${lang} ${code}`);
+    }
+  }
+});
+
+test('passwords never appear in a command line: the outer shell reads them from stdin', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const { stdinSecret } = require('../electron/db-explorer/dump/command-builders');
+  const secret = "p'w $(touch /tmp/x) \\ \"q\" ";
+  const dir = fs.mkdtempSync(`${os.tmpdir()}/ownshell-fake-tools-`);
+  for (const tool of ['pg_dump', 'mysqldump']) {
+    fs.writeFileSync(`${dir}/${tool}`, '#!/bin/sh\nprintf "%s|%s" "$PGPASSWORD" "$MYSQL_PWD"\n', { mode: 0o755 });
+  }
+  // Restore tools echo their stdin, so the payload after the secret line can be compared exactly.
+  for (const tool of ['psql', 'mysql']) {
+    fs.writeFileSync(`${dir}/${tool}`, '#!/bin/sh\nprintf "%s|%s|" "$PGPASSWORD" "$MYSQL_PWD"; cat\n', { mode: 0o755 });
+  }
+  const run = (cmd: string, input: string) =>
+    execFileSync('/bin/sh', ['-c', cmd], { input, env: { ...process.env, PATH: `${dir}:${process.env.PATH}` } }).toString();
+  for (const type of ['postgres', 'mysql'] as const) {
+    const c = cfg({ type, password: secret, sslMode: 'require', sslCa: PEM });
+    const cmds = [buildDumpCommand(c, 1, {}), buildRestoreCommand(c, 1, false), buildClearCommand({ ...c, port: 1, mode: 'drop' }) ?? ''];
+    for (const cmd of cmds) assert.ok(!cmd.includes('touch /tmp/x'), `${type}: secret in command`);
+    const out = run(cmds[0], stdinSecret(c) ?? '');
+    assert.equal(out, type === 'postgres' ? `${secret}|` : `|${secret}`);
+    // Import: the first stdin line is the secret, everything after it reaches the tool byte for byte.
+    const env = type === 'postgres' ? `${secret}||` : `|${secret}|`;
+    const payload = 'SELECT 1;\n-- no trailing newline';
+    assert.equal(run(buildRestoreCommand(c, 1, false), `${stdinSecret(c)}${payload}`), env + payload);
+    const gz = require('node:zlib').gzipSync(Buffer.from(payload.repeat(2000)));
+    const gzOut = execFileSync("/bin/sh", ["-c", buildRestoreCommand(c, 1, true)], {
+      input: Buffer.concat([Buffer.from(stdinSecret(c) ?? ''), gz]),
+      env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+    }).toString();
+    assert.equal(gzOut, env + payload.repeat(2000));
+  }
+  assert.throws(() => stdinSecret(cfg({ password: 'a\nb' })), /line breaks/);
+  assert.equal(stdinSecret(cfg({ type: 'mongodb', password: 'x' })), undefined);
+  fs.rmSync(dir, { recursive: true, force: true });
 });

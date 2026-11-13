@@ -1328,7 +1328,17 @@
       }
     },
     "importTooLarge": "Die Importdatei ist zu groß (max. {{fileMb}} MB Datei, {{sqlMb}} MB SQL).",
-    "importStatementRejected": "Import abgelehnt: {{statement}}-Anweisungen sind in einem SQL-Import nicht erlaubt."
+    "importStatementRejected": "Import abgelehnt: {{statement}}-Anweisungen sind in einem SQL-Import nicht erlaubt.",
+    "connectionErrors": {
+      "MYSQL_TLS_IP_HOST": "Die MySQL-Zertifikatsprüfung braucht den Hostnamen des Servers, keine IP-Adresse. Trag den Namen aus dem Zertifikat ein oder wähle „Erforderlich, nicht prüfen“.",
+      "CONNECTION_REFUSED": "Verbindung abgelehnt. Prüfe, ob der Datenbankserver läuft und erreichbar ist.",
+      "TIMEOUT": "Zeitüberschreitung bei der Verbindung. Prüfe Host und Port und ob die Datenbank erreichbar ist.",
+      "AUTH_FAILED": "Anmeldung fehlgeschlagen. Prüfe Benutzername und Passwort.",
+      "DATABASE_NOT_FOUND": "Datenbank nicht gefunden. Prüfe den Datenbanknamen.",
+      "SSL_ERROR": "SSL-Verbindungsfehler. Prüfe den SSL-Modus und das CA-Zertifikat.",
+      "HOST_NOT_FOUND": "Host nicht gefunden. Prüfe den Hostnamen oder die IP-Adresse.",
+      "ACCESS_DENIED": "Zugriff verweigert. Prüfe Benutzername und Passwort."
+    }
   },
   "backup": {
     "passwordLength": "Passwort muss mindestens 4 Zeichen haben",

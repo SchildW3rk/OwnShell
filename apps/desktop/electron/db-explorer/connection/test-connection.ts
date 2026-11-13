@@ -1,7 +1,7 @@
 import { logger } from '../../logger';
 import { sshSessionManager } from '../../ssh/session-manager';
 import { createNetworkAdapter, type NetworkAdapterConfig } from './adapter-factory';
-import { formatConnectionError } from './errors';
+import { describeConnectionError } from './errors';
 import { setupDatabaseTunnel, stopDatabaseTunnel } from './tunnel';
 import type { AnyAdapter, TestConnectionConfig } from './types';
 
@@ -10,7 +10,7 @@ import type { AnyAdapter, TestConnectionConfig } from './types';
  */
 export async function testDatabaseConnection(
   config: TestConnectionConfig
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: string }> {
   let adapter: AnyAdapter | null = null;
   let tunnelResult:
     | { tunnelId: string; sshSessionId: string; autoCreatedSshSession: boolean; localPort: number }
@@ -50,9 +50,9 @@ export async function testDatabaseConnection(
     logger.info('Database connection test successful');
     return { success: true };
   } catch (error) {
-    const errorMessage = formatConnectionError(error);
-    logger.error('Database connection test failed', { error: errorMessage });
-    return { success: false, error: errorMessage };
+    const { message, code } = describeConnectionError(error);
+    logger.error('Database connection test failed', { error: message });
+    return { success: false, error: message, code };
   } finally {
     if (adapter) {
       try {

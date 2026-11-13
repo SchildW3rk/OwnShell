@@ -1,7 +1,9 @@
+import * as fs from 'fs';
 import { dialog } from 'electron';
 import { DBType } from '@ownshell/core';
 import { dbConnectionManager } from '../../db-explorer/connection-manager';
 import { databaseDumpService } from '../../db-explorer/dump-service';
+import { REDIS_IMPORT_UNSUPPORTED } from '../../db-explorer/dump/command-builders';
 import { readOnlyFailure } from '../../db-explorer/read-only-guard';
 import { resolveSslMode } from '../../db-explorer/connection/tls-options';
 import { cryptoManager } from '../../security/crypto';
@@ -158,6 +160,7 @@ export function setupDatabaseImportExportHandlers(ctx: DBExplorerHandlerContext)
         }
 
         const { dbConfig } = dumpConfig;
+        if (dbConfig.type === 'redis') return { success: false, error: REDIS_IMPORT_UNSUPPORTED };
 
         // Show open dialog
         const result = await dialog.showOpenDialog({
@@ -174,7 +177,8 @@ export function setupDatabaseImportExportHandlers(ctx: DBExplorerHandlerContext)
         }
 
         const inputPath = result.filePaths[0];
-        const compressed = inputPath.endsWith('.gz');
+        // Detect by content, not name: a renamed .gz sent to psql as SQL would fail after a clear.
+        const compressed = await isGzipFile(inputPath);
 
         // Start import with progress events
         const importResult = await databaseDumpService.importDatabase(
@@ -222,4 +226,14 @@ export function setupDatabaseImportExportHandlers(ctx: DBExplorerHandlerContext)
     }
   });
 
+}
+
+async function isGzipFile(file: string): Promise<boolean> {
+  const handle = await fs.promises.open(file, 'r');
+  try {
+    const { bytesRead, buffer } = await handle.read(Buffer.alloc(2), 0, 2, 0);
+    return bytesRead === 2 && buffer[0] === 0x1f && buffer[1] === 0x8b;
+  } finally {
+    await handle.close();
+  }
 }

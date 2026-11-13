@@ -57,13 +57,15 @@ Datenbank-Dumps nutzen die offiziellen Werkzeuge:
 | PostgreSQL | `pg_dump`, `psql` |
 | MySQL | `mysqldump`, `mysql` |
 | MongoDB | `mongodump`, `mongorestore` |
-| Redis | `redis-cli --rdb` |
+| Redis | `redis-cli --rdb` (nur Export) |
 | SQLite | eingebaut, kein Werkzeug nötig |
 
 - Export nach `.sql` oder `.sql.gz` (nur Schema, nur Daten, ausgewählte Tabellen und `pg_dump`-Optionen).
 - Import von `.sql` / `.sql.gz`, optional nach dem Leeren oder Löschen bestehender Tabellen.
 - SQLite exportiert einen SQL-Dump (wie `sqlite3 .dump`). Ein Import läuft in einer Transaktion, ein fehlgeschlagener Import lässt die Datenbank also unverändert.
-- PostgreSQL- und MySQL-Dumps nutzen den SSL-Modus und das CA-Zertifikat der Verbindung. Prüfen ohne CA nutzt bei PostgreSQL-Werkzeugen ab Version 16 den System-Zertifikatsspeicher; MySQL-Werkzeuge brauchen zum Prüfen das CA-Zertifikat. Im Docker-Modus erreichen die Werkzeuge die Datenbank innerhalb des Containers und behalten ihre Standards.
+- Redis exportiert einen RDB-Snapshot. Zum Wiederherstellen stoppst du Redis auf dem Server und ersetzt dessen `dump.rdb`; OwnShell importiert keine RDB-Dateien. `redis-cli` kann den Hostnamen des Servers nicht prüfen, deshalb braucht ein Redis-Export mit SSL den Modus **Erforderlich, nicht prüfen**.
+- PostgreSQL-, MySQL- und Redis-Passwörter erreichen die Dump-Werkzeuge über stdin und Umgebungsvariablen, nie über die Kommandozeile – andere Nutzer auf dem Server können sie also nicht mit `ps` mitlesen.
+- PostgreSQL-, MySQL- und Redis-Dumps nutzen den SSL-Modus und das CA-Zertifikat der Verbindung. Prüfen ohne CA nutzt bei PostgreSQL-Werkzeugen ab Version 16 den System-Zertifikatsspeicher; MySQL-Werkzeuge brauchen zum Prüfen das CA-Zertifikat. Im Docker-Modus laufen die Werkzeuge im Container (`docker exec`), erreichen die Datenbank über dessen Loopback und behalten ihre Standards; der Port muss der sein, auf dem die Datenbank im Container lauscht.
 - Bei Verbindungen über einen SSH-Host laufen die Werkzeuge **auf dem Server** und der Dump wird zu deinem Mac gestreamt, daher müssen sie dort installiert sein. Bei direkten Verbindungen müssen sie auf deinem Mac installiert sein. OwnShell sagt dir, welches Werkzeug fehlt.
 
 ## Redis

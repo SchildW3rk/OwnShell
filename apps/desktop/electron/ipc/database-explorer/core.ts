@@ -84,6 +84,7 @@ export function setupDBExplorerCoreHandlers(ctx: DBExplorerHandlerContext) {
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Connection failed',
+          code: (error as { code?: unknown })?.code,
         };
       }
     }

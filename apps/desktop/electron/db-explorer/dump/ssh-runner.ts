@@ -2,7 +2,12 @@ import * as fs from 'fs';
 import type { DBConnectionConfig } from '@ownshell/core';
 import { getSSHAdapter } from '../../ipc/ssh';
 import { logger } from '../../logger';
-import { buildDumpCommand, buildRestoreCommand, redactCommand } from './command-builders';
+import {
+  buildDumpCommand,
+  buildRestoreCommand,
+  redactCommand,
+  stdinSecret,
+} from './command-builders';
 import { formatBytes } from './format';
 import type { DumpCommandOptions, ProgressCallback } from './types';
 
@@ -28,13 +33,18 @@ export async function exportViaSSH(
     message: `Exporting ${config.type} database...`,
   });
 
-  const result = await sshClient.execToFile(command, outputPath, (bytesWritten: number) => {
-    onProgress?.({
-      bytesProcessed: bytesWritten,
-      stage: 'exporting',
-      message: `Exported ${formatBytes(bytesWritten)}...`,
-    });
-  });
+  const result = await sshClient.execToFile(
+    command,
+    outputPath,
+    (bytesWritten: number) => {
+      onProgress?.({
+        bytesProcessed: bytesWritten,
+        stage: 'exporting',
+        message: `Exported ${formatBytes(bytesWritten)}...`,
+      });
+    },
+    stdinSecret(config)
+  );
 
   if (result.exitCode !== 0) {
     throw new Error(result.stderr || `Export failed with exit code ${result.exitCode}`);
@@ -77,16 +87,21 @@ export async function importViaSSH(
     message: `Importing ${config.type} database...`,
   });
 
-  const result = await sshClient.execFromFile(command, inputPath, (bytesRead: number) => {
-    const percentage = Math.round((bytesRead / options.totalBytes) * 100);
-    onProgress?.({
-      bytesProcessed: bytesRead,
-      totalBytes: options.totalBytes,
-      percentage,
-      stage: 'importing',
-      message: `Imported ${formatBytes(bytesRead)} / ${formatBytes(options.totalBytes)}...`,
-    });
-  });
+  const result = await sshClient.execFromFile(
+    command,
+    inputPath,
+    (bytesRead: number) => {
+      const percentage = Math.round((bytesRead / options.totalBytes) * 100);
+      onProgress?.({
+        bytesProcessed: bytesRead,
+        totalBytes: options.totalBytes,
+        percentage,
+        stage: 'importing',
+        message: `Imported ${formatBytes(bytesRead)} / ${formatBytes(options.totalBytes)}...`,
+      });
+    },
+    stdinSecret(config)
+  );
 
   if (result.exitCode !== 0) {
     throw new Error(result.stderr || `Import failed with exit code ${result.exitCode}`);
@@ -102,4 +117,3 @@ export async function importViaSSH(
 
   return { success: true };
 }
-

@@ -1328,7 +1328,17 @@
       }
     },
     "importTooLarge": "The import file is too large (max. {{fileMb}} MB file, {{sqlMb}} MB SQL).",
-    "importStatementRejected": "Import rejected: {{statement}} statements are not allowed in a SQL import."
+    "importStatementRejected": "Import rejected: {{statement}} statements are not allowed in a SQL import.",
+    "connectionErrors": {
+      "MYSQL_TLS_IP_HOST": "MySQL certificate verification needs the server host name, not an IP address. Enter the name from the certificate, or choose \"Require, don't verify\".",
+      "CONNECTION_REFUSED": "Connection refused. Check that the database server is running and reachable.",
+      "TIMEOUT": "Connection timed out. Check host and port and that the database is reachable.",
+      "AUTH_FAILED": "Authentication failed. Check username and password.",
+      "DATABASE_NOT_FOUND": "Database not found. Check the database name.",
+      "SSL_ERROR": "SSL connection error. Check the SSL mode and CA certificate.",
+      "HOST_NOT_FOUND": "Host not found. Check the host name or IP address.",
+      "ACCESS_DENIED": "Access denied. Check username and password."
+    }
   },
   "backup": {
     "passwordLength": "Password must be at least 4 characters",

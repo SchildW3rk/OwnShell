@@ -75,7 +75,7 @@ const MAX_LOG_DEPTH = 8;
  */
 function sanitizeString(value: string): string {
   const redacted = value
-    .replace(/(password|passphrase|_pwd|secret|token|api[_-]?key|access[_-]?key|recovery[_-]?key)\s*[:=]\s*["']?[^"',\s}]+/gi, '$1=[REDACTED]')
+    .replace(/(password|passphrase|_pwd|_auth|secret|token|api[_-]?key|access[_-]?key|recovery[_-]?key)\s*[:=]\s*["']?[^"',\s}]+/gi, '$1=[REDACTED]')
     .replace(/\b(password|identified\s+by)\s+(['"])[^'"]*\2?/gi, '$1 [REDACTED]')
     .replace(/(authorization:\s*)(bearer|basic)\s+[a-z0-9._~+/=-]+/gi, '$1$2 [REDACTED]')
     .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, '[REDACTED_PRIVATE_KEY]');

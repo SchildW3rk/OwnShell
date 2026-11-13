@@ -129,7 +129,12 @@ export function createDbConnectionsApi(ipcRenderer: IpcRenderer) {
       readPreference?: string;
       executionMode?: 'direct' | 'docker';
       dockerContainer?: string;
-    }) => ipcRenderer.invoke('db:dbconnections:test', data),
+    }) =>
+      ipcRenderer.invoke('db:dbconnections:test', data) as Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+      }>,
     /** Opens a file dialog in the main process and returns the validated PEM. */
     pickCaCertificate: () =>
       ipcRenderer.invoke('db:dbconnections:pick-ca-file') as Promise<{
@@ -145,7 +150,12 @@ export function createDbExplorerApi(ipcRenderer: IpcRenderer) {
   return {
     // Connection management
     connect: (params: { configId: string; sshSessionId?: string }) =>
-      ipcRenderer.invoke('dbexplorer:connect', params),
+      ipcRenderer.invoke('dbexplorer:connect', params) as Promise<{
+        success: boolean;
+        connectionId?: string;
+        error?: string;
+        code?: string;
+      }>,
     disconnect: (connectionId: string) => ipcRenderer.invoke('dbexplorer:disconnect', connectionId),
     status: (connectionId: string) => ipcRenderer.invoke('dbexplorer:status', connectionId),
     connections: () => ipcRenderer.invoke('dbexplorer:connections'),

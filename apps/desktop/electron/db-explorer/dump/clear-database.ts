@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import { getSSHAdapter } from '../../ipc/ssh';
 import { logger } from '../../logger';
 import { buildClearCommand } from './clear-command-builder';
-import { buildEnvVars, redactCommand, type DumpConfig } from './command-builders';
+import { buildEnvVars, redactCommand, stdinSecret, type DumpConfig } from './command-builders';
 import { checkLocalTools } from './tool-checker';
 
 export async function clearDatabase(
@@ -42,7 +42,7 @@ export async function clearDatabase(
   logger.debug('Clear command', { clearCommand: redactCommand(clearCommand) });
 
   if (config.connectionMode === 'ssh' && sshSessionId) {
-    await clearViaSSH(sshSessionId, clearCommand);
+    await clearViaSSH(sshSessionId, clearCommand, stdinSecret(config));
   } else {
     clearLocally(clearCommand, config);
   }
@@ -50,13 +50,17 @@ export async function clearDatabase(
   logger.info('Database cleared successfully', { mode });
 }
 
-async function clearViaSSH(sshSessionId: string, clearCommand: string): Promise<void> {
+async function clearViaSSH(
+  sshSessionId: string,
+  clearCommand: string,
+  stdin: string | undefined
+): Promise<void> {
   const sshClient = getSSHAdapter(sshSessionId);
   if (!sshClient) {
     throw new Error('SSH session not found for clearing database');
   }
 
-  const result = await sshClient.exec(clearCommand);
+  const result = await sshClient.exec(clearCommand, stdin);
   if (result.exitCode !== 0) {
     const errorLines = extractClearError(result.stderr || '');
     if (errorLines) {
@@ -68,7 +72,11 @@ async function clearViaSSH(sshSessionId: string, clearCommand: string): Promise<
 
 function clearLocally(clearCommand: string, config: DumpConfig): void {
   try {
-    execSync(clearCommand, { stdio: 'pipe', env: buildEnvVars(config) });
+    execSync(clearCommand, {
+      input: stdinSecret(config) ?? '',
+      stdio: 'pipe',
+      env: buildEnvVars(config),
+    });
   } catch (err: unknown) {
     const error = err as { stderr?: Buffer; message?: string };
     const stderr = error.stderr?.toString() || error.message || 'Unknown error';

@@ -652,7 +652,9 @@ function testDockerDumpKeepsSensitiveValuesInArgs() {
   );
 
   assert.equal(command.command, 'docker');
-  assert.deepEqual(command.args.slice(0, 4), ['exec', '-i', '-e', 'PGPASSWORD=pw with spaces']);
+  // The value comes from the spawn env (buildEnvVars); args only name it, so `ps` never shows it.
+  assert.deepEqual(command.args.slice(0, 4), ['exec', '-i', '-e', 'PGPASSWORD']);
+  assert.ok(!command.args.join('\n').includes('pw with spaces'));
   assert.ok(command.args.includes('postgres; touch /tmp/owned'));
   assert.ok(!command.args.join('\n').includes('sh -c'));
 }
@@ -662,7 +664,7 @@ function testRemoteDumpShellQuotesInputs() {
     createConfig({
       database: 'appdb; touch /tmp/db',
       username: "app'user",
-      password: 'pw; touch /tmp/pw',
+      password: undefined,
     }),
     15432,
     {
@@ -671,7 +673,6 @@ function testRemoteDumpShellQuotesInputs() {
     }
   );
 
-  assert.ok(command.includes("PGPASSWORD='pw; touch /tmp/pw' pg_dump"));
   assert.ok(command.includes("-U 'app'\\''user'"));
   assert.ok(command.includes("-t 'users; touch /tmp/table'"));
   assert.ok(command.includes("'appdb; touch /tmp/db'"));
@@ -707,13 +708,11 @@ function testClearDatabaseCommandQuoting() {
     type: 'postgres',
     database: 'appdb; touch /tmp/db',
     username: "app'user",
-    password: 'pw; touch /tmp/pw',
     port: 15432,
     mode: 'drop',
   });
 
   assert.ok(postgresCommand);
-  assert.ok(postgresCommand.includes("PGPASSWORD='pw; touch /tmp/pw' psql"));
   assert.ok(postgresCommand.includes("-U 'app'\\''user'"));
   assert.ok(postgresCommand.includes("-d 'appdb; touch /tmp/db'"));
 
@@ -721,13 +720,11 @@ function testClearDatabaseCommandQuoting() {
     type: 'mysql',
     database: "appdb'; SELECT 'x",
     username: 'root; touch /tmp/root',
-    password: 'pw; touch /tmp/pw',
     port: 13306,
     mode: 'truncate',
   });
 
   assert.ok(mysqlCommand);
-  assert.ok(mysqlCommand.includes("MYSQL_PWD='pw; touch /tmp/pw' mysql"));
   assert.ok(mysqlCommand.includes("-u 'root; touch /tmp/root'"));
   assert.ok(mysqlCommand.includes("'appdb'\\''; SELECT '\\''x'"));
 }

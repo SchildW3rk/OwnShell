@@ -16,7 +16,7 @@ import {
 import type { IMongoDBAdapter, IRedisAdapter, ISQLAdapter } from './adapters';
 import { logger } from '../logger';
 import { createNetworkAdapter, createSQLiteAdapter } from './connection/adapter-factory';
-import { formatConnectionError } from './connection/errors';
+import { describeConnectionError, formatConnectionError } from './connection/errors';
 import { downloadRemoteSqlite, removeRemoteSqliteCopy } from './connection/remote-sqlite';
 import { testDatabaseConnection } from './connection/test-connection';
 import {
@@ -106,7 +106,8 @@ export class DBConnectionManager {
       await this.handleConnectionFailure(connection, connectionId, error);
       throw new DBConnectionError(
         connection.error || 'Database connection failed',
-        error instanceof DBConnectionError ? error.code : 'CONNECTION_FAILED',
+        describeConnectionError(error).code ??
+          (error instanceof DBConnectionError ? error.code : 'CONNECTION_FAILED'),
         error instanceof Error ? error : undefined
       );
     }
@@ -307,7 +308,7 @@ export class DBConnectionManager {
    */
   async testConnection(
     config: TestConnectionConfig
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; code?: string }> {
     return testDatabaseConnection(config);
   }
 

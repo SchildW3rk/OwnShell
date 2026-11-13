@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { AppCheckbox, Input, Modal } from '@ownshell/ui';
 import { resolveSslMode } from '../../../electron/db-explorer/connection/ssl-mode';
 import { useCreateDBConnection, useUpdateDBConnection } from '../../hooks/db-explorer';
+import { connectionErrorText } from '../../hooks/db-explorer/useDBExplorerMutations';
 import { useHostStore } from '../../stores/useHostStore';
 import { SQLiteFilePicker } from './SQLiteFilePicker';
 import toast from 'react-hot-toast';
@@ -297,7 +298,7 @@ export const DBConnectionModal: React.FC<DBConnectionModalProps> = ({
       if (result.success) {
         toast.success(t('db.connectionSuccess', 'Connection successful!'));
       } else {
-        toast.error(result.error || t('db.connectionFailed', 'Connection failed'));
+        toast.error(connectionErrorText(result.error, result.code));
       }
     } catch (error: unknown) {
       const message =

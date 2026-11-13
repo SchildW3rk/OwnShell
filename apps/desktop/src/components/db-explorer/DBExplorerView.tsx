@@ -600,6 +600,7 @@ export const DBExplorerView: React.FC<DBExplorerViewProps> = ({
           activeConnectionId &&
           selectedConfigId &&
           !isReadOnlyConnection &&
+          !isRedisConnection && // an RDB snapshot can only be restored on the server
           !isOperationInProgress
         )}
         canDropDatabase={!!(
