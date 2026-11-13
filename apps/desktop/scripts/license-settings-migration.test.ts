@@ -13,8 +13,13 @@ test('migration 021 drops the removed license settings and keeps all other setti
     'license_entitlement_token',
     'evaluation_started_at',
     'personal_use_confirmed_at',
+    // keys of the older subscription model, found in real profiles
+    'license_status',
+    'license_type',
+    'license_ever_activated',
+    'license_entitlement_expires_at',
   ];
-  for (const key of [...removed, 'master_password_hash', 'language']) insert.run(key, 'x');
+  for (const key of [...removed, 'master_password_hash', 'language', 'licensexyz']) insert.run(key, 'x');
 
   runIncrementalMigrations(sqlite as never);
   runIncrementalMigrations(sqlite as never);
@@ -22,5 +27,5 @@ test('migration 021 drops the removed license settings and keeps all other setti
   const keys = (sqlite.prepare('SELECT key FROM app_settings ORDER BY key').all() as Array<{ key: string }>).map(
     (row) => row.key
   );
-  assert.deepEqual(keys, ['language', 'master_password_hash']);
+  assert.deepEqual(keys, ['language', 'licensexyz', 'master_password_hash']);
 });

@@ -573,6 +573,9 @@ function setupIPC(window: BrowserWindow) {
       logger.info('Dev mode: update download skipped');
       return null;
     });
+    safeHandle('updater:install', noPayloadSchema, () => {
+      logger.info('Dev mode: update install skipped');
+    });
   }
 
   logger.info('IPC handlers setup complete');

@@ -631,10 +631,10 @@ export function runIncrementalMigrations(sqlite: Database.Database): void {
     if (settingsTable) {
       const result = sqlite
         .prepare(
-          `DELETE FROM app_settings WHERE key IN (
-            'license_key_encrypted', 'license_instance_id', 'license_entitlement_token',
-            'evaluation_started_at', 'personal_use_confirmed_at'
-          )`
+          // license_% also covers keys of the older subscription model (status, type, ...).
+          `DELETE FROM app_settings
+            WHERE key LIKE 'license\\_%' ESCAPE '\\'
+               OR key IN ('evaluation_started_at', 'personal_use_confirmed_at')`
         )
         .run();
       if (result.changes > 0) logger.info(`Migration 021 completed: removed ${result.changes} license settings`);
