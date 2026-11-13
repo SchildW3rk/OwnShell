@@ -54,7 +54,7 @@ async function lifecycle(context) {
   report.startup = {
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
     targetMs: null,
-    definitions: { fresh: 'New isolated local application profile with public master-password setup and recovery acknowledgement; OS disk cache not flushed.', existing: 'New Electron process reusing the same local password-protected synthetic profile; OS cache warm.', unlock: 'Explicit native UI lock followed by actual password verification and key derivation, license gate and successful UI action.', repetitions: 'Three independent fresh profiles per batch, three existing-process starts and three in-process unlocks per profile. Invalid-password attempt is separate from timed valid unlock.' },
+    definitions: { fresh: 'New isolated local application profile with public master-password setup and recovery acknowledgement; OS disk cache not flushed.', existing: 'New Electron process reusing the same local password-protected synthetic profile; OS cache warm.', unlock: 'Explicit native UI lock followed by actual password verification and key derivation and successful UI action.', repetitions: 'Three independent fresh profiles per batch, three existing-process starts and three in-process unlocks per profile. Invalid-password attempt is separate from timed valid unlock.' },
     samples: [], resources: [], correctness: {},
   };
   let current = await launch();
@@ -99,9 +99,6 @@ async function lifecycle(context) {
     await wait(2100);
     report.startup.resources.push(await snapshot(app, 'idle-after'));
   }
-  const ipc = await app.evaluate(() => global.__ownshellBenchmark.ipc());
-  assert.ok(ipc.some(event => event.channel === 'license:get-status'), 'actual license status gate must execute (development exemption, NOT activated entitlement verification)');
-  report.startup.correctness.developmentLicenseGateExecuted = true;
   report.startup.correctness.hostsCreated = index;
   report.startup.correctness.nativeInput = true;
 }
@@ -121,6 +118,6 @@ function distribution(values) {
   const reports = [1, 2, 3].map(index => JSON.parse(fs.readFileSync(path.join(output, 'everyday', `fresh-${index}`, 'report.json'), 'utf8')));
   const samples = reports.flatMap(report => report.startup.samples);
   const summary = Object.fromEntries([...new Set(samples.map(sample => sample.kind))].map(kind => [kind, distribution(samples.filter(sample => sample.kind === kind).map(sample => sample.durationMs))]));
-  fs.writeFileSync(path.join(output, 'startup-summary.json'), JSON.stringify({ sourceCommits: [...new Set(reports.map(report => report.startup.sourceCommit))], build: reports[0].build, hardware: reports[0].hardware, definitions: reports[0].startup.definitions, summary, correctness: reports.map(report => report.startup.correctness), cleanup: reports.map(report => report.safety.cleanup), limitations: ['Unpackaged Electron; Vite production assets with existing development-license exemption. Not activated/shipped-app entitlement or startup verification.', 'Small sample: p95/p99 are observed nearest ranks, not population guarantees. No absolute startup target was agreed.', 'Fresh profile is not an OS disk-cache-cold boot. Automated local password setup/recovery acknowledgement/form input time, confinement probes and screenshot capture are included. No overhead subtraction.', 'Usable endpoint requires actual successful host creation and captured compositor output, not just a window, DOM-ready or handler completion. It is an upper bound, not physical monitor timing.'] }, null, 2));
+  fs.writeFileSync(path.join(output, 'startup-summary.json'), JSON.stringify({ sourceCommits: [...new Set(reports.map(report => report.startup.sourceCommit))], build: reports[0].build, hardware: reports[0].hardware, definitions: reports[0].startup.definitions, summary, correctness: reports.map(report => report.startup.correctness), cleanup: reports.map(report => report.safety.cleanup), limitations: ['Unpackaged Electron; Vite production assets. Not shipped-app startup verification.', 'Small sample: p95/p99 are observed nearest ranks, not population guarantees. No absolute startup target was agreed.', 'Fresh profile is not an OS disk-cache-cold boot. Automated local password setup/recovery acknowledgement/form input time, confinement probes and screenshot capture are included. No overhead subtraction.', 'Usable endpoint requires actual successful host creation and captured compositor output, not just a window, DOM-ready or handler completion. It is an upper bound, not physical monitor timing.'] }, null, 2));
   console.log(`STARTUP_SUMMARY ${JSON.stringify(summary)}`);
 })().catch(error => { console.error(error.stack); process.exitCode = 1; });

@@ -40,10 +40,10 @@ export function Header() {
               {m.nav_security()}
             </a>
             <a
-              href="#pricing"
+              href="#open-source"
               className="text-sm text-[#969696] hover:text-white transition-colors"
             >
-              {m.nav_pricing()}
+              {m.nav_opensource()}
             </a>
             <a href="#faq" className="text-sm text-[#969696] hover:text-white transition-colors">
               {m.nav_faq()}

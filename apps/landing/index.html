@@ -6,7 +6,7 @@
     <title>OwnShell - Your servers, databases and APIs. One local workspace.</title>
     <meta
       name="description"
-      content="OwnShell is an open-source (MIT), local-first macOS workspace for your servers, databases and APIs: native OpenSSH terminals, SSH tunnels, SFTP, S3 with CORS editing, Docker, a database client, a REST API client and an encrypted vault. Free for personal use, 79 EUR per year for commercial use."
+      content="OwnShell is a free, open-source (GPL-3.0), local-first macOS workspace for your servers, databases and APIs: native OpenSSH terminals, SSH tunnels, SFTP, S3 with CORS editing, Docker, a database client, a REST API client and an encrypted vault."
     />
     <meta
       name="keywords"
@@ -24,7 +24,7 @@
     <meta property="og:title" content="OwnShell - Your servers, databases and APIs. One local workspace." />
     <meta
       property="og:description"
-      content="Open-source (MIT), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault. Free for personal use."
+      content="Free, open-source (GPL-3.0), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://ownshell.app" />
@@ -37,7 +37,7 @@
     <meta name="twitter:title" content="OwnShell - Your servers, databases and APIs. One local workspace." />
     <meta
       name="twitter:description"
-      content="Open-source (MIT), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault. Free for personal use."
+      content="Free, open-source (GPL-3.0), local-first macOS workspace for freelancers and small teams: native OpenSSH, SFTP, S3, Docker, databases, a REST API client and an encrypted vault."
     />
     <meta name="twitter:image" content="https://ownshell.app/favicon.png" />
 
@@ -64,8 +64,8 @@
             "applicationSubCategory": "DevOps workspace",
             "operatingSystem": "macOS",
             "softwareVersion": "__OWNSHELL_DESKTOP_VERSION__",
-            "description": "OwnShell is an open-source (MIT), local-first macOS desktop app for native OpenSSH terminals, SSH tunneling, SFTP, S3-compatible storage with CORS editing, Docker, databases, REST API requests and encrypted local secrets.",
-            "license": "https://opensource.org/licenses/MIT",
+            "description": "OwnShell is a free, open-source (GPL-3.0), local-first macOS desktop app for native OpenSSH terminals, SSH tunneling, SFTP, S3-compatible storage with CORS editing, Docker, databases, REST API requests and encrypted local secrets.",
+            "license": "https://www.gnu.org/licenses/gpl-3.0.html",
             "sameAs": ["https://github.com/SchildW3rk/OwnShell"],
             "featureList": [
               "Native OpenSSH terminal with panes",
@@ -79,24 +79,13 @@
               "Encrypted local vault for credentials and environment variables",
               "No tracking and no telemetry"
             ],
-            "offers": [
-              {
-                "@type": "Offer",
-                "name": "OwnShell Personal (private use)",
-                "price": "0",
-                "priceCurrency": "EUR",
-                "availability": "https://schema.org/InStock",
-                "url": "https://ownshell.app/#pricing"
-              },
-              {
-                "@type": "Offer",
-                "name": "OwnShell Commercial / Individual (per person, per year, incl. VAT)",
-                "price": "79",
-                "priceCurrency": "EUR",
-                "availability": "https://schema.org/InStock",
-                "url": "https://ownshell.app/#pricing"
-              }
-            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR",
+              "availability": "https://schema.org/InStock",
+              "url": "https://ownshell.app/#download"
+            },
             "publisher": {
               "@type": "Person",
               "name": "Rene Schober"
@@ -106,12 +95,10 @@
             "@type": "FAQPage",
             "@id": "https://ownshell.app/#faq",
             "mainEntity": [
-              {"@type": "Question", "name": "What counts as commercial use?", "acceptedAnswer": {"@type": "Answer", "text": "Any use connected to your work or income: client projects, your job, freelance work, or running servers for a business. Private projects, learning and your own homelab are personal use."}},
-              {"@type": "Question", "name": "Can I build OwnShell myself from source?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The source code is MIT licensed and available on GitHub. The license model applies to the official signed downloads; a commercial license is how you support development if you use OwnShell for work."}},
-              {"@type": "Question", "name": "What happens when my license year ends?", "acceptedAnswer": {"@type": "Answer", "text": "You keep using every version released during your license period, forever. Renew when you want newer versions."}},
-              {"@type": "Question", "name": "Do I need an account?", "acceptedAnswer": {"@type": "Answer", "text": "No. OwnShell works without an account, for the evaluation, for personal use and with a commercial license key."}},
-              {"@type": "Question", "name": "Is my data sent anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "OwnShell is local-first and has no telemetry. Hosts, keys, vault entries and saved requests are stored encrypted on your device and are not sent to us. Data only goes to targets you connect to yourself (your servers, databases, buckets, APIs). The app only talks to us to check for updates and – if you activate a commercial license – to verify that license."}},
-              {"@type": "Question", "name": "Can I get a refund?", "acceptedAnswer": {"@type": "Answer", "text": "Within 14 days of your purchase we voluntarily refund the full amount, processed through Lemon Squeezy. Your statutory right of withdrawal as a consumer is not affected; you receive the withdrawal information in the Lemon Squeezy checkout."}}
+              {"@type": "Question", "name": "Is OwnShell really free?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. OwnShell is free and open source under the GPL-3.0. There is no paid version, no license key, no evaluation period and no account. You may use it privately and for work."}},
+              {"@type": "Question", "name": "Can I build OwnShell myself from source?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The full source code is on GitHub under the GPL-3.0. You may build, use, modify and share it. If you distribute OwnShell or a modified version, the GPL-3.0 applies, including making the source code available under the same license."}},
+              {"@type": "Question", "name": "Do I need an account?", "acceptedAnswer": {"@type": "Answer", "text": "No. OwnShell works fully without an account."}},
+              {"@type": "Question", "name": "Is my data sent anywhere?", "acceptedAnswer": {"@type": "Answer", "text": "OwnShell is local-first and has no telemetry. Hosts, keys, vault entries and saved requests are stored encrypted on your device and are not sent to us. Data only goes to targets you connect to yourself (your servers, databases, buckets, APIs). The app only talks to us to check for and download updates."}}
             ]
           }
         ]

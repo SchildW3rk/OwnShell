@@ -332,7 +332,6 @@
     "sshKeys": "SSH Keys",
     "dataStorage": "Data & Storage",
     "about": "About",
-    "license": "License",
     "close": "Close Settings",
     "language": "Language",
     "languageDescription": "Choose your preferred language",
@@ -413,46 +412,6 @@
     "backupIncludesDatabases": "Database connections",
     "backupIncludesProjects": "Projects",
     "backupIncludesApi": "API collections and requests"
-  },
-  "license": {
-    "status": "Status",
-    "checkingDescription": "OwnShell is checking the current license state.",
-    "deactivateDevice": "Deactivate this device",
-    "deactivateConfirm": "Deactivate this device? This frees one of your 3 activations.",
-    "checking": "Checking license...",
-    "activate": "Activate",
-    "enterKey": "Enter License Key",
-    "keyPlaceholder": "OS-XXXX-XXXX-XXXX",
-    "buyLicense": "Buy license",
-    "renewLicense": "Renew license",
-    "alreadyHaveKey": "Already have a license key?",
-    "alreadyHaveKeyDescription": "Paste your key here if you bought OwnShell outside this installation.",
-    "activateNewKey": "Activate another license key",
-    "activateNewKeyDescription": "Use a new or renewed license key, for example after renewing your license.",
-    "licenseKey": "License Key",
-    "badge": {
-      "evaluation_one": "Evaluation · {{count}} day",
-      "evaluation_other": "Evaluation · {{count}} days",
-      "personal": "Personal use",
-      "uncovered": "License does not cover this version"
-    },
-    "dialog": {
-      "title": "Using OwnShell for work?",
-      "body": "OwnShell is free for personal use, with every feature included. If you use it for work or revenue-generating activities, please buy an Individual license (€79 per year). Nothing is ever locked: this is an honor system.",
-      "uncoveredBody": "Your license covers all versions released until {{date}}. This version is newer: renew your license, or keep using a covered version. Nothing is locked.",
-      "confirmPersonal": "I only use OwnShell personally"
-    },
-    "commercialUpdatesUntil": "Commercial license · updates until {{date}}",
-    "commercialDescription": "Thanks for supporting OwnShell. Your license covers every version released until this date, forever.",
-    "personalConfirmed": "You confirmed personal use on {{date}}. This is stored on this device only.",
-    "undoPersonalConfirm": "Undo",
-    "errors": {
-      "activationLimit": "This license key has reached its activation limit. Deactivate OwnShell on another device first.",
-      "rejected": "The license service rejected this license key. Check the key or contact support.",
-      "unavailable": "The license service is not reachable right now. Check your connection and try again.",
-      "instanceMissing": "This device's activation could not be found. Please contact support.",
-      "generic": "Something went wrong with your license. Please try again."
-    }
   },
   "common": {
     "cancel": "Cancel",
@@ -1850,9 +1809,7 @@
     "error": "Update failed",
     "whatsNew": "What's new?",
     "installNow": "Install now",
-    "download": "Download",
-    "notCoveredByLicense": "This update is not covered by your license. Renew your license, or stay on your current version.",
-    "coverageUnknown": "OwnShell can't verify that this update is covered by your license, so it won't install automatically. You can still install it manually."
+    "download": "Download"
   },
   "workspace": {
     "closePane": "Close pane",

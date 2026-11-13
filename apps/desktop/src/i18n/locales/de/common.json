@@ -332,7 +332,6 @@
     "sshKeys": "SSH-Schlüssel",
     "dataStorage": "Daten & Speicher",
     "about": "Über",
-    "license": "Lizenz",
     "close": "Schließen",
     "language": "Sprache",
     "languageDescription": "Wähle deine bevorzugte Sprache",
@@ -413,46 +412,6 @@
     "backupIncludesDatabases": "Datenbankverbindungen",
     "backupIncludesProjects": "Projekte",
     "backupIncludesApi": "API-Collections und Anfragen"
-  },
-  "license": {
-    "status": "Status",
-    "checkingDescription": "OwnShell prüft den aktuellen Lizenzstatus.",
-    "deactivateDevice": "Dieses Gerät deaktivieren",
-    "deactivateConfirm": "Dieses Gerät deaktivieren? Das gibt eine deiner 3 Aktivierungen frei.",
-    "checking": "Lizenz wird geprüft...",
-    "activate": "Aktivieren",
-    "enterKey": "Lizenzschlüssel eingeben",
-    "keyPlaceholder": "OS-XXXX-XXXX-XXXX",
-    "buyLicense": "Lizenz kaufen",
-    "renewLicense": "Lizenz erneuern",
-    "alreadyHaveKey": "Du hast schon einen Lizenzschlüssel?",
-    "alreadyHaveKeyDescription": "Füge deinen Schlüssel hier ein, wenn du OwnShell außerhalb dieser Installation gekauft hast.",
-    "activateNewKey": "Anderen Lizenzschlüssel aktivieren",
-    "activateNewKeyDescription": "Nutze einen neuen oder erneuerten Lizenzschlüssel, zum Beispiel nach einer Verlängerung.",
-    "licenseKey": "Lizenzschlüssel",
-    "badge": {
-      "evaluation_one": "Testzeitraum · {{count}} Tag",
-      "evaluation_other": "Testzeitraum · {{count}} Tage",
-      "personal": "Persönliche Nutzung",
-      "uncovered": "Lizenz deckt diese Version nicht ab"
-    },
-    "dialog": {
-      "title": "Nutzt du OwnShell beruflich?",
-      "body": "OwnShell ist für die private Nutzung kostenlos, mit allen Funktionen. Wenn du es beruflich oder für umsatzbringende Tätigkeiten nutzt, kauf bitte eine Individual-Lizenz (79 € pro Jahr). Es wird nie etwas gesperrt: Das ist ein Vertrauensmodell.",
-      "uncoveredBody": "Deine Lizenz deckt alle Versionen ab, die bis zum {{date}} erschienen sind. Diese Version ist neuer: Verlängere deine Lizenz oder nutze weiter eine abgedeckte Version. Es wird nichts gesperrt.",
-      "confirmPersonal": "Ich nutze OwnShell nur privat"
-    },
-    "commercialUpdatesUntil": "Kommerzielle Lizenz · Updates bis {{date}}",
-    "commercialDescription": "Danke, dass du OwnShell unterstützt. Deine Lizenz deckt dauerhaft alle Versionen ab, die bis zu diesem Datum erscheinen.",
-    "personalConfirmed": "Du hast am {{date}} die private Nutzung bestätigt. Das ist nur auf diesem Gerät gespeichert.",
-    "undoPersonalConfirm": "Zurücknehmen",
-    "errors": {
-      "activationLimit": "Dieser Lizenzschlüssel hat sein Aktivierungslimit erreicht. Deaktiviere OwnShell zuerst auf einem anderen Gerät.",
-      "rejected": "Der Lizenzdienst hat diesen Lizenzschlüssel abgelehnt. Prüfe den Schlüssel oder kontaktiere den Support.",
-      "unavailable": "Der Lizenzdienst ist gerade nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
-      "instanceMissing": "Die Aktivierung dieses Geräts wurde nicht gefunden. Bitte kontaktiere den Support.",
-      "generic": "Bei deiner Lizenz ist etwas schiefgelaufen. Bitte versuche es erneut."
-    }
   },
   "common": {
     "cancel": "Abbrechen",
@@ -1850,9 +1809,7 @@
     "error": "Update fehlgeschlagen",
     "whatsNew": "Was ist neu?",
     "installNow": "Jetzt installieren",
-    "download": "Herunterladen",
-    "notCoveredByLicense": "Dieses Update ist nicht durch deine Lizenz abgedeckt. Verlängere deine Lizenz oder bleib bei deiner aktuellen Version.",
-    "coverageUnknown": "OwnShell kann nicht prüfen, ob dieses Update von deiner Lizenz abgedeckt ist. Es wird deshalb nicht automatisch installiert. Du kannst es aber manuell installieren."
+    "download": "Herunterladen"
   },
   "workspace": {
     "closePane": "Bereich schließen",

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: OwnShell Doku
   text: Deine Server, Datenbanken und APIs. Ein lokaler Workspace.
-  tagline: Eine quelloffene (MIT), local-first macOS-App für SSH, SFTP, S3, Docker, Datenbanken, einen verschlüsselten Vault und einen API-Client.
+  tagline: Eine kostenlose, quelloffene (GPL-3.0), local-first macOS-App für SSH, SFTP, S3, Docker, Datenbanken, einen verschlüsselten Vault und einen API-Client.
   image:
     src: /logo.svg
     alt: OwnShell-Logo

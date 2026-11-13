@@ -6,7 +6,6 @@ Fast entrypoint for agents working in this repository. Contributor-useful agent 
 
 - `apps/desktop`: Electron desktop app (renderer in `src/`, main process in `electron/`, tests in `scripts/*.test.ts`).
 - `apps/landing`: public marketing/legal website (Vite + React, deployed with `deploy.sh` behind Caddy).
-- `apps/license-api`: licensing API (Cloudflare Worker).
 - `packages/core`, `packages/ui`, `packages/theme`, `packages/config`: shared internal packages.
 - `docs`: public VitePress documentation.
 
@@ -31,7 +30,8 @@ Fast entrypoint for agents working in this repository. Contributor-useful agent 
 
 ## Product Boundaries
 
-- OwnShell is a local-first desktop DevOps workspace: SSH, SFTP, S3, Docker, databases, vault/env management, API client, licensing, and updates.
+- OwnShell is a local-first desktop DevOps workspace: SSH, SFTP, S3, Docker, databases, vault/env management, API client, and updates.
+- OwnShell is free software under GPL-3.0-only: no payment, pricing, license keys, evaluation period or license server. Do not reintroduce them.
 - Team Vaults / self-hosted encrypted sync is a roadmap item, not a shipped feature. Do not describe it as available.
 - Personal mode must remain local-first, private, and usable without an account.
 - OwnShell sends no automatic crash or diagnostics reports.

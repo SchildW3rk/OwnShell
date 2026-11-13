@@ -2,12 +2,11 @@
  * Main App Component
  *
  * Handles routing between Setup, Lock, and Main screens
- * Includes i18n initialization and the license status check (never gates the app)
+ * Includes i18n initialization
  */
 
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/useAuthStore';
-import { useLicenseStore } from './stores/useLicenseStore';
 import { useInitializeTheme } from './stores/useThemeStore';
 import { SidebarProvider } from './components/sidebar';
 import { Toaster } from 'react-hot-toast';
@@ -54,7 +53,6 @@ function compareVersions(v1: string, v2: string): number {
 
 export const App: React.FC = () => {
   const { isSetup, isLocked, checkSetup } = useAuthStore();
-  const checkLicense = useLicenseStore((state) => state.checkLicense);
 
   // What's New modal state
   const [showWhatsNew, setShowWhatsNew] = useState(false);
@@ -69,13 +67,12 @@ export const App: React.FC = () => {
     checkSetup();
   }, [checkSetup]);
 
-  // Load saved language preference and check license after unlock
+  // Load saved language preference after unlock
   useEffect(() => {
     if (!isLocked && isSetup) {
       loadSavedLanguage();
-      checkLicense();
     }
-  }, [isLocked, isSetup, checkLicense]);
+  }, [isLocked, isSetup]);
 
   // Check for app update and show What's New modal
   useEffect(() => {

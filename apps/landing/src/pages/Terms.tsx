@@ -1,8 +1,7 @@
 import { LegalLayout } from '../components/LegalLayout';
+import { LICENSE_URL } from '../links';
 import * as m from '../paraglide/messages';
 
-// TODO: legal review required: license model, fallback right, evaluation, payment, refund and
-// changes sections were rewritten for the open-source + commercial license model.
 export function Terms() {
   return (
     <LegalLayout title={m.legal_terms_title()}>
@@ -11,36 +10,14 @@ export function Terms() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_license_title()}</h2>
         <p className="text-[#969696] leading-relaxed">{m.legal_terms_license_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_fallback_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_fallback_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_trial_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_trial_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_payment_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_payment_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_refund_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_refund_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_consumer_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_consumer_text()}</p>
-      </section>
-
-      <section className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-        <h2 className="text-xl font-semibold text-red-400 mb-4">{m.legal_terms_data_title()}</h2>
-        <p className="text-[#CCCCCC] leading-relaxed">{m.legal_terms_data_text()}</p>
+        <a
+          href={LICENSE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block mt-3 text-[#06b6d4] hover:underline"
+        >
+          {m.legal_terms_license_link()}
+        </a>
       </section>
 
       <section className="mb-8">
@@ -48,14 +25,9 @@ export function Terms() {
         <p className="text-[#969696] leading-relaxed">{m.legal_terms_warranty_text()}</p>
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_liability_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_liability_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_terms_changes_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_terms_changes_text()}</p>
+      <section className="mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+        <h2 className="text-xl font-semibold text-red-400 mb-4">{m.legal_terms_data_title()}</h2>
+        <p className="text-[#CCCCCC] leading-relaxed">{m.legal_terms_data_text()}</p>
       </section>
     </LegalLayout>
   );

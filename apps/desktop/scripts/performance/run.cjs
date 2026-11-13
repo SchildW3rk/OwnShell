@@ -52,7 +52,7 @@ async function runProfile(name, scenario = runMixed, { lifecycle, directorySuffi
   fs.writeFileSync(path.join(root, 'locale-preload.cjs'), "'use strict';\nwindow.localStorage.setItem('ownshell-language', 'en');\n");
   const report = {
     schemaVersion: 1, status: 'running', profile: name,
-    build: { renderer: 'vite production build', productVersion: require('../../package.json').version, electron: 'unpackaged Electron 40.10.1', license: 'existing development license exemption; NODE_ENV=development', packaged: false },
+    build: { renderer: 'vite production build', productVersion: require('../../package.json').version, electron: 'unpackaged Electron 40.10.1', packaged: false },
     hardware: { platform: process.platform, arch: process.arch, cpu: os.cpus()[0]?.model, logicalCpus: os.cpus().length, totalMemory: os.totalmem() },
     workload: { ...profile, transferConnections: 1, additionalStandaloneSftpPane: 1, windowDIP: { width: 1200, height: 800 }, textLineBytes: 128, textNewline: 'LF' },
     schedule, loads: [], samples: [], summary: {}, resources: [], ipc: [], longTasks: [], correctness: {},
@@ -121,7 +121,7 @@ async function runProfile(name, scenario = runMixed, { lifecycle, directorySuffi
       const logPath = path.join(root, 'profile', 'logs', 'ownshell.log');
       const productionLog = fs.existsSync(logPath) ? fs.readFileSync(logPath).subarray(activeLaunch.logOffset).toString('utf8') : '';
       fs.writeFileSync(path.join(directory, `launch-${launchIndex}-production.log`), productionLog);
-      const markers = ['Electron app ready', 'Initializing OwnShell application', 'Initializing database', 'Database initialized successfully', 'Running database migrations...', 'Database migrations completed successfully', 'Crypto manager initialized', 'License manager initialized', 'Application initialized successfully', 'Creating main window', 'Starting in production mode'];
+      const markers = ['Electron app ready', 'Initializing OwnShell application', 'Initializing database', 'Database initialized successfully', 'Running database migrations...', 'Database migrations completed successfully', 'Crypto manager initialized', 'Application initialized successfully', 'Creating main window', 'Starting in production mode'];
       const productionMilestones = productionLog.split('\n').flatMap(line => {
         const match = line.match(/^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d+)\s+\[\w+\]\s+(.*)$/);
         const kind = match && markers.find(marker => match[2].startsWith(marker));

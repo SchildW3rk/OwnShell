@@ -17,7 +17,6 @@ import {
 } from '../electron/db-explorer/sql-identifiers';
 import { assertKnownColumns, assertKnownTable } from '../electron/db-explorer/identifier-whitelist';
 import { validateSafeIpcPayload } from '../electron/ipc/safe-ipc-validation';
-import { verifyEntitlementToken } from '../electron/license/entitlement';
 import { buildContentSecurityPolicy } from '../electron/security/content-security-policy';
 import { safeHandle } from '../electron/ipc/safe-ipc';
 import { parseDockerComposeLabelOutput } from '../electron/projects/compose-discovery';
@@ -767,8 +766,8 @@ function testContentSecurityPolicy() {
   assert.match(developmentCsp, /connect-src 'self' http: https: ws: wss:/);
 }
 
-// Honor model: no channel is license-gated, but sender and payload validation still apply.
-async function testSafeHandleHasNoLicenseGateButValidates() {
+// Every channel validates the sender and the payload.
+async function testSafeHandleValidatesSenderAndPayload() {
   __testIpcMainHandlers.clear();
   let calls = 0;
   try {
@@ -802,45 +801,6 @@ async function testSafeHandleHasNoLicenseGateButValidates() {
   }
 }
 
-function encodeTokenPart(value: unknown): string {
-  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
-}
-
-function testEntitlementHeaderValidation() {
-  const deviceId = 'a'.repeat(64);
-  const payload = encodeTokenPart({
-    iss: 'ownshell-license-api',
-    aud: 'ownshell-desktop',
-    sub: 'license:test',
-    status: 'active',
-    deviceId,
-    updatesUntil: Math.floor(Date.now() / 1000) + 3600,
-    iat: 1,
-    nbf: 1,
-    exp: Math.floor(Date.now() / 1000) + 3600,
-  });
-
-  const unknownKidToken = [
-    encodeTokenPart({ alg: 'ES256', typ: 'JWT', kid: 'unknown-key' }),
-    payload,
-    Buffer.from('invalid-signature').toString('base64url'),
-  ].join('.');
-  assert.deepEqual(verifyEntitlementToken(unknownKidToken, deviceId), {
-    valid: false,
-    reason: 'Unknown entitlement signing key',
-  });
-
-  const missingTypToken = [
-    encodeTokenPart({ alg: 'ES256', kid: 'ownshell-license-2026-06' }),
-    payload,
-    Buffer.from('invalid-signature').toString('base64url'),
-  ].join('.');
-  assert.deepEqual(verifyEntitlementToken(missingTypToken, deviceId), {
-    valid: false,
-    reason: 'Unsupported entitlement token header',
-  });
-}
-
 test('ShellQuoting', testShellQuoting);
 test('ComposeProjectDiscoveryParsing', testComposeProjectDiscoveryParsing);
 test('LocalDockerPayloadValidationAndParsing', testLocalDockerPayloadValidationAndParsing);
@@ -861,5 +821,4 @@ test('LocalToolPathEnv', testLocalToolPathEnv);
 test('ClearDatabaseCommandQuoting', testClearDatabaseCommandQuoting);
 test('SafeIpcPayloadValidation', testSafeIpcPayloadValidation);
 test('ContentSecurityPolicy', testContentSecurityPolicy);
-test('SafeHandleHasNoLicenseGateButValidates', testSafeHandleHasNoLicenseGateButValidates);
-test('EntitlementHeaderValidation', testEntitlementHeaderValidation);
+test('SafeHandleValidatesSenderAndPayload', testSafeHandleValidatesSenderAndPayload);

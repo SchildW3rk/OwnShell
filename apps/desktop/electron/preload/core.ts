@@ -1,5 +1,4 @@
 import type { IpcRenderer, IpcRendererEvent } from 'electron';
-import type { LicenseErrorCode, LicenseInfo } from '../license/types';
 import type { VaultCounts } from '../backup/types';
 
 export function createCryptoApi(ipcRenderer: IpcRenderer) {
@@ -145,31 +144,5 @@ export function createBackupApi(ipcRenderer: IpcRenderer) {
         };
         error?: string;
       }>,
-  };
-}
-
-export function createLicenseApi(ipcRenderer: IpcRenderer) {
-  return {
-    getStatus: () =>
-      ipcRenderer.invoke('license:get-status') as Promise<LicenseInfo>,
-    activate: (key: string) =>
-      ipcRenderer.invoke('license:activate', key) as Promise<{
-        success: boolean;
-        error?: LicenseErrorCode;
-        info?: LicenseInfo;
-      }>,
-    setPersonalUse: (confirmed: boolean) =>
-      ipcRenderer.invoke('license:set-personal-use', confirmed) as Promise<LicenseInfo>,
-    deactivate: () =>
-      ipcRenderer.invoke('license:deactivate') as Promise<{
-        success: boolean;
-        error?: LicenseErrorCode;
-        requiresOnline?: boolean;
-      }>,
-    onStatusChanged: (callback: () => void) => {
-      const handler = () => callback();
-      ipcRenderer.on('license:status-changed', handler);
-      return () => ipcRenderer.removeListener('license:status-changed', handler);
-    },
   };
 }

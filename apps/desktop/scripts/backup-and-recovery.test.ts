@@ -6,7 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { gzipSync } from 'node:zlib';
 import { createCipheriv, randomBytes, scryptSync } from 'node:crypto';
 import { Kysely, SqliteDialect } from 'kysely';
-import { SETTINGS_KEYS, type Database } from '@ownshell/core';
+import type { Database } from '@ownshell/core';
 import { runIncrementalMigrations } from '../electron/db/incremental-migrations';
 import { BackupManager, parseVaultJson } from '../electron/backup/backup-manager';
 import { cryptoManager } from '../electron/security/crypto';
@@ -218,9 +218,6 @@ test('vault JSON with an unexpected shape is rejected', async () => {
 });
 
 test('recovery-key reset clears every secret in one go and keeps metadata', async () => {
-  await db.insertInto('app_settings').values({
-    key: SETTINGS_KEYS.LICENSE_KEY_ENCRYPTED, value: enc('LICENSE'), updated_at: t,
-  }).execute();
   cryptoManager.lock();
 
   const result = await cryptoManager.resetWithRecoveryKey(recoveryKey, 'new-master');
@@ -242,9 +239,6 @@ test('recovery-key reset clears every secret in one go and keeps metadata', asyn
   const variables = JSON.parse(env.variables) as Array<{ key: string; value_encrypted: string }>;
   assert.equal(variables[0]?.key, 'API_KEY');
   assert.equal(cryptoManager.decryptData(variables[0]!.value_encrypted), '');
-  const license = await db.selectFrom('app_settings').selectAll()
-    .where('key', '=', SETTINGS_KEYS.LICENSE_KEY_ENCRYPTED).executeTakeFirst();
-  assert.equal(license, undefined);
 
   // Old recovery key is single-use.
   assert.equal((await cryptoManager.resetWithRecoveryKey(recoveryKey, 'x')).success, false);

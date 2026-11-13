@@ -350,10 +350,6 @@ export async function clearEncryptedData(
   await db.deleteFrom('api_oauth_tokens').execute();
   await db.deleteFrom('api_cookies').execute();
 
-  // The license key cannot be decrypted any more. The signed entitlement and the
-  // instance id stay, so the license keeps working until the user re-enters the key.
-  await db.deleteFrom('app_settings').where('key', '=', SETTINGS_KEYS.LICENSE_KEY_ENCRYPTED).execute();
-
   logger.info('Cleared all encrypted data from database');
 }
 

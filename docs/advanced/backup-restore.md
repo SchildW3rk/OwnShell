@@ -12,7 +12,7 @@ Backups are in **Settings → Data & Storage**. A backup is a single encrypted f
 - API collections, requests and global API variables
 - Sidebar folders
 
-**Not included**: app settings, your master password and your license (enter the key again on a new Mac).
+**Not included**: app settings and your master password.
 
 ## Export
 

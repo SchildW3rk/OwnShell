@@ -81,7 +81,7 @@ export default defineConfig({
     search: { provider: 'local' },
     socialLinks: [{ icon: 'github', link: GITHUB_URL }],
     footer: {
-      message: 'Source code under the MIT license.',
+      message: `Free software under the <a href="${GITHUB_URL}/blob/main/LICENSE">GNU GPL v3.0</a>.`,
       copyright: '© 2026 OwnShell',
     },
   },
@@ -115,6 +115,10 @@ export default defineConfig({
         ],
         sidebar: sidebar('/de', de),
         editLink: { pattern: `${GITHUB_URL}/edit/main/docs/:path`, text: 'Diese Seite auf GitHub bearbeiten' },
+        footer: {
+          message: `Freie Software unter der <a href="${GITHUB_URL}/blob/main/LICENSE">GNU GPL v3.0</a>.`,
+          copyright: '© 2026 OwnShell',
+        },
         outline: { label: 'Auf dieser Seite' },
         docFooter: { prev: 'Vorherige Seite', next: 'Nächste Seite' },
         lastUpdated: { text: 'Zuletzt aktualisiert' },

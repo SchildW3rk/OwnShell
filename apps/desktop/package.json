@@ -5,7 +5,7 @@
   "homepage": "https://ownshell.app",
   "main": "dist-electron/main.js",
   "author": "OwnShell Contributors",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "private": true,
   "scripts": {
     "dev": "vite --host",
@@ -99,6 +99,7 @@
     "typescript": "5.8.3",
     "vite": "6.4.2",
     "vite-plugin-electron": "0.29.0",
-    "vite-plugin-electron-renderer": "0.14.6"
+    "vite-plugin-electron-renderer": "0.14.6",
+    "ws": "8.20.1"
   }
 }

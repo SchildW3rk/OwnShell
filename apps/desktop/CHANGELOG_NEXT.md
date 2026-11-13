@@ -1,6 +1,10 @@
-## Trial and Git workspace (unreleased)
+## Free and open source (unreleased)
 
-- Starts a native 14-day trial from the license screen without opening checkout or creating a subscription; preserves the original deadline across restarts and requires a license after expiry.
+- OwnShell is now free and open source under the GNU General Public License v3.0 (GPL-3.0-only), for private use and for work.
+- Licensing is gone: no evaluation period, no license key, no license badge and no license check; the app only contacts OwnShell servers for update checks and downloads.
+
+## Git workspace (unreleased)
+
 - Restores the independent Git code browser and copyable SSH clone/add-remote commands, using the configured SSH host without Secure Node.
 - Previews committed HEAD content only, bounds directory/file reads, and localizes binary/oversized preview errors in English and German.
 

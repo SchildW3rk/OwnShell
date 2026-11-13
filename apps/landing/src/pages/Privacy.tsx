@@ -1,7 +1,6 @@
 import { LegalLayout } from '../components/LegalLayout';
 import * as m from '../paraglide/messages';
 
-// TODO: legal review required: license activation section rewritten for the new license model.
 export function Privacy() {
   return (
     <LegalLayout title={m.legal_privacy_title()}>
@@ -22,11 +21,6 @@ export function Privacy() {
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">{m.legal_privacy_hosting_title()}</h2>
         <p className="text-[#969696] leading-relaxed">{m.legal_privacy_hosting_text()}</p>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-4">{m.legal_privacy_license_title()}</h2>
-        <p className="text-[#969696] leading-relaxed">{m.legal_privacy_license_text()}</p>
       </section>
 
       <section className="mb-8">

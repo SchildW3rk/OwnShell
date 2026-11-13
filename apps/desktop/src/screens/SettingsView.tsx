@@ -9,17 +9,15 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader, Tabs } from '@ownshell/ui';
 import { useHostStore } from '../stores/useHostStore';
 import { useSnippetStore } from '../stores/useSnippetStore';
-import { useLicenseStore } from '../stores/useLicenseStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getCurrentLanguage } from '../i18n/config';
 import { useUpdaterState } from '../hooks/useUpdaterState';
-import { Database, Info, KeyRound, Settings as SettingsIcon, X } from 'lucide-react';
+import { Database, Info, Settings as SettingsIcon, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { AboutTab } from './settings-view/AboutTab';
 import { DataTab } from './settings-view/DataTab';
 import { GeneralTab } from './settings-view/GeneralTab';
-import { LicenseTab } from './settings-view/LicenseTab';
 import { WhatsNewModal } from '../components/changelog/WhatsNewModal';
 import type { BackupMode, LanguageCode, SettingsTab } from './settings-view/types';
 
@@ -32,18 +30,8 @@ const QUERY_HISTORY_ENABLED_SETTING = 'dbExplorer.queryHistory.enabled';
 export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const {
-    licenseInfo,
-    isLoading: isLicenseLoading,
-    activate,
-    deactivate,
-    isOnline,
-  } = useLicenseStore();
-
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [currentLang, setCurrentLang] = useState<LanguageCode>(getCurrentLanguage());
-  const [licenseKeyInput, setLicenseKeyInput] = useState('');
-  const [licenseActivationError, setLicenseActivationError] = useState('');
   const [autoLockTimeout, setAutoLockTimeout] = useState('5');
 
   const [backupMode, setBackupMode] = useState<BackupMode>('none');
@@ -231,7 +219,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
   const tabs = [
     { id: 'general', label: t('settings.general'), icon: <SettingsIcon className="w-4 h-4" /> },
     { id: 'data', label: t('settings.dataStorage'), icon: <Database className="w-4 h-4" /> },
-    { id: 'license', label: t('settings.license'), icon: <KeyRound className="w-4 h-4" /> },
     { id: 'about', label: t('settings.about'), icon: <Info className="w-4 h-4" /> },
   ];
 
@@ -271,7 +258,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             autoUpdateEnabled={autoUpdateEnabled}
             updateStatus={updateStatus}
             availableVersion={availableVersion}
-            updateLicenseCoverage={updateInfo?.licenseCoverage}
             downloadProgress={downloadProgress}
             updateError={updateError}
             onLanguageChange={setCurrentLang}
@@ -301,20 +287,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onClose }) => {
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
             onToggleQueryHistory={handleToggleQueryHistory}
-          />
-        )}
-
-        {activeTab === 'license' && (
-          <LicenseTab
-            licenseInfo={licenseInfo}
-            isLicenseLoading={isLicenseLoading}
-            isOnline={isOnline}
-            licenseKeyInput={licenseKeyInput}
-            licenseActivationError={licenseActivationError}
-            onLicenseKeyInputChange={setLicenseKeyInput}
-            onLicenseActivationErrorChange={setLicenseActivationError}
-            activate={activate}
-            deactivate={deactivate}
           />
         )}
 

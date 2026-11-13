@@ -18,7 +18,6 @@ PUBLIC_HEALTH_URL="${PUBLIC_HEALTH_URL:-https://ownshell.app/}"
 RUN_INSTALL="${RUN_INSTALL:-0}"
 RUN_LINT="${RUN_LINT:-0}"
 SKIP_PUBLIC_HEALTH="${SKIP_PUBLIC_HEALTH:-0}"
-REQUIRE_CHECKOUT_ENV="${REQUIRE_CHECKOUT_ENV:-1}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,72 +33,6 @@ step() { echo -e "\n${CYAN}[$1]${NC} $2"; }
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || error "Missing required command: $1"
-}
-
-BUILD_ENV_FILE=""
-cleanup() {
-  if [[ -n "$BUILD_ENV_FILE" ]]; then
-    rm -f "$BUILD_ENV_FILE"
-  fi
-}
-trap cleanup EXIT
-
-has_checkout_env() {
-  [[ -n "${VITE_LEMON_INDIVIDUAL_CHECKOUT_URL:-}" ]]
-}
-
-load_remote_checkout_env() {
-  BUILD_ENV_FILE="$(mktemp)"
-
-  ssh "$SSH_HOST" "REMOTE_PATH='$REMOTE_PATH' bash -s" >"$BUILD_ENV_FILE" <<'ENDSSH'
-set -euo pipefail
-
-python3 - <<'PY'
-import os
-import shlex
-from pathlib import Path
-
-allowed = {
-    "VITE_LEMON_INDIVIDUAL_CHECKOUT_URL",
-}
-
-env_path = Path(os.environ["REMOTE_PATH"]) / ".env"
-if not env_path.exists():
-    raise SystemExit(0)
-
-for raw_line in env_path.read_text().splitlines():
-    line = raw_line.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-
-    key, value = line.split("=", 1)
-    key = key.strip()
-    export_prefix = "export "
-    if key.startswith(export_prefix):
-        key = key[len(export_prefix):].strip()
-
-    if key not in allowed:
-        continue
-
-    value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-        value = value[1:-1]
-
-    print(f"export {key}={shlex.quote(value)}")
-PY
-ENDSSH
-
-  if [[ -s "$BUILD_ENV_FILE" ]]; then
-    # shellcheck disable=SC1090
-    source "$BUILD_ENV_FILE"
-    success "Loaded checkout build env from remote .env"
-  else
-    warning "No checkout build env found in remote .env"
-  fi
-
-  if [[ "$REQUIRE_CHECKOUT_ENV" == "1" ]] && ! has_checkout_env; then
-    error "Missing VITE_LEMON_INDIVIDUAL_CHECKOUT_URL for production deploy."
-  fi
 }
 
 echo ""
@@ -126,8 +59,7 @@ if ! ssh -o ConnectTimeout=8 "$SSH_HOST" 'true'; then
 fi
 success "SSH connection OK"
 
-step "2/7" "Loading remote build env and running local verification..."
-load_remote_checkout_env
+step "2/7" "Running local verification..."
 
 if [[ "$RUN_INSTALL" == "1" ]]; then
   (cd "$REPO_ROOT" && npm install)

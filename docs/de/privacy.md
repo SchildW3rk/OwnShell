@@ -15,9 +15,6 @@ Alles wird auf deinem Mac im Datenordner von OwnShell unter `~/Library/Applicati
 | --- | --- | --- |
 | Update-Prüfung | `release.ownshell.app` | 5 Sekunden nach dem Start, danach alle 30 Minuten. Der automatische Download ist optional (standardmäßig aus); die Prüfung selbst lässt sich nicht abschalten. |
 | Release Notes | `release.ownshell.app/releases.json` | Nur wenn sich das Fenster *Was ist neu* öffnet, z. B. nach einem Update. |
-| Lizenz | `license.ownshell.app` | Nur wenn du einen Lizenzschlüssel eingibst: bei der Aktivierung, bei der Deaktivierung und um die signierte Lizenz zu erneuern, wenn sie bald abläuft. |
-
-Die Lizenzaktivierung sendet den Lizenzschlüssel, eine gehashte Geräte-ID (SHA-256 der Hardware-UUID des Macs; die rohe ID wird nie gesendet), die App-Version und die Plattform.
 
 Die Benutzeroberfläche der App selbst kann keinen externen Server kontaktieren.
 

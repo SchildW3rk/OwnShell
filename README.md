@@ -11,8 +11,7 @@
 
 <p align="center">
   <a href="https://ownshell.app">Website</a> ·
-  <a href="https://ownshell.app/#pricing">Pricing</a> ·
-  <a href="LICENSE">MIT License</a>
+  <a href="LICENSE">GPL-3.0 License</a>
 </p>
 
 ---
@@ -77,18 +76,14 @@ Everything is stored locally in an encrypted database. No account, no cloud sync
 - Workspace data lives in a local SQLite database; secrets are encrypted with a key derived from your
   master password. The app locks automatically after a configurable idle time.
 - No account and no automatic crash or analytics reports. OwnShell only talks to its own servers to
-  check for updates and — if you activate a commercial license — to verify that license.
+  check for and download updates.
 - Connections go only to the servers, databases, buckets and APIs you configure.
 
-## Download & license model
+## Download
 
 Official builds for **macOS (Apple Silicon)** are available at [ownshell.app](https://ownshell.app).
-
-- **Source code:** MIT licensed. You may build, modify and use it, also commercially.
-- **Official builds:** free for personal use, with every feature.
-- **Work use:** a commercial license (79 € per year, one person, up to 3 devices) funds development.
-  You get updates for 12 months and keep using every version released in that time.
-  New installs include a 30-day evaluation; nothing is locked afterwards — it is an honor system.
+OwnShell is free and open source: no price, no license key, no evaluation period and no account,
+for private use and for work.
 
 ## Building from source
 
@@ -127,7 +122,6 @@ In development mode the database is seeded with sample data and the master passw
 |---|---|
 | `apps/desktop` | Electron app — `src/` renderer (React), `electron/` main process, `scripts/` build helpers and tests |
 | `apps/landing` | Website (ownshell.app) |
-| `apps/license-api` | License API (Cloudflare Worker + Lemon Squeezy) |
 | `packages/core`, `packages/ui`, `packages/theme`, `packages/config` | Shared types, database schema, UI components and config |
 | `docs` | User documentation (VitePress) |
 
@@ -137,10 +131,12 @@ Tech stack: Electron, React, TypeScript, Vite, Tailwind CSS, SQLite (better-sqli
 
 Issues and pull requests are welcome. Keep changes small and follow existing patterns. Before opening a PR,
 run `npm run build:vite --workspace=ownshell-desktop` and `npm test`. See [`AGENTS.md`](AGENTS.md) for
-repository conventions.
+repository conventions. By contributing, you agree that your contributions are licensed under the
+GPL-3.0, the license of this project.
 
 Security issues: please report them privately via GitHub's *Report a vulnerability* instead of a public issue.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+OwnShell is free software, licensed under the GNU General Public License v3.0 only (GPL-3.0-only).
+See [LICENSE](LICENSE).

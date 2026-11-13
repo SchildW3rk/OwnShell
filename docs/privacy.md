@@ -15,9 +15,6 @@ Everything is stored on your Mac in OwnShell's data folder under `~/Library/Appl
 | --- | --- | --- |
 | Update check | `release.ownshell.app` | 5 seconds after start, then every 30 minutes. Automatic download is optional (off by default); the check itself cannot be turned off. |
 | Release notes | `release.ownshell.app/releases.json` | Only when the *What's new* window opens, e.g. after an update. |
-| License | `license.ownshell.app` | Only if you enter a license key: on activation, on deactivation, and to refresh the signed license when it is about to expire. |
-
-License activation sends the license key, a hashed device ID (SHA-256 of the Mac's hardware UUID; the raw ID is never sent), the app version and the platform.
 
 The app's user interface itself cannot contact any outside server.
 

@@ -12,7 +12,7 @@ Release builds are signed and notarized by Apple, so macOS opens them without ex
 
 ## Create your master password
 
-On first launch OwnShell asks for a **master password**. It encrypts the secrets OwnShell stores: host passwords, SSH keys, database and S3 credentials, vault entries, API-client variables marked as secret, tokens, passwords, API keys and OAuth client secrets in a request's **Auth** fields, OAuth tokens, cookies and your license key.
+On first launch OwnShell asks for a **master password**. It encrypts the secrets OwnShell stores: host passwords, SSH keys, database and S3 credentials, vault entries, API-client variables marked as secret, tokens, passwords, API keys and OAuth client secrets in a request's **Auth** fields, OAuth tokens and cookies.
 
 The password needs at least 8 characters with one uppercase letter, one lowercase letter and one digit.
 
@@ -23,7 +23,7 @@ Next, OwnShell shows a **recovery key** once, in the form `XXXX-XXXX-XXXX-XXXX-X
 ::: warning There is no other way back in
 If you forget the master password, the recovery key is the only way to set a new one. Without it, nobody (including us) can unlock your data.
 
-A reset with the recovery key keeps your hosts and connection settings but **deletes all stored secrets**: passwords, private keys, passphrases, API tokens, cookies and the license key. You then enter them again.
+A reset with the recovery key keeps your hosts and connection settings but **deletes all stored secrets**: passwords, private keys, passphrases, API tokens and cookies. You then enter them again.
 :::
 
 There is currently no "change master password" function. To use a new password, keep a [backup](/advanced/backup-restore) and reset via the recovery key.
@@ -41,31 +41,6 @@ There is currently no "change master password" function. To use a new password, 
 - OwnShell always locks when your Mac goes to sleep or the screen locks.
 
 After every restart you unlock with your master password.
-
-## Evaluation and license badge
-
-OwnShell uses an **honor system**. No feature is ever locked.
-
-- **Personal use is free**, with every feature and no account.
-- **Commercial use** (work or revenue-generating activities) asks for an **Individual license: €79 per year incl. VAT**. See [pricing](https://ownshell.app/#pricing).
-
-The badge in the header shows where you stand:
-
-| Badge | Meaning |
-| --- | --- |
-| **Evaluation · N days** | The first 30 days after first launch. Runs locally, no account or payment details. |
-| **Personal use** | The evaluation is over and no license is entered. Click it to confirm personal use (stored on this device only; undo under **Settings → License**), buy a license or enter a key. |
-| **License does not cover this version** | Your license exists, but this build was released after your license's "updates until" date. |
-| *(no badge)* | You confirmed personal use, or your license covers this build. |
-
-### What happens when a license expires
-
-A license covers **every version released before its "updates until" date, forever**. When it expires, nothing stops working. Newer versions show the notice above, and the updater does not install an update your license does not cover automatically. Renew to get newer versions, or keep using a covered one.
-
-### Activate, move or deactivate a license
-
-- Enter your key via the badge or **Settings → License**. Activation needs an internet connection; see [Privacy & network](/privacy) for what is sent.
-- A license can be active on 3 devices. To move it, use **Settings → License → Deactivate this device** on the old Mac (needs a connection), then enter the key on the new one.
 
 ## Updates
 

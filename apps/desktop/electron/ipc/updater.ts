@@ -16,8 +16,6 @@ import { z } from 'zod';
 import { noPayloadSchema } from './schemas/common';
 import { Database, SettingsQueries } from '@ownshell/core';
 import { logger } from '../logger';
-import { licenseManager } from '../license/license-manager';
-import { updateLicenseCoverage, type UpdateLicenseCoverage } from '../license/types';
 import { safeHandle } from './safe-ipc';
 
 // Setting key for auto-update preference
@@ -30,8 +28,6 @@ interface SerializableUpdateInfo {
   version: string;
   releaseDate: string;
   releaseNotes?: string | null;
-  /** Honor notice only: 'uncovered' when the stored license's updatesUntil is before this release. */
-  licenseCoverage: UpdateLicenseCoverage;
 }
 
 interface SerializableProgressInfo {
@@ -61,25 +57,11 @@ let updaterState: UpdaterState = {
   updatedAt: Date.now(),
 };
 
-async function getLicenseCoverage(releaseDate: string): Promise<UpdateLicenseCoverage> {
-  try {
-    const { license } = await licenseManager.getStatus();
-    return updateLicenseCoverage(releaseDate, license);
-  } catch (error) {
-    logger.warn('Could not check update license coverage', error);
-    return 'unknown';
-  }
-}
-
-async function serializeUpdateInfo(info: UpdateInfo): Promise<SerializableUpdateInfo> {
-  const licenseCoverage = await getLicenseCoverage(info.releaseDate);
-  // Never install an uncovered or unverifiable update silently on quit; the user installs it after the notice.
-  autoUpdater.autoInstallOnAppQuit = licenseCoverage === 'covered';
+function serializeUpdateInfo(info: UpdateInfo): SerializableUpdateInfo {
   return {
     version: info.version,
     releaseDate: info.releaseDate,
     releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
-    licenseCoverage,
   };
 }
 
@@ -136,9 +118,9 @@ export async function setupAutoUpdater(window: BrowserWindow, db: Kysely<Databas
     window.webContents.send('updater:checking');
   });
 
-  autoUpdater.on('update-available', async (info: UpdateInfo) => {
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
     logger.info('Update available:', info.version);
-    const updateInfo = await serializeUpdateInfo(info);
+    const updateInfo = serializeUpdateInfo(info);
     setUpdaterState({ status: 'available', updateInfo, progress: undefined, error: undefined });
     window.webContents.send('updater:available', updateInfo);
   });
@@ -168,9 +150,9 @@ export async function setupAutoUpdater(window: BrowserWindow, db: Kysely<Databas
     window.webContents.send('updater:progress', serializedProgress);
   });
 
-  autoUpdater.on('update-downloaded', async (info: UpdateInfo) => {
+  autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
     logger.info('Update downloaded:', info.version);
-    const updateInfo = await serializeUpdateInfo(info);
+    const updateInfo = serializeUpdateInfo(info);
     setUpdaterState({ status: 'ready', updateInfo, progress: undefined, error: undefined });
     window.webContents.send('updater:downloaded', updateInfo);
   });

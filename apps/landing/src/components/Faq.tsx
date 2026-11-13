@@ -2,14 +2,11 @@ import { ChevronDown, HelpCircle } from 'lucide-react';
 import * as m from '../paraglide/messages';
 
 export function Faq() {
-  // legal review required: faq_refund_a and faq_commercial_a describe refund and license terms.
   const items = [
-    { q: m.faq_commercial_q(), a: m.faq_commercial_a() },
+    { q: m.faq_free_q(), a: m.faq_free_a() },
     { q: m.faq_source_q(), a: m.faq_source_a() },
-    { q: m.faq_renewal_q(), a: m.faq_renewal_a() },
     { q: m.faq_account_q(), a: m.faq_account_a() },
     { q: m.faq_data_q(), a: m.faq_data_a() },
-    { q: m.faq_refund_q(), a: m.faq_refund_a() },
   ];
 
   return (

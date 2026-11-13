@@ -1,7 +1,7 @@
 {
   "name": "ownshell",
   "private": true,
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "packageManager": "npm@10.2.4",
   "workspaces": [
     "apps/*",

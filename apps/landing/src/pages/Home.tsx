@@ -2,7 +2,7 @@ import { Header } from '../components/Header';
 import { Hero } from '../components/Hero';
 import { Features } from '../components/Features';
 import { Security } from '../components/Security';
-import { Pricing } from '../components/Pricing';
+import { OpenSource } from '../components/OpenSource';
 import { Faq } from '../components/Faq';
 import { Footer } from '../components/Footer';
 
@@ -14,7 +14,7 @@ export function Home() {
         <Hero />
         <Features />
         <Security />
-        <Pricing />
+        <OpenSource />
         <Faq />
       </main>
       <Footer />

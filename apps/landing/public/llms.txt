@@ -1,6 +1,6 @@
 # OwnShell
 
-OwnShell is an open-source (MIT), local-first macOS workspace for your servers, databases and APIs. It is built for freelancers and small teams who run their own servers and manage several client environments.
+OwnShell is a free, open-source (GPL-3.0), local-first macOS workspace for your servers, databases and APIs. It is built for freelancers and small teams who run their own servers and manage several client environments.
 
 ## Product Summary
 
@@ -20,15 +20,13 @@ OwnShell reduces context switches: open a project or environment, SSH into the s
 ## Planned (not available yet)
 
 - Team Vaults: self-hosted, end-to-end encrypted sync for teams.
-- Business and team licenses.
 
-## Open Source and Licensing
+## Open Source
 
-- Source code: MIT license, https://github.com/SchildW3rk/OwnShell
-- Personal: official downloads are free for private, non-commercial use. All features, no account.
-- Commercial / Individual: EUR 79 per year including VAT, for work-related or revenue-generating use. One person, up to 3 devices, updates for 12 months. Every version released during the license year can be used forever.
-- Every download includes a 30-day free evaluation from first launch, without account or payment data.
-- Payments are processed by Lemon Squeezy as merchant of record.
+- OwnShell is free software under the GNU General Public License v3.0 only (GPL-3.0-only).
+- No price, no license key, no evaluation period and no account. Free for private and work use.
+- Source code: https://github.com/SchildW3rk/OwnShell
+- License: https://github.com/SchildW3rk/OwnShell/blob/main/LICENSE
 
 ## Common Search Intents
 
@@ -43,14 +41,14 @@ OwnShell reduces context switches: open a project or environment, SSH into the s
 - Homepage: https://ownshell.app/
 - Features: https://ownshell.app/#features
 - Security: https://ownshell.app/#security
-- Pricing: https://ownshell.app/#pricing
+- Open source: https://ownshell.app/#open-source
 - FAQ: https://ownshell.app/#faq
 - Documentation (English): https://ownshell.app/docs/
 - Documentation (German): https://ownshell.app/docs/de/
 - API client guide: https://ownshell.app/docs/features/api-client
 - Source code: https://github.com/SchildW3rk/OwnShell
 - Privacy: https://ownshell.app/privacy
-- Terms: https://ownshell.app/terms
+- License: https://ownshell.app/terms
 - Legal notice: https://ownshell.app/impressum
 
 ## Contact

@@ -6,13 +6,13 @@
 
 macOS on Apple Silicon. There are no Windows, Linux or Intel Mac builds.
 
-### Is OwnShell open source?
+### Is OwnShell free and open source?
 
-Yes. The source code is MIT-licensed and on [GitHub](https://github.com/SchildW3rk/OwnShell). The official builds are free for personal use; commercial use asks for a license.
+Yes. OwnShell is free software under the [GNU General Public License v3.0](https://github.com/SchildW3rk/OwnShell/blob/main/LICENSE) (GPL-3.0-only), for private use and for work. There is no paid version, no license key and no evaluation period. The source code is on [GitHub](https://github.com/SchildW3rk/OwnShell).
 
 ### Do I need an account or an internet connection?
 
-No account. OwnShell works offline; only update checks, release notes and license activation use the internet. See [Privacy & network](/privacy).
+No account. OwnShell works offline; only update checks and release notes use the internet. See [Privacy & network](/privacy).
 
 ### How do I update?
 
@@ -43,24 +43,6 @@ No analytics, no usage tracking, no automatic crash or diagnostics reports. Bugs
 ### How does OwnShell verify SSH host keys?
 
 Built-in SSH connections trust a server's key on first use and refuse to connect if it changes later. The native terminal uses OpenSSH's `known_hosts`. See [Host key verification](/features/ssh#host-key-verification).
-
-## Licensing
-
-### Is OwnShell free?
-
-For personal use, yes: every feature, no account, no time limit. If you use OwnShell for work or revenue-generating activities, please buy an Individual license (€79 per year incl. VAT). It is an honor system; nothing is locked.
-
-### What happens after the 30-day evaluation?
-
-The badge in the header changes to **Personal use**. Confirm personal use, buy a license, or enter a key. Everything keeps working.
-
-### What happens when my license expires?
-
-Nothing stops working. Your license covers every version released before its "updates until" date, forever. Renew to use newer versions.
-
-### Can I move my license to another Mac?
-
-Yes. Use **Settings → License → Deactivate this device** on the old Mac, then enter the key on the new one. A license can be active on 3 devices.
 
 ## Connections
 

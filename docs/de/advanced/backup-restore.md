@@ -12,7 +12,7 @@ Backups findest du unter **Einstellungen → Daten & Speicher**. Ein Backup ist 
 - API-Collections, Requests und globale API-Variablen
 - Ordner der Seitenleiste
 
-**Nicht enthalten**: App-Einstellungen, dein Master-Passwort und deine Lizenz (gib den Schlüssel auf einem neuen Mac erneut ein).
+**Nicht enthalten**: App-Einstellungen und dein Master-Passwort.
 
 ## Export
 

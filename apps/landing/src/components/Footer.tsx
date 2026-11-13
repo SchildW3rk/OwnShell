@@ -47,8 +47,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="/#pricing" className="text-[#969696] hover:text-white transition-colors">
-                  {m.nav_pricing()}
+                <a href="/#open-source" className="text-[#969696] hover:text-white transition-colors">
+                  {m.nav_opensource()}
                 </a>
               </li>
               <li>

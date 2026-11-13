@@ -4,7 +4,7 @@ layout: home
 hero:
   name: OwnShell Docs
   text: Your servers, databases and APIs. One local workspace.
-  tagline: An open-source (MIT), local-first macOS app for SSH, SFTP, S3, Docker, databases, an encrypted vault and an API client.
+  tagline: A free, open-source (GPL-3.0), local-first macOS app for SSH, SFTP, S3, Docker, databases, an encrypted vault and an API client.
   image:
     src: /logo.svg
     alt: OwnShell logo

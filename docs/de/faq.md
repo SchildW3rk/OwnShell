@@ -6,13 +6,13 @@
 
 macOS auf Apple Silicon. Es gibt keine Builds für Windows, Linux oder Intel-Macs.
 
-### Ist OwnShell Open Source?
+### Ist OwnShell kostenlos und Open Source?
 
-Ja. Der Quellcode steht unter der MIT-Lizenz und liegt auf [GitHub](https://github.com/SchildW3rk/OwnShell). Die offiziellen Builds sind für die private Nutzung kostenlos; für die kommerzielle Nutzung wird um eine Lizenz gebeten.
+Ja. OwnShell ist freie Software unter der [GNU General Public License v3.0](https://github.com/SchildW3rk/OwnShell/blob/main/LICENSE) (GPL-3.0-only), für die private und die berufliche Nutzung. Es gibt keine Bezahlversion, keinen Lizenzschlüssel und keinen Testzeitraum. Der Quellcode liegt auf [GitHub](https://github.com/SchildW3rk/OwnShell).
 
 ### Brauche ich ein Konto oder eine Internetverbindung?
 
-Kein Konto. OwnShell funktioniert offline; nur Update-Prüfungen, Release Notes und die Lizenzaktivierung nutzen das Internet. Siehe [Datenschutz & Netzwerk](/de/privacy).
+Kein Konto. OwnShell funktioniert offline; nur Update-Prüfungen und Release Notes nutzen das Internet. Siehe [Datenschutz & Netzwerk](/de/privacy).
 
 ### Wie aktualisiere ich?
 
@@ -43,24 +43,6 @@ Keine Analytics, kein Nutzungs-Tracking, keine automatischen Crash- oder Diagnos
 ### Wie prüft OwnShell SSH-Host-Keys?
 
 Integrierte SSH-Verbindungen vertrauen dem Schlüssel eines Servers bei der ersten Nutzung und verweigern die Verbindung, wenn er sich später ändert. Das native Terminal nutzt die `known_hosts` von OpenSSH. Siehe [Host-Key-Prüfung](/de/features/ssh#host-key-prufung).
-
-## Lizenzierung
-
-### Ist OwnShell kostenlos?
-
-Für die private Nutzung ja: jede Funktion, kein Konto, kein Zeitlimit. Wenn du OwnShell beruflich oder für umsatzgenerierende Tätigkeiten nutzt, kauf bitte eine Individual-Lizenz (79 € pro Jahr inkl. MwSt.). Es basiert auf Vertrauen; nichts wird gesperrt.
-
-### Was passiert nach dem 30-tägigen Testzeitraum?
-
-Das Badge im Header wechselt zu **Persönliche Nutzung**. Bestätige die persönliche Nutzung, kauf eine Lizenz oder gib einen Schlüssel ein. Alles funktioniert weiter.
-
-### Was passiert, wenn meine Lizenz abläuft?
-
-Nichts hört auf zu funktionieren. Deine Lizenz deckt jede Version ab, die vor ihrem „Updates bis“-Datum veröffentlicht wurde, für immer. Verlängere, um neuere Versionen zu nutzen.
-
-### Kann ich meine Lizenz auf einen anderen Mac übertragen?
-
-Ja. Nutze **Einstellungen → Lizenz → Dieses Gerät deaktivieren** auf dem alten Mac und gib dann den Schlüssel auf dem neuen ein. Eine Lizenz kann auf 3 Geräten aktiv sein.
 
 ## Verbindungen
 

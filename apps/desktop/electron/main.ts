@@ -24,7 +24,6 @@ import { setupSSHHandlers, cleanupAllSSHSessions } from './ipc/ssh';
 import { setupS3Handlers, cleanupS3Clients } from './ipc/s3';
 import { setupFilePickerHandlers } from './ipc/file-picker';
 import { setupBackupHandlers } from './ipc/backup';
-import { setupLicenseHandlers } from './ipc/license';
 import { setupDBExplorerHandlers, cleanupAllDBConnections } from './ipc/database-explorer';
 import { setupSFTPStandaloneHandlers } from './ipc/sftp-standalone';
 import { setupVaultHandlers } from './ipc/vault';
@@ -36,7 +35,6 @@ import { setupAutoUpdater } from './ipc/updater';
 import { setupReleasesHandlers } from './ipc/releases';
 import { safeHandle } from './ipc/safe-ipc';
 import { sftpConnectionManager } from './sftp/sftp-connection-manager';
-import { licenseManager } from './license/license-manager';
 import { runDevelopmentSeeder } from './dev/seeder';
 import { buildContentSecurityPolicy } from './security/content-security-policy';
 import { z } from 'zod';
@@ -488,9 +486,6 @@ async function initializeApp() {
     // Initialize crypto manager
     cryptoManager.init(db);
 
-    // Initialize license manager
-    licenseManager.init(db);
-
     // Run development seeder (auto-setup for dev mode)
     await runDevelopmentSeeder(db);
 
@@ -529,9 +524,6 @@ function setupIPC(window: BrowserWindow) {
 
   // Backup handlers
   setupBackupHandlers(db, window);
-
-  // License handlers
-  setupLicenseHandlers(window);
 
   // Database Explorer handlers
   setupDBExplorerHandlers(window, db);
