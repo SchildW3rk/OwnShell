@@ -31,6 +31,7 @@ export const AggregationPanel: React.FC<AggregationPanelProps> = ({
   const [results, setResults] = useState<{ items: unknown[]; truncated: boolean } | null>(null);
 
   const run = async () => {
+    setResults(null); // never show a previous pipeline's results next to a new error
     const parsed = parseAggregationPipeline(pipelineText);
     if (!parsed.ok) {
       setError(t(`db.mongoAggregation.error.${parsed.error}`, { stage: parsed.stage }));
@@ -52,7 +53,6 @@ export const AggregationPanel: React.FC<AggregationPanelProps> = ({
       if (result.success) {
         setResults({ items: result.results ?? [], truncated: result.truncated === true });
       } else {
-        setResults(null);
         setError(result.error || t('db.mongoAggregation.failed'));
       }
     } catch (err) {

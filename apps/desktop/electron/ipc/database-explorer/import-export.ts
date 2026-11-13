@@ -3,6 +3,7 @@ import { DBType } from '@ownshell/core';
 import { dbConnectionManager } from '../../db-explorer/connection-manager';
 import { databaseDumpService } from '../../db-explorer/dump-service';
 import { readOnlyFailure } from '../../db-explorer/read-only-guard';
+import { resolveSslMode } from '../../db-explorer/connection/tls-options';
 import { cryptoManager } from '../../security/crypto';
 import { logger } from '../../logger';
 import { safeHandle } from '../safe-ipc';
@@ -43,6 +44,8 @@ export function setupDatabaseImportExportHandlers(ctx: DBExplorerHandlerContext)
         sshHostId: config.ssh_host_id,
         sshTunnelEnabled: config.ssh_tunnel_enabled === 1,
         ssl: config.ssl_enabled === 1,
+        sslMode: resolveSslMode(config),
+        sslCa: config.ssl_ca_encrypted ? cryptoManager.decryptData(config.ssl_ca_encrypted) : undefined,
         executionMode: (config.execution_mode as 'direct' | 'docker') || 'direct',
         dockerContainer: config.docker_container || undefined,
       },

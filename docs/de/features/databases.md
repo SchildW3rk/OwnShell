@@ -63,7 +63,7 @@ Datenbank-Dumps nutzen die offiziellen Werkzeuge:
 - Export nach `.sql` oder `.sql.gz` (nur Schema, nur Daten, ausgewählte Tabellen und `pg_dump`-Optionen).
 - Import von `.sql` / `.sql.gz`, optional nach dem Leeren oder Löschen bestehender Tabellen.
 - SQLite exportiert einen SQL-Dump (wie `sqlite3 .dump`). Ein Import läuft in einer Transaktion, ein fehlgeschlagener Import lässt die Datenbank also unverändert.
-- Die Dump-Werkzeuge nutzen ihre eigenen SSL-Standards, nicht den SSL-Modus der Verbindung.
+- PostgreSQL- und MySQL-Dumps nutzen den SSL-Modus und das CA-Zertifikat der Verbindung. Prüfen ohne CA nutzt bei PostgreSQL-Werkzeugen ab Version 16 den System-Zertifikatsspeicher; MySQL-Werkzeuge brauchen zum Prüfen das CA-Zertifikat. Im Docker-Modus erreichen die Werkzeuge die Datenbank innerhalb des Containers und behalten ihre Standards.
 - Bei Verbindungen über einen SSH-Host laufen die Werkzeuge **auf dem Server** und der Dump wird zu deinem Mac gestreamt, daher müssen sie dort installiert sein. Bei direkten Verbindungen müssen sie auf deinem Mac installiert sein. OwnShell sagt dir, welches Werkzeug fehlt.
 
 ## Redis

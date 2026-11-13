@@ -1,5 +1,6 @@
 import type { DBConnectionConfig } from '@ownshell/core';
 import { shellQuote } from '../../utils/shell-quote';
+import { shellTls, toolHost, withCaFile, type DumpConfig } from './command-builders';
 
 export function buildClearCommand(options: {
   type: DBConnectionConfig['type'];
@@ -10,15 +11,21 @@ export function buildClearCommand(options: {
   dockerContainer?: string;
   port: number;
   mode: 'truncate' | 'drop';
+  host?: string | null;
+  sslMode?: DumpConfig['sslMode'];
+  sslCa?: string;
 }): string | null {
   const { type, database, username, password, executionMode, dockerContainer, port, mode } =
     options;
+  const config = options;
+  const host = shellQuote(toolHost(config));
+  const tls = shellTls(config);
   let clearCommand = '';
 
   switch (type) {
     case 'postgres': {
       const pgPassword = password ? `PGPASSWORD=${shellQuote(password)} ` : '';
-      const psqlBase = `${pgPassword}psql -q -h 127.0.0.1 -p ${shellQuote(port)} -U ${shellQuote(username || 'postgres')} -d ${shellQuote(database || 'postgres')}`;
+      const psqlBase = `${pgPassword}${tls.env}psql -q -h ${host} -p ${shellQuote(port)} -U ${shellQuote(username || 'postgres')} -d ${shellQuote(database || 'postgres')}`;
 
       if (mode === 'truncate') {
         const sql =
@@ -34,7 +41,7 @@ export function buildClearCommand(options: {
 
     case 'mysql': {
       const mysqlPassword = password ? `MYSQL_PWD=${shellQuote(password)} ` : '';
-      const mysqlBase = `${mysqlPassword}mysql -h 127.0.0.1 -P ${shellQuote(port)} -u ${shellQuote(username || 'root')} ${shellQuote(database || 'mysql')}`;
+      const mysqlBase = `${mysqlPassword}mysql --protocol=TCP${tls.args} -h ${host} -P ${shellQuote(port)} -u ${shellQuote(username || 'root')} ${shellQuote(database || 'mysql')}`;
       const databaseSql = (database || 'mysql').replace(/'/g, "''");
       const action = mode === 'truncate' ? 'TRUNCATE TABLE ' : 'DROP TABLE IF EXISTS ';
       const sql = `SET FOREIGN_KEY_CHECKS=0; SELECT CONCAT('${action}', table_name, ';') FROM information_schema.tables WHERE table_schema='${databaseSql}';`;
@@ -50,5 +57,5 @@ export function buildClearCommand(options: {
     return `docker exec ${shellQuote(dockerContainer)} sh -c ${shellQuote(clearCommand)}`;
   }
 
-  return clearCommand;
+  return withCaFile(config, clearCommand);
 }

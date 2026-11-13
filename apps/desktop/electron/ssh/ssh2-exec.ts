@@ -18,7 +18,8 @@ export async function execCommand(
   assertConnected(connected);
 
   return new Promise((resolve, reject) => {
-    logger.debug('Executing command', { command });
+    // Commands can carry passwords (PGPASSWORD=…); callers log a redacted form.
+    logger.debug('Executing command', { length: command.length });
 
     client.exec(command, (err, stream) => {
       if (err) {
@@ -63,7 +64,7 @@ export async function execToFile(
   assertConnected(connected);
 
   return new Promise((resolve, reject) => {
-    logger.info('Executing command with file output', { command, localPath });
+    logger.info('Executing command with file output', { length: command.length, localPath });
 
     client.exec(command, (err, stream) => {
       if (err) {
@@ -128,7 +129,7 @@ export async function execFromFile(
   const totalSize = stats.size;
 
   return new Promise((resolve, reject) => {
-    logger.info('Executing command with file input', { command, localPath, totalSize });
+    logger.info('Executing command with file input', { length: command.length, localPath, totalSize });
 
     client.exec(command, (err, stream) => {
       if (err) {

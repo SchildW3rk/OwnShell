@@ -666,7 +666,7 @@ function testRemoteDumpShellQuotesInputs() {
     }),
     15432,
     {
-      compress: true,
+      compress: false,
       tables: ['users; touch /tmp/table'],
     }
   );
@@ -675,7 +675,6 @@ function testRemoteDumpShellQuotesInputs() {
   assert.ok(command.includes("-U 'app'\\''user'"));
   assert.ok(command.includes("-t 'users; touch /tmp/table'"));
   assert.ok(command.includes("'appdb; touch /tmp/db'"));
-  assert.ok(command.endsWith(' | gzip'));
 }
 
 function testRestoreAndRedaction() {

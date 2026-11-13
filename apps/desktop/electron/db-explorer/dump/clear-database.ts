@@ -1,13 +1,12 @@
 import { execSync } from 'child_process';
-import type { DBConnectionConfig } from '@ownshell/core';
 import { getSSHAdapter } from '../../ipc/ssh';
 import { logger } from '../../logger';
 import { buildClearCommand } from './clear-command-builder';
-import { buildEnvVars, redactCommand } from './command-builders';
+import { buildEnvVars, redactCommand, type DumpConfig } from './command-builders';
 import { checkLocalTools } from './tool-checker';
 
 export async function clearDatabase(
-  config: DBConnectionConfig,
+  config: DumpConfig,
   sshSessionId: string | undefined,
   port: number,
   mode: 'truncate' | 'drop'
@@ -17,6 +16,7 @@ export async function clearDatabase(
   logger.info('Clearing database', { type, database, mode });
 
   const clearCommand = buildClearCommand({
+    ...config,
     type,
     database,
     username,
@@ -66,7 +66,7 @@ async function clearViaSSH(sshSessionId: string, clearCommand: string): Promise<
   }
 }
 
-function clearLocally(clearCommand: string, config: DBConnectionConfig): void {
+function clearLocally(clearCommand: string, config: DumpConfig): void {
   try {
     execSync(clearCommand, { stdio: 'pipe', env: buildEnvVars(config) });
   } catch (err: unknown) {
